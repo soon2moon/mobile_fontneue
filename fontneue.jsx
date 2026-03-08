@@ -4,6 +4,7 @@ import {
   Pencil,
   MousePointer2, 
   Hand, 
+  Menu,
   Eye, 
   EyeOff,
   Trash2, 
@@ -741,6 +742,7 @@ export default function App() {
   const pointHitRadius = (10 * touchHitScale) / zoom;
   const segmentHitRadius = (10 * touchHitScale) / zoom;
   const snapHitRadius = (SNAP_RADIUS * touchHitScale) / zoom;
+  const closePathHitRadius = (SNAP_RADIUS * (isMobile ? 2.4 : 1.2)) / zoom;
   const pencilSamplingDistance = (isMobile ? 12 : 8) / zoom;
   const touchDragThresholdPx = isMobile ? 10 : 0;
 
@@ -1208,7 +1210,12 @@ export default function App() {
         setCurrentPath([newPoint]);
         setIsDrawingCurve('drawing');
       } else {
-        if (hoveredStartPoint) {
+        const startP = currentPath[0];
+        const isClosingHit = currentPath.length > 2
+          && Math.hypot(startP.x - coords.x, startP.y - coords.y) < closePathHitRadius;
+        if (hoveredStartPoint || isClosingHit) {
+          setHoveredStartPoint(true);
+          setGhostPoint(startP);
           setIsDrawingCurve('closing');
         } else {
           commitHistory({ paths, currentPath, images, layers });
@@ -2051,7 +2058,7 @@ export default function App() {
 
       if (currentPath.length > 0) {
         const startP = currentPath[0];
-        if (currentPath.length > 2 && Math.hypot(startP.x - coords.x, startP.y - coords.y) < snapHitRadius) {
+        if (currentPath.length > 2 && Math.hypot(startP.x - coords.x, startP.y - coords.y) < closePathHitRadius) {
           setHoveredStartPoint(true);
           snapPoint = startP;
         } else {
@@ -2091,7 +2098,7 @@ export default function App() {
         
         const startP = currentPath[0];
         const distToStart = Math.hypot(startP.x - coords.x, startP.y - coords.y);
-        if (currentPath.length > 2 && distToStart < snapHitRadius) {
+        if (currentPath.length > 2 && distToStart < closePathHitRadius) {
           setHoveredStartPoint(true);
           setGhostPoint(startP); 
         } else {
@@ -3499,6 +3506,7 @@ export default function App() {
   const selectedPathIndices = [...new Set(selectedPoints.map(sp => sp.pathIndex))]
     .filter(idx => idx >= 0 && idx < paths.length);
   const selectedPathObjects = selectedPathIndices.map(idx => paths[idx]).filter(Boolean);
+  const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0;
   const hasSelectedPaths = selectedPathObjects.length > 0;
   const fillToggleActive = hasSelectedPaths
     ? selectedPathObjects.every(path => !!path.fillEnabled)
@@ -3547,6 +3555,8 @@ export default function App() {
     setOpenPanels(prev => ({ ...prev, layers: true }));
     setExpandedPanel('layers');
   };
+  const mobileToolbarBottom = 'calc(env(safe-area-inset-bottom, 0px) + 16px)';
+  const mobileUtilityBottom = 'calc(env(safe-area-inset-bottom, 0px) + 96px)';
 
   return (
     <div className="w-screen h-screen bg-[#f4f1ed] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
@@ -4118,7 +4128,7 @@ export default function App() {
               }`}
               title="Tools"
             >
-              <GripVertical size={18} />
+              <Menu size={18} />
             </button>
             <button
               onClick={toggleMobilePanelTray}
@@ -4136,14 +4146,7 @@ export default function App() {
               mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
             }`}
           >
-              <div className="grid grid-cols-5 gap-1">
-                <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={17} />} label="Edit" />
-                <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={17} />} label="Path" />
-                <MobileToolButton active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={17} />} label="Pencil" />
-                <MobileToolButton active={mode === 'shape'} onClick={() => changeMode('shape')} icon={<Square size={17} />} label="Shape" />
-                <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={17} />} label="Pan" />
-              </div>
-              <div className="mt-2 grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-4 gap-1">
                 <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={16} />} label="Nodes" />
                 <MobileToolButton
                   active={fillToggleActive}
@@ -4158,14 +4161,52 @@ export default function App() {
                     setMobilePanelsOpen(true);
                     setOpenPanels(prev => ({ ...prev, image: true }));
                     setExpandedPanel('image');
+                    setMobileToolsOpen(false);
                   }}
                   icon={<ImageIcon size={16} />}
                   label="Image"
                 />
+                <MobileToolButton
+                  active={openPanels.grid}
+                  onClick={() => {
+                    setMobilePanelsOpen(true);
+                    setOpenPanels(prev => ({ ...prev, grid: true }));
+                    setExpandedPanel('grid');
+                    setMobileToolsOpen(false);
+                  }}
+                  icon={<Grid size={16} />}
+                  label="Grid"
+                />
+                <MobileToolButton
+                  active={openPanels.guides}
+                  onClick={() => {
+                    setMobilePanelsOpen(true);
+                    setOpenPanels(prev => ({ ...prev, guides: true }));
+                    setExpandedPanel('guides');
+                    setMobileToolsOpen(false);
+                  }}
+                  icon={<Ruler size={16} />}
+                  label="Guides"
+                />
+                <MobileToolButton
+                  active={openPanels.layers}
+                  onClick={() => {
+                    setMobilePanelsOpen(true);
+                    setOpenPanels(prev => ({ ...prev, layers: true }));
+                    setExpandedPanel('layers');
+                    setMobileToolsOpen(false);
+                  }}
+                  icon={<Layers size={16} />}
+                  label="Layers"
+                />
+                <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={16} />} label="Clear" />
               </div>
             </div>
 
-          <div className="absolute bottom-[84px] left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
+          <div
+            className="absolute left-3 right-3 z-20 flex items-center justify-between pointer-events-none"
+            style={{ bottom: mobileUtilityBottom }}
+          >
             <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
               <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
               <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
@@ -4179,7 +4220,10 @@ export default function App() {
             </div>
           </div>
 
-          <div className="absolute bottom-3 left-3 right-3 z-20 pointer-events-none">
+          <div
+            className="absolute left-3 right-3 z-20 pointer-events-none"
+            style={{ bottom: mobileToolbarBottom }}
+          >
             <div className="pointer-events-auto bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1.5">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={18} />} label="Edit" />
@@ -4195,9 +4239,12 @@ export default function App() {
                   label="Shape"
                 />
                 <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={18} />} label="Pan" />
-                <MobileToolButton active={openPanels.grid} onClick={() => { setMobilePanelsOpen(true); togglePanel('grid'); }} icon={<Grid size={18} />} label="Grid" />
-                <MobileToolButton active={openPanels.layers} onClick={() => { setMobilePanelsOpen(true); togglePanel('layers'); }} icon={<Layers size={18} />} label="Layers" />
-                <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={18} />} label="Clear" />
+                <MobileToolButton
+                  active={hasActiveSelection}
+                  onClick={deleteSelectedItems}
+                  icon={<Trash2 size={18} />}
+                  label="Delete"
+                />
               </div>
               {mode === 'shape' && (
                 <div className="mt-1.5 flex items-center gap-1 overflow-x-auto pt-1 border-t border-[#ece5e2]">
