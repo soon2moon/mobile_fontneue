@@ -594,9 +594,10 @@ export default function App() {
   const isMobile = viewportSize.width <= 900;
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
+  const [mobileBottomInset, setMobileBottomInset] = useState(0);
   
   // Tool State
-  const [mode, setMode] = useState('edit'); 
+  const [mode, setMode] = useState('pan'); 
   const [showNodes, setShowNodes] = useState(true);
   const [pathStyleDefaults, setPathStyleDefaults] = useState({ fillEnabled: false, strokeEnabled: true });
   
@@ -677,6 +678,8 @@ export default function App() {
     startClientY: 0,
     dragActivated: false
   });
+  const touchPointsRef = useRef(new Map());
+  const pinchGestureRef = useRef({ active: false, lastDistance: 0, lastMidpoint: null });
 
   const svgRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -713,6 +716,29 @@ export default function App() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const updateMobileBottomInset = () => {
+      if (!window.visualViewport) {
+        setMobileBottomInset(0);
+        return;
+      }
+      const viewport = window.visualViewport;
+      const bottomInset = Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop));
+      setMobileBottomInset(Math.round(bottomInset));
+    };
+
+    updateMobileBottomInset();
+    window.addEventListener('resize', updateMobileBottomInset);
+    window.visualViewport?.addEventListener('resize', updateMobileBottomInset);
+    window.visualViewport?.addEventListener('scroll', updateMobileBottomInset);
+
+    return () => {
+      window.removeEventListener('resize', updateMobileBottomInset);
+      window.visualViewport?.removeEventListener('resize', updateMobileBottomInset);
+      window.visualViewport?.removeEventListener('scroll', updateMobileBottomInset);
+    };
   }, []);
 
   useEffect(() => {
@@ -1096,6 +1122,21 @@ export default function App() {
 
   const handlePointerDown = (e) => {
     capturePointer(e);
+
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touchPointsRef.current.size >= 2) {
+        const [p1, p2] = Array.from(touchPointsRef.current.values());
+        pinchGestureRef.current = {
+          active: true,
+          lastDistance: Math.hypot(p2.x - p1.x, p2.y - p1.y),
+          lastMidpoint: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+        };
+        setIsPanning(false);
+        return;
+      }
+    }
+
     pointerGestureRef.current = {
       pointerId: e.pointerId ?? null,
       pointerType: e.pointerType || 'mouse',
@@ -1821,6 +1862,42 @@ export default function App() {
   };
 
   const handlePointerMove = (e) => {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && touchPointsRef.current.has(e.pointerId)) {
+      touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchGestureRef.current.active && touchPointsRef.current.size >= 2) {
+        const [p1, p2] = Array.from(touchPointsRef.current.values());
+        const midpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const distance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const prevMidpoint = pinchGestureRef.current.lastMidpoint;
+        const prevDistance = pinchGestureRef.current.lastDistance;
+
+        const midDeltaX = prevMidpoint ? midpoint.x - prevMidpoint.x : 0;
+        const midDeltaY = prevMidpoint ? midpoint.y - prevMidpoint.y : 0;
+
+        const currentZoom = zoomRef.current;
+        const currentPan = panRef.current;
+        const scaleMultiplier = prevDistance > 0 ? distance / prevDistance : 1;
+        const nextZoom = Math.min(Math.max(MIN_ZOOM, currentZoom * scaleMultiplier), MAX_ZOOM);
+
+        const worldX = (midpoint.x - currentPan.x) / currentZoom;
+        const worldY = (midpoint.y - currentPan.y) / currentZoom;
+
+        const nextPan = {
+          x: midpoint.x - worldX * nextZoom + midDeltaX,
+          y: midpoint.y - worldY * nextZoom + midDeltaY
+        };
+
+        panRef.current = nextPan;
+        zoomRef.current = nextZoom;
+        setPan(nextPan);
+        setZoom(nextZoom);
+
+        pinchGestureRef.current.lastDistance = distance;
+        pinchGestureRef.current.lastMidpoint = midpoint;
+        return;
+      }
+    }
+
     const dragThresholdPassed = hasPassedDragThreshold(e);
 
     if (isPanning) {
@@ -2499,6 +2576,15 @@ export default function App() {
 
   const handlePointerUp = (e) => {
     releasePointer(e);
+    touchPointsRef.current.delete(e.pointerId);
+    if (touchPointsRef.current.size < 2) {
+      pinchGestureRef.current = { active: false, lastDistance: 0, lastMidpoint: null };
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        setIsPanning(false);
+      }
+    }
+    if (pinchGestureRef.current.active) return;
+
     pointerGestureRef.current = {
       pointerId: null,
       pointerType: 'mouse',
@@ -2993,6 +3079,32 @@ export default function App() {
           const img = images.find(i => i.id === imgId);
           return img && !targetIdSet.has(img.layerId);
       }));
+    }
+  };
+
+  const deleteLayer = (layerId) => {
+    const pathIdsInLayer = new Set(paths.filter(path => path.layerId === layerId).map(path => path.id));
+    const imageIdsInLayer = new Set(images.filter(image => image.layerId === layerId).map(image => image.id));
+
+    if (pathIdsInLayer.size === 0 && imageIdsInLayer.size === 0) {
+      setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
+      return;
+    }
+
+    commitHistory({ paths, currentPath, images, layers });
+    setPaths(prevPaths => prevPaths.filter(path => path.layerId !== layerId));
+    setImages(prevImages => prevImages.filter(image => image.layerId !== layerId));
+    setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
+
+    setSelectedPoints(prev => prev.filter(sp => {
+      const path = paths[sp.pathIndex];
+      return path && path.layerId !== layerId && !pathIdsInLayer.has(path.id);
+    }));
+    setSelectedImageIds(prev => prev.filter(id => !imageIdsInLayer.has(id)));
+
+    if (activeLayerId === layerId) {
+      const fallbackLayer = layers.find(layer => layer.id !== layerId);
+      setActiveLayerId(fallbackLayer ? fallbackLayer.id : null);
     }
   };
 
@@ -3555,8 +3667,9 @@ export default function App() {
     setOpenPanels(prev => ({ ...prev, layers: true }));
     setExpandedPanel('layers');
   };
-  const mobileToolbarBottom = 'calc(env(safe-area-inset-bottom, 0px) + 16px)';
-  const mobileUtilityBottom = 'calc(env(safe-area-inset-bottom, 0px) + 96px)';
+  const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset}px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + 22px)`;
+  const mobileUtilityBottom = `calc(${computedBottomInset} + 112px)`;
 
   return (
     <div className="w-screen h-screen bg-[#f4f1ed] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
@@ -4569,6 +4682,13 @@ export default function App() {
                                         title={layer.locked ? "Unlock Layer" : "Lock Layer"}
                                       >
                                         {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
+                                        className="p-1.5 rounded-md hover:bg-[#f3d9d6] text-[#b25045] transition-colors"
+                                        title="Delete Layer"
+                                      >
+                                        <Trash2 size={14} />
                                       </button>
                                     </div>
                                 </div>
