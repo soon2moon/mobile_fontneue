@@ -390,13 +390,7 @@ const LayerIcon = ({ type }) => {
         case 'image': return <ImageIcon size={14} className="text-[#8c746f]" />;
         case 'vector':
         default: 
-            return (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8c746f]">
-                    <circle cx="5" cy="19" r="2.5"/>
-                    <circle cx="19" cy="5" r="2.5"/>
-                    <path d="M6.5 17.5L17.5 6.5"/>
-                </svg>
-            );
+            return <PenTool size={14} className="text-[#8c746f]" />;
     }
 };
 
@@ -675,6 +669,13 @@ export default function App() {
   const spacePanRef = useRef({ active: false, prevMode: null });
   const pointRotateRef = useRef({ lastAngle: 0, accumulated: 0 });
   const bgRotateRef = useRef({ lastAngle: 0, accumulated: 0 });
+  const pointerGestureRef = useRef({
+    pointerId: null,
+    pointerType: 'mouse',
+    startClientX: 0,
+    startClientY: 0,
+    dragActivated: false
+  });
 
   const svgRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -731,6 +732,30 @@ export default function App() {
     let normalized = ((angle + 180) % 360 + 360) % 360 - 180;
     if (Object.is(normalized, -0)) normalized = 0;
     return normalized;
+  };
+
+  const touchHitScale = isMobile ? 1.65 : 1;
+  const scaleHandleHitRadius = (8 * touchHitScale) / zoom;
+  const rotateHandleHitRadius = (24 * touchHitScale) / zoom;
+  const handleHitRadius = (8 * touchHitScale) / zoom;
+  const pointHitRadius = (10 * touchHitScale) / zoom;
+  const segmentHitRadius = (10 * touchHitScale) / zoom;
+  const snapHitRadius = (SNAP_RADIUS * touchHitScale) / zoom;
+  const pencilSamplingDistance = (isMobile ? 12 : 8) / zoom;
+  const touchDragThresholdPx = isMobile ? 10 : 0;
+
+  const hasPassedDragThreshold = (e) => {
+    const gesture = pointerGestureRef.current;
+    if (!gesture || gesture.pointerId == null || e.pointerId !== gesture.pointerId) return true;
+    const isTouchLike = gesture.pointerType === 'touch' || gesture.pointerType === 'pen';
+    if (!isTouchLike || touchDragThresholdPx <= 0) return true;
+    if (gesture.dragActivated) return true;
+    const dist = Math.hypot(e.clientX - gesture.startClientX, e.clientY - gesture.startClientY);
+    if (dist >= touchDragThresholdPx) {
+      gesture.dragActivated = true;
+      return true;
+    }
+    return false;
   };
 
   const togglePanel = (panelId) => {
@@ -887,8 +912,8 @@ export default function App() {
         ];
         for (const c of corners) {
           const dist = Math.hypot(lx - c.x, ly - c.y);
-          if (dist <= 8 / zoom) return { action: `scale-${c.id}`, cursorAngle: c.angle, imageId: img.id };
-          if (dist <= 24 / zoom) return { action: `rotate-${c.id}`, cursorAngle: null, imageId: img.id };
+          if (dist <= scaleHandleHitRadius) return { action: `scale-${c.id}`, cursorAngle: c.angle, imageId: img.id };
+          if (dist <= rotateHandleHitRadius) return { action: `rotate-${c.id}`, cursorAngle: null, imageId: img.id };
         }
       }
 
@@ -897,7 +922,7 @@ export default function App() {
       }
     }
     return null;
-  }, [images, selectedImageIds, zoom, layers]);
+  }, [images, selectedImageIds, layers, scaleHandleHitRadius, rotateHandleHitRadius]);
 
   // --- HISTORY HELPERS ---
   const commitHistory = useCallback((stateToSave) => {
@@ -1069,6 +1094,13 @@ export default function App() {
 
   const handlePointerDown = (e) => {
     capturePointer(e);
+    pointerGestureRef.current = {
+      pointerId: e.pointerId ?? null,
+      pointerType: e.pointerType || 'mouse',
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      dragActivated: (e.pointerType || 'mouse') === 'mouse'
+    };
     if (showShapeMenu) setShowShapeMenu(false);
     setHoveredHandle(null);
 
@@ -1134,7 +1166,7 @@ export default function App() {
             const prevP = path.points[prevIdx];
             const currP = path.points[j];
             const hit = distToBezier(coords, prevP, prevP.hOut || prevP, currP.hIn || currP, currP);
-            if (hit.dist < SNAP_RADIUS / zoom && hit.dist < bestDist) {
+            if (hit.dist < snapHitRadius && hit.dist < bestDist) {
               bestDist = hit.dist;
               hitSegment = { pathIndex: i, prevIndex: prevIdx, currIndex: j };
               hitT = hit.t;
@@ -1261,12 +1293,12 @@ export default function App() {
 
         for (const c of corners) {
             const dist = Math.hypot(coords.x - c.x, coords.y - c.y);
-            if (dist <= 8 / zoom) {
+            if (dist <= scaleHandleHitRadius) {
                 hitAction = `scale-${c.id}`;
                 cursorAngle = c.angle;
                 break;
             }
-            if (dist <= 24 / zoom) {
+            if (dist <= rotateHandleHitRadius) {
                 hitAction = `rotate-${c.id}`;
                 cursorAngle = null;
                 break;
@@ -1304,10 +1336,10 @@ export default function App() {
             const hasIn = p.hIn && Math.hypot(p.hIn.x - p.x, p.hIn.y - p.y) > 0.1;
             const hasOut = p.hOut && Math.hypot(p.hOut.x - p.x, p.hOut.y - p.y) > 0.1;
             
-            if (hasIn && Math.hypot(p.hIn.x - coords.x, p.hIn.y - coords.y) < 8 / zoom) {
+            if (hasIn && Math.hypot(p.hIn.x - coords.x, p.hIn.y - coords.y) < handleHitRadius) {
               clickedHandle = { pathIndex: i, pointIndex: j, type: 'hIn' }; break;
             }
-            if (hasOut && Math.hypot(p.hOut.x - coords.x, p.hOut.y - coords.y) < 8 / zoom) {
+            if (hasOut && Math.hypot(p.hOut.x - coords.x, p.hOut.y - coords.y) < handleHitRadius) {
               clickedHandle = { pathIndex: i, pointIndex: j, type: 'hOut' }; break;
             }
           }
@@ -1335,7 +1367,7 @@ export default function App() {
           for (let j = 0; j < paths[i].points.length; j++) {
             const p = paths[i].points[j];
             const dist = Math.hypot(p.x - coords.x, p.y - coords.y);
-            if (dist < 10 / zoom) {
+            if (dist < pointHitRadius) {
               clickedPoint = { pathIndex: i, pointIndex: j };
               break;
             }
@@ -1464,7 +1496,7 @@ export default function App() {
           const p3 = currP;
           
           const hit = distToBezier(coords, p0, p1, p2, p3);
-          if (hit.dist < 10 / zoom) {
+          if (hit.dist < segmentHitRadius) {
             clickedSegment = { pathIndex: i, prevIndex: prevIdx, currIndex: j };
             break;
           }
@@ -1782,7 +1814,10 @@ export default function App() {
   };
 
   const handlePointerMove = (e) => {
+    const dragThresholdPassed = hasPassedDragThreshold(e);
+
     if (isPanning) {
+      if (!dragThresholdPassed) return;
       setPan(prev => {
         const next = {
           x: prev.x + e.movementX,
@@ -1798,11 +1833,13 @@ export default function App() {
     let snappedCoords = applyGridSnap(coords, gridConfig);
 
     if (mode === 'shape' && drawingShape) {
+      if (!dragThresholdPassed) return;
       setDrawingShape(prev => ({ ...prev, currentX: snappedCoords.x, currentY: snappedCoords.y, shiftKey: e.shiftKey }));
       return;
     }
 
     if (pointAction) {
+      if (!dragThresholdPassed) return;
       hasDraggedRef.current = true;
       if (pointAction.action.startsWith('scale-')) {
           const cornerId = pointAction.action.split('-')[1];
@@ -1912,6 +1949,7 @@ export default function App() {
     }
 
     if (bgAction && selectedImageIds.length > 0) {
+      if (!dragThresholdPassed) return;
       hasDraggedRef.current = true;
       setImages(prev => prev.map(img => {
         if (!selectedImageIds.includes(img.id)) return img;
@@ -1974,7 +2012,7 @@ export default function App() {
     if (mode === 'pencil') {
       if (currentPath.length > 0) {
         const lastPoint = currentPath[currentPath.length - 1];
-        if (Math.hypot(coords.x - lastPoint.x, coords.y - lastPoint.y) > 8 / zoom) {
+        if (Math.hypot(coords.x - lastPoint.x, coords.y - lastPoint.y) > pencilSamplingDistance) {
           const newPoint = { 
             x: coords.x, y: coords.y, 
             hIn: { x: coords.x, y: coords.y }, 
@@ -2002,7 +2040,7 @@ export default function App() {
             const prevP = path.points[prevIdx];
             const currP = path.points[j];
             const hit = distToBezier(coords, prevP, prevP.hOut || prevP, currP.hIn || currP, currP);
-            if (hit.dist < SNAP_RADIUS / zoom && hit.dist < bestDist) {
+            if (hit.dist < snapHitRadius && hit.dist < bestDist) {
               bestDist = hit.dist;
               segmentSnap = { pathIndex: i, prevIndex: prevIdx, currIndex: j, t: hit.t };
               snapPoint = getBezierPoint(prevP, prevP.hOut || prevP, currP.hIn || currP, currP, hit.t);
@@ -2013,7 +2051,7 @@ export default function App() {
 
       if (currentPath.length > 0) {
         const startP = currentPath[0];
-        if (currentPath.length > 2 && Math.hypot(startP.x - coords.x, startP.y - coords.y) < SNAP_RADIUS / zoom) {
+        if (currentPath.length > 2 && Math.hypot(startP.x - coords.x, startP.y - coords.y) < snapHitRadius) {
           setHoveredStartPoint(true);
           snapPoint = startP;
         } else {
@@ -2053,7 +2091,7 @@ export default function App() {
         
         const startP = currentPath[0];
         const distToStart = Math.hypot(startP.x - coords.x, startP.y - coords.y);
-        if (currentPath.length > 2 && distToStart < SNAP_RADIUS / zoom) {
+        if (currentPath.length > 2 && distToStart < snapHitRadius) {
           setHoveredStartPoint(true);
           setGhostPoint(startP); 
         } else {
@@ -2070,6 +2108,7 @@ export default function App() {
       }
     } else if (mode === 'edit') {
       if (activeHandle) {
+        if (!dragThresholdPassed) return;
         hasDraggedRef.current = true;
         let type = activeHandle.type;
 
@@ -2195,6 +2234,7 @@ export default function App() {
           return newPaths;
         });
       } else if (isDraggingPoints) {
+        if (!dragThresholdPassed) return;
         hasDraggedRef.current = true;
         let dragDx = coords.x - lastPointerDownRef.current.canvasX;
         let dragDy = coords.y - lastPointerDownRef.current.canvasY;
@@ -2267,6 +2307,7 @@ export default function App() {
             }
         }
       } else if (selectionBox) {
+        if (!dragThresholdPassed) return;
         setSelectionBox(prev => ({ 
           ...prev, 
           currentX: coords.x, 
@@ -2420,11 +2461,11 @@ export default function App() {
         ];
         for (const c of corners) {
           const dist = Math.hypot(coords.x - c.x, coords.y - c.y);
-          if (dist <= 8 / zoom) {
+          if (dist <= scaleHandleHitRadius) {
             ptHit = { action: `scale-${c.id}`, cursorAngle: c.angle, type: 'point' };
             break;
           }
-          if (dist <= 24 / zoom) {
+          if (dist <= rotateHandleHitRadius) {
             ptHit = { action: `rotate-${c.id}`, cursorAngle: null, type: 'point' };
             break;
           }
@@ -2451,6 +2492,13 @@ export default function App() {
 
   const handlePointerUp = (e) => {
     releasePointer(e);
+    pointerGestureRef.current = {
+      pointerId: null,
+      pointerType: 'mouse',
+      startClientX: 0,
+      startClientY: 0,
+      dragActivated: false
+    };
     setIsPanning(false);
     if (mode === 'shape') {
       if (drawingShape) {
@@ -2505,7 +2553,7 @@ export default function App() {
         if (finalPath.length > 2) {
           const startP = finalPath[0];
           const lastP = finalPath[finalPath.length - 1];
-          if (Math.hypot(startP.x - lastP.x, startP.y - lastP.y) < SNAP_RADIUS / zoom) {
+          if (Math.hypot(startP.x - lastP.x, startP.y - lastP.y) < snapHitRadius) {
             isClosed = true;
             finalPath.pop(); // Remove redundant end point and close loop
           }
@@ -3529,6 +3577,34 @@ export default function App() {
         .cursor-default { cursor: default !important; }
         .cursor-grab { cursor: grab !important; }
         .cursor-grabbing { cursor: grabbing !important; }
+        .mobile-drawer {
+          transition: opacity 180ms ease, transform 180ms ease;
+          will-change: transform, opacity;
+        }
+        .mobile-drawer-open {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+        .mobile-drawer-closed {
+          opacity: 0;
+          transform: translateY(-8px);
+          pointer-events: none;
+        }
+        .mobile-panels-wrap {
+          transition: opacity 200ms ease, transform 200ms ease;
+          will-change: transform, opacity;
+        }
+        .mobile-panels-open {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+        .mobile-panels-closed {
+          opacity: 0;
+          transform: translateY(-10px);
+          pointer-events: none;
+        }
       `}</style>
 
       {/* CANVAS */}
@@ -3728,7 +3804,7 @@ export default function App() {
                                     x2={p.hIn.x}
                                     y2={p.hIn.y}
                                     stroke="rgba(0,0,0,0)"
-                                    strokeWidth={10 / zoom}
+                                    strokeWidth={(isMobile ? 16 : 10) / zoom}
                                     pointerEvents="stroke"
                                   />
                                   <circle
@@ -3765,7 +3841,7 @@ export default function App() {
                                     x2={p.hOut.x}
                                     y2={p.hOut.y}
                                     stroke="rgba(0,0,0,0)"
-                                    strokeWidth={10 / zoom}
+                                    strokeWidth={(isMobile ? 16 : 10) / zoom}
                                     pointerEvents="stroke"
                                   />
                                   <circle
@@ -4022,36 +4098,44 @@ export default function App() {
 
       {isMobile && (
         <>
+          {(mobilePanelsOpen || anyPanelOpen) && (
+            <button
+              type="button"
+              onClick={() => {
+                setMobilePanelsOpen(false);
+                closeAllPanels();
+              }}
+              className="absolute inset-0 z-[9] bg-[#4a2622]/8 backdrop-blur-[1px]"
+              aria-label="Close panels overlay"
+            />
+          )}
+
           <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
             <button
               onClick={() => setMobileToolsOpen(prev => !prev)}
-              className={`pointer-events-auto h-10 w-10 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
+              className={`pointer-events-auto h-11 w-11 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
                 mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
               }`}
               title="Tools"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="5" y1="7" x2="19" y2="7" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <line x1="5" y1="17" x2="19" y2="17" />
-              </svg>
+              <GripVertical size={18} />
             </button>
             <button
               onClick={toggleMobilePanelTray}
-              className={`pointer-events-auto h-10 w-10 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
+              className={`pointer-events-auto h-11 w-11 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
                 mobilePanelsOpen || anyPanelOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
               }`}
               title="Panels"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <rect x="4" y="5" width="16" height="14" rx="2" />
-                <line x1="11" y1="5" x2="11" y2="19" />
-              </svg>
+              <Layers size={18} />
             </button>
           </div>
 
-          {mobileToolsOpen && (
-            <div className="absolute top-16 left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 pointer-events-auto">
+          <div
+            className={`absolute top-16 left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 mobile-drawer ${
+              mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
+            }`}
+          >
               <div className="grid grid-cols-5 gap-1">
                 <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={17} />} label="Edit" />
                 <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={17} />} label="Path" />
@@ -4080,12 +4164,11 @@ export default function App() {
                 />
               </div>
             </div>
-          )}
 
           <div className="absolute bottom-[84px] left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
             <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={handleUndo} icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20a8 8 0 0 0-8-8H4"/></svg>} label="Undo" />
-              <MobileToolButton onClick={handleRedo} icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 4 20 9 15 14"/><path d="M4 20a8 8 0 0 1 8-8h8"/></svg>} label="Redo" />
+              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
+              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
             </div>
             <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
               <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={15} />} label="Zoom Out" />
@@ -4134,7 +4217,9 @@ export default function App() {
       <div
         className={`absolute flex flex-col gap-2 z-10 pointer-events-none ${
           isMobile
-            ? 'top-16 left-3 right-3 max-h-[56vh] overflow-y-auto items-stretch'
+            ? `top-16 left-3 right-3 max-h-[56vh] overflow-y-auto items-stretch mobile-panels-wrap ${
+                mobilePanelsOpen || anyPanelOpen ? 'mobile-panels-open' : 'mobile-panels-closed'
+              }`
             : 'top-8 right-8 items-end'
         }`}
       >
@@ -4300,24 +4385,14 @@ export default function App() {
                               onChange={v => updateActiveImage({ y: v })}
                             />
                             <ConfigInput
-                              icon={
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="15 3 21 3 21 9" />
-                                  <polyline points="9 21 3 21 3 15" />
-                                </svg>
-                              }
+                              icon={<Ruler size={14} />}
                               value={activeImage.scale}
                               scaleFactor={100}
                               suffix="%"
                               onChange={v => updateActiveImage({ scale: Math.max(0.01, v) })}
                             />
                             <ConfigInput
-                              icon={
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M4 4v16h16" />
-                                  <path d="M4 10a10 10 0 0 1 10 10" />
-                                </svg>
-                              }
+                              icon={<RefreshCw size={14} />}
                               value={activeImage.rotation}
                               suffix="°"
                               onChange={v => updateActiveImage({ rotation: v })}
@@ -4613,11 +4688,7 @@ export default function App() {
           <ToolButton
             active={strokeToggleActive}
             onClick={() => {}}
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="4" y1="12" x2="20" y2="12" />
-              </svg>
-            }
+            icon={<Minus size={20} />}
             label={hasSelectedPaths ? "Toggle Stroke (Selection)" : "Toggle Stroke (Default)"}
           />
         </div>
@@ -4679,7 +4750,7 @@ function MobileToolButton({ active = false, onClick, icon, label }) {
     <button
       onClick={onClick}
       title={label}
-      className={`h-10 min-w-10 px-2 rounded-lg border transition-colors flex items-center justify-center shrink-0 ${
+      className={`h-11 min-w-11 px-2 rounded-lg border transition-all duration-150 flex items-center justify-center shrink-0 ${
         active
           ? 'bg-[#ded9f4] border-[#d0c8f0] text-[#4f4a77]'
           : 'bg-[#f8f6f3] border-transparent text-[#6f6968] active:bg-[#ede6e2]'
