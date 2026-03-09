@@ -143,6 +143,11 @@ const reflectPointAcrossPerpBisector = (p, p1, p2) => {
 
 const pointsToPath = (points, isClosed) => {
   if (!points || points.length === 0) return '';
+  if (points.length === 1) {
+    const point = points[0];
+    // Render a tiny stroked segment so single-point paths remain visible outside edit mode.
+    return `M ${point.x} ${point.y} L ${point.x + 0.001} ${point.y}`;
+  }
   let d = `M ${points[0].x} ${points[0].y}`;
   
   for (let i = 1; i < points.length; i++) {
@@ -603,9 +608,11 @@ export default function App() {
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileBottomInset, setMobileBottomInset] = useState(0);
   const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
+  const [mobileImageContextMenu, setMobileImageContextMenu] = useState(null);
   const [mobileTopFlash, setMobileTopFlash] = useState({ undo: false, redo: false, zoomOut: false, zoomIn: false });
   const mobileTopFlashTimersRef = useRef({});
   const mobileToolbarShellRef = useRef(null);
+  const mobileImageLongPressRef = useRef({ timerId: null, pointerId: null, startX: 0, startY: 0, imageId: null, triggered: false });
   
   // Tool State
   const [mode, setMode] = useState('pan'); 
@@ -703,6 +710,20 @@ export default function App() {
   const lockedLayerIds = new Set(layers.filter(l => l.locked).map(l => l.id));
   const isPathVisible = (path) => visibleLayerIds.has(path.layerId);
   const isPathLocked = (path) => lockedLayerIds.has(path.layerId);
+  const clearMobileImageLongPress = useCallback(() => {
+    const longPressState = mobileImageLongPressRef.current;
+    if (longPressState.timerId) {
+      clearTimeout(longPressState.timerId);
+    }
+    mobileImageLongPressRef.current = {
+      timerId: null,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      imageId: null,
+      triggered: false
+    };
+  }, []);
 
   const getCanvasCoords = useCallback((clientX, clientY) => {
     return {
@@ -798,11 +819,22 @@ export default function App() {
     }
   }, [isMobile]);
 
+  useEffect(() => {
+    if (!isMobile || mode !== 'edit') {
+      setMobileImageContextMenu(null);
+      clearMobileImageLongPress();
+    }
+  }, [isMobile, mode, clearMobileImageLongPress]);
+
   useEffect(() => () => {
     Object.values(mobileTopFlashTimersRef.current).forEach(timer => {
       if (timer) clearTimeout(timer);
     });
   }, []);
+
+  useEffect(() => () => {
+    clearMobileImageLongPress();
+  }, [clearMobileImageLongPress]);
 
   const triggerMobileTopFlash = useCallback((key) => {
     setMobileTopFlash(prev => ({ ...prev, [key]: true }));
@@ -909,6 +941,14 @@ export default function App() {
       lastFocusedPathEditIdRef.current = activePathEditId;
     }
   }, [activePathEditId]);
+
+  useEffect(() => {
+    if (showNodes || !activePathEditId) return;
+    setActivePathEditId(null);
+    setActiveHandle(null);
+    setSelectionBox(null);
+    setPointAction(null);
+  }, [showNodes, activePathEditId]);
 
   useEffect(() => {
     if (!activePathEditId) return;
@@ -1033,6 +1073,27 @@ export default function App() {
     }
     return null;
   }, [images, selectedImageIds, layers, scaleHandleHitRadius, rotateHandleHitRadius]);
+
+  const findTopImageAtCoords = useCallback((testCoords) => {
+    for (let i = images.length - 1; i >= 0; i--) {
+      const img = images[i];
+      const layer = layers.find(l => l.id === img.layerId);
+      if (!layer || !layer.visible || layer.locked || img.locked) continue;
+
+      const dx = testCoords.x - img.x;
+      const dy = testCoords.y - img.y;
+      const angleRad = -img.rotation * Math.PI / 180;
+      const lx = dx * Math.cos(angleRad) - dy * Math.sin(angleRad);
+      const ly = dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
+
+      const sw2 = (img.width * img.scale) / 2;
+      const sh2 = (img.height * img.scale) / 2;
+      if (Math.abs(lx) <= sw2 && Math.abs(ly) <= sh2) {
+        return img;
+      }
+    }
+    return null;
+  }, [images, layers]);
 
   // --- HISTORY HELPERS ---
   const commitHistory = useCallback((stateToSave) => {
@@ -1180,6 +1241,40 @@ export default function App() {
     setSelectedImageIds([]);
   }, [paths, currentPath, images, layers, selectedPoints, selectedImageIds, activeLayerId, commitHistory]);
 
+  const deleteImageById = useCallback((imageId) => {
+    const targetImage = images.find(img => img.id === imageId);
+    if (!targetImage) {
+      setMobileImageContextMenu(null);
+      return;
+    }
+    const targetLayer = layers.find(layer => layer.id === targetImage.layerId);
+    if (!targetLayer || targetLayer.locked || targetImage.locked) {
+      setMobileImageContextMenu(null);
+      return;
+    }
+
+    commitHistory({ paths, currentPath, images, layers });
+    const nextImages = images.filter(img => img.id !== imageId);
+    setImages(nextImages);
+    setSelectedImageIds(prev => prev.filter(id => id !== imageId));
+    setBgAction(null);
+    setBgInitialState(null);
+
+    const hasPathsInLayer = paths.some(path => path.layerId === targetImage.layerId);
+    const hasOtherImagesInLayer = nextImages.some(img => img.layerId === targetImage.layerId);
+    if (!hasPathsInLayer && !hasOtherImagesInLayer) {
+      setLayers(prevLayers => {
+        const filteredLayers = prevLayers.filter(layer => layer.id !== targetImage.layerId);
+        if (activeLayerId === targetImage.layerId && !filteredLayers.some(layer => layer.id === activeLayerId)) {
+          setActiveLayerId(filteredLayers.length > 0 ? filteredLayers[0].id : null);
+        }
+        return filteredLayers;
+      });
+    }
+
+    setMobileImageContextMenu(null);
+  }, [images, layers, paths, currentPath, commitHistory, activeLayerId]);
+
   // --- EVENT HANDLERS ---
   const capturePointer = (e) => {
     if (e.button === 2) return;
@@ -1247,6 +1342,43 @@ export default function App() {
     
     // Will update refPoint down below depending on context
     lastPointerDownRef.current = { time: now, x: e.clientX, y: e.clientY, canvasX: coords.x, canvasY: coords.y, refPoint: null };
+    if (mobileImageContextMenu) {
+      setMobileImageContextMenu(null);
+    }
+
+    if (isMobile && mode === 'edit' && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+      clearMobileImageLongPress();
+      const hitImage = findTopImageAtCoords(coords);
+      if (hitImage) {
+        const pointerId = e.pointerId ?? null;
+        const timerId = setTimeout(() => {
+          mobileImageLongPressRef.current.triggered = true;
+          setMobileImageContextMenu({
+            imageId: hitImage.id,
+            x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 124)),
+            y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+          });
+          setSelectedImageIds([hitImage.id]);
+          setSelectedPoints([]);
+          setActivePathEditId(null);
+          setActiveHandle(null);
+          setSelectionBox(null);
+          setBgAction(null);
+          setPointAction(null);
+          setIsDraggingPoints(false);
+        }, 520);
+        mobileImageLongPressRef.current = {
+          timerId,
+          pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          imageId: hitImage.id,
+          triggered: false
+        };
+      }
+    } else {
+      clearMobileImageLongPress();
+    }
 
     if (mode === 'shape') {
       setDrawingShape({ startX: snappedCoords.x, startY: snappedCoords.y, currentX: snappedCoords.x, currentY: snappedCoords.y, shiftKey: e.shiftKey });
@@ -1279,94 +1411,12 @@ export default function App() {
     if (mode === 'draw') {
 
       if (currentPath.length === 0) {
-        let hitEndpoint = null;
-        let bestEndpointDist = Infinity;
-        for (let i = paths.length - 1; i >= 0; i--) {
-          const path = paths[i];
-          if (!isPathVisible(path) || isPathLocked(path) || path.isClosed || path.points.length === 0) continue;
-          const endpointIndices = path.points.length === 1 ? [0] : [0, path.points.length - 1];
-          for (const pointIndex of endpointIndices) {
-            const endpoint = path.points[pointIndex];
-            const dist = Math.hypot(endpoint.x - coords.x, endpoint.y - coords.y);
-            if (dist < pointHitRadius && dist < bestEndpointDist) {
-              bestEndpointDist = dist;
-              hitEndpoint = { pathIndex: i, pointIndex };
-            }
-          }
-        }
-
-        if (hitEndpoint) {
-          commitHistory({ paths, currentPath, images, layers });
-          const sourcePath = paths[hitEndpoint.pathIndex];
-          const reverseForEdit = hitEndpoint.pointIndex === 0 && sourcePath.points.length > 1;
-          const resumedPoints = reverseForEdit
-            ? reversePathPoints(sourcePath.points)
-            : sourcePath.points.map(clonePoint);
-
-          setCurrentPathInfo({
-            layerId: sourcePath.layerId,
-            itemType: sourcePath.itemType || 'vector',
-            fillEnabled: sourcePath.fillEnabled ?? pathStyleDefaults.fillEnabled,
-            strokeEnabled: sourcePath.strokeEnabled ?? pathStyleDefaults.strokeEnabled,
-            resumePathId: sourcePath.id,
-            resumePathIndex: hitEndpoint.pathIndex,
-            resumeReverseOnSave: reverseForEdit
-          });
-          setCurrentPath(resumedPoints);
-          setActiveLayerId(sourcePath.layerId);
-          setActivePathEditId(null);
-          setSelectedPoints([]);
-          setGhostPoint(null);
-          setDrawHover(null);
-          setHoveredStartPoint(false);
-          setIsDrawingCurve('drawing');
-          return;
-        }
-
-        let hitSegment = null;
-        let hitT = 0;
-        let bestDist = Infinity;
-        for (let i = paths.length - 1; i >= 0; i--) {
-          const path = paths[i];
-          if (!isPathVisible(path) || isPathLocked(path)) continue;
-          for (let j = 0; j < path.points.length; j++) {
-            if (j === 0 && !path.isClosed) continue;
-            const prevIdx = j === 0 ? path.points.length - 1 : j - 1;
-            const prevP = path.points[prevIdx];
-            const currP = path.points[j];
-            const hit = distToBezier(coords, prevP, prevP.hOut || prevP, currP.hIn || currP, currP);
-            if (hit.dist < snapHitRadius && hit.dist < bestDist) {
-              bestDist = hit.dist;
-              hitSegment = { pathIndex: i, prevIndex: prevIdx, currIndex: j };
-              hitT = hit.t;
-            }
-          }
-        }
-
-        if (hitSegment) {
-          commitHistory({ paths, currentPath, images, layers });
-          const newPaths = clonePaths(paths);
-          const path = newPaths[hitSegment.pathIndex];
-          const prevP = path.points[hitSegment.prevIndex];
-          const currP = path.points[hitSegment.currIndex];
-          const split = splitBezier(prevP, prevP.hOut || prevP, currP.hIn || currP, currP, hitT);
-
-          prevP.hOut = split.left.hOut;
-          currP.hIn = split.right.hIn;
-          const insertIdx = hitSegment.currIndex === 0 ? path.points.length : hitSegment.currIndex;
-          path.points.splice(insertIdx, 0, split.newPoint);
-
-          setPaths(newPaths);
-          setGhostPoint(null);
-          setDrawHover(null);
-          return;
-        }
-
+        const drawStart = ghostPoint || snappedCoords;
         commitHistory({ paths, currentPath, images, layers });
         const newPoint = { 
-          x: snappedCoords.x, y: snappedCoords.y, 
-          hIn: { x: snappedCoords.x, y: snappedCoords.y }, 
-          hOut: { x: snappedCoords.x, y: snappedCoords.y } 
+          x: drawStart.x, y: drawStart.y, 
+          hIn: { x: drawStart.x, y: drawStart.y }, 
+          hOut: { x: drawStart.x, y: drawStart.y } 
         };
         setCurrentPathInfo({
           layerId: null,
@@ -1423,7 +1473,7 @@ export default function App() {
         lastPointerDownRef.current.refPoint = bestRefPoint || coords;
         setIsDraggingPoints(true);
       };
-      const isDirectPathEdit = !!activePathEditId;
+      const isDirectPathEdit = !!activePathEditId && showNodes;
       const buildPathSelection = (pathIndex) => {
         const path = paths[pathIndex];
         if (!path) return [];
@@ -1681,7 +1731,7 @@ export default function App() {
           
           const hit = distToBezier(coords, p0, p1, p2, p3);
           if (hit.dist < segmentHitRadius) {
-            clickedSegment = { pathIndex: i, prevIndex: prevIdx, currIndex: j };
+            clickedSegment = { pathIndex: i, prevIndex: prevIdx, currIndex: j, t: hit.t };
             break;
           }
         }
@@ -1702,6 +1752,7 @@ export default function App() {
           lastClickedPathIdRef.current = clickedPath?.id || null;
 
           if (shouldEnterDirect && clickedPath) {
+            setShowNodes(true);
             setActivePathEditId(clickedPath.id);
             setSelectedPoints([]);
             setSelectedImageIds([]);
@@ -1733,6 +1784,36 @@ export default function App() {
           } else {
             startDragging(selectedPoints);
           }
+          return;
+        }
+
+        const hasModifierKeys = e.shiftKey || e.altKey || e.ctrlKey || e.metaKey;
+        if (!hasModifierKeys) {
+          commitHistory({ paths, currentPath, images, layers });
+          const newPaths = clonePaths(paths);
+          const path = newPaths[clickedSegment.pathIndex];
+          const prevP = path.points[clickedSegment.prevIndex];
+          const currP = path.points[clickedSegment.currIndex];
+          const split = splitBezier(
+            prevP,
+            prevP.hOut || prevP,
+            currP.hIn || currP,
+            currP,
+            clickedSegment.t
+          );
+
+          prevP.hOut = split.left.hOut;
+          currP.hIn = split.right.hIn;
+          const insertIdx = clickedSegment.currIndex === 0 ? path.points.length : clickedSegment.currIndex;
+          path.points.splice(insertIdx, 0, split.newPoint);
+
+          setPaths(newPaths);
+          dragStartPathsRef.current = clonePaths(newPaths);
+          const insertedPointSelection = [{ pathIndex: clickedSegment.pathIndex, pointIndex: insertIdx }];
+          setSelectedPoints(insertedPointSelection);
+          setSelectedImageIds([]);
+          setActiveHandle(null);
+          startDragging(insertedPointSelection);
           return;
         }
 
@@ -1892,6 +1973,7 @@ export default function App() {
           lastClickedPathIdRef.current = path?.id || null;
 
           if (shouldEnterDirect && path) {
+            setShowNodes(true);
             setActivePathEditId(path.id);
             setSelectedPoints([]);
             setSelectedImageIds([]);
@@ -2030,6 +2112,16 @@ export default function App() {
 
         pinchGestureRef.current.lastDistance = distance;
         pinchGestureRef.current.lastMidpoint = midpoint;
+        return;
+      }
+    }
+
+    const longPressState = mobileImageLongPressRef.current;
+    if (longPressState.pointerId != null && longPressState.pointerId === (e.pointerId ?? null)) {
+      const delta = Math.hypot(e.clientX - longPressState.startX, e.clientY - longPressState.startY);
+      if (!longPressState.triggered && delta > 12) {
+        clearMobileImageLongPress();
+      } else if (longPressState.triggered) {
         return;
       }
     }
@@ -2748,6 +2840,16 @@ export default function App() {
     }
     if (pinchGestureRef.current.active) return;
 
+    const longPressState = mobileImageLongPressRef.current;
+    const wasImageLongPress = longPressState.pointerId != null
+      && longPressState.pointerId === (e.pointerId ?? null)
+      && longPressState.triggered;
+    clearMobileImageLongPress();
+    if (wasImageLongPress) {
+      setIsPanning(false);
+      return;
+    }
+
     pointerGestureRef.current = {
       pointerId: null,
       pointerType: 'mouse',
@@ -2867,6 +2969,29 @@ export default function App() {
     }
   };
 
+  const handleCanvasContextMenu = useCallback((e) => {
+    if (!isMobile) return;
+    const coords = getCanvasCoords(e.clientX, e.clientY);
+    const hitImage = findTopImageAtCoords(coords);
+    if (!hitImage) return;
+
+    e.preventDefault();
+    clearMobileImageLongPress();
+    setMobileImageContextMenu({
+      imageId: hitImage.id,
+      x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 124)),
+      y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+    });
+    setSelectedImageIds([hitImage.id]);
+    setSelectedPoints([]);
+    setActivePathEditId(null);
+    setActiveHandle(null);
+    setSelectionBox(null);
+    setBgAction(null);
+    setPointAction(null);
+    setIsDraggingPoints(false);
+  }, [isMobile, getCanvasCoords, findTopImageAtCoords, clearMobileImageLongPress, viewportSize.width, viewportSize.height]);
+
   const zoomAtScreenPoint = useCallback((scaleMultiplier, screenX, screenY) => {
     const currentZoom = zoomRef.current;
     const currentPan = panRef.current;
@@ -2928,6 +3053,7 @@ export default function App() {
     if (pathIndex === -1) return;
     const path = nextPaths[pathIndex];
     setMode('edit');
+    setShowNodes(true);
     setActivePathEditId(pathId);
     setSelectedImageIds([]);
     setSelectedPoints([]);
@@ -3081,9 +3207,18 @@ export default function App() {
         url,
         width: img.width,
         height: img.height,
-        x: 0,
-        y: 0,
-        scale: 1,
+        x: (viewportSize.width / 2 - panRef.current.x) / zoomRef.current,
+        y: (viewportSize.height / 2 - panRef.current.y) / zoomRef.current,
+        scale: (() => {
+          const viewWorldWidth = viewportSize.width / zoomRef.current;
+          const viewWorldHeight = viewportSize.height / zoomRef.current;
+          const maxWidth = viewWorldWidth * 0.72;
+          const maxHeight = viewWorldHeight * 0.58;
+          const widthScale = maxWidth / img.width;
+          const heightScale = maxHeight / img.height;
+          const fitScale = Math.min(widthScale, heightScale, 1);
+          return Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1;
+        })(),
         rotation: 0,
         opacity: 0.35,
         locked: false,
@@ -3097,7 +3232,7 @@ export default function App() {
     };
     img.src = url;
     return true;
-  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers]);
+  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers, viewportSize.width, viewportSize.height]);
 
   // --- SKETCH UPLOAD ---
   const handleImageUpload = (e) => {
@@ -4013,6 +4148,7 @@ export default function App() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onContextMenu={handleCanvasContextMenu}
       >
         <defs>
           {showBackgroundGridPattern && (
@@ -4504,6 +4640,32 @@ export default function App() {
               className="absolute inset-0 z-[9] bg-[#4a2622]/8"
               aria-label="Close panels overlay"
             />
+          )}
+
+          {mobileImageContextMenu && (
+            <>
+              <button
+                type="button"
+                className="absolute inset-0 z-[22] bg-transparent"
+                onClick={() => setMobileImageContextMenu(null)}
+                aria-label="Close image actions"
+              />
+              <div
+                className="absolute z-[23] pointer-events-none"
+                style={{ left: `${mobileImageContextMenu.x}px`, top: `${mobileImageContextMenu.y}px` }}
+              >
+                <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 bg-[#fdfcfa] border border-[#e8dfdb] rounded-[12px] shadow-[0_12px_24px_rgba(74,38,34,0.18)] p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => deleteImageById(mobileImageContextMenu.imageId)}
+                    className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#7c3f35] active:bg-[#f0dfdc] flex items-center gap-2 text-xs font-semibold"
+                  >
+                    <Trash2 size={14} />
+                    Delete image
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           <div
