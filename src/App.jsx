@@ -230,24 +230,30 @@ const applyGridSnap = (point, config) => {
   return point;
 };
 
+const clonePoint = (pt) => ({
+  ...pt,
+  hIn: pt.hIn ? { ...pt.hIn } : undefined,
+  hOut: pt.hOut ? { ...pt.hOut } : undefined
+});
+
+const reversePathPoints = (pointsArray) => (
+  [...pointsArray].reverse().map(pt => ({
+    ...pt,
+    hIn: pt.hOut ? { ...pt.hOut } : undefined,
+    hOut: pt.hIn ? { ...pt.hIn } : undefined
+  }))
+);
+
 const clonePaths = (pathsArray) => {
   return pathsArray.map(p => ({
     ...p,
-    points: p.points.map(pt => ({
-      ...pt,
-      hIn: pt.hIn ? { ...pt.hIn } : undefined,
-      hOut: pt.hOut ? { ...pt.hOut } : undefined
-    }))
+    points: p.points.map(clonePoint)
   }));
 };
 
 const cloneState = (pathsArray, currentPathArray, imagesArray, layersArray) => ({
   paths: clonePaths(pathsArray),
-  currentPath: currentPathArray.map(pt => ({
-    ...pt,
-    hIn: pt.hIn ? { ...pt.hIn } : undefined,
-    hOut: pt.hOut ? { ...pt.hOut } : undefined
-  })),
+  currentPath: currentPathArray.map(clonePoint),
   images: imagesArray ? imagesArray.map(img => ({ ...img })) : [],
   layers: layersArray ? layersArray.map(l => ({ ...l })) : []
 });
@@ -1197,6 +1203,50 @@ export default function App() {
     if (mode === 'draw') {
 
       if (currentPath.length === 0) {
+        let hitEndpoint = null;
+        let bestEndpointDist = Infinity;
+        for (let i = paths.length - 1; i >= 0; i--) {
+          const path = paths[i];
+          if (!isPathVisible(path) || isPathLocked(path) || path.isClosed || path.points.length === 0) continue;
+          const endpointIndices = path.points.length === 1 ? [0] : [0, path.points.length - 1];
+          for (const pointIndex of endpointIndices) {
+            const endpoint = path.points[pointIndex];
+            const dist = Math.hypot(endpoint.x - coords.x, endpoint.y - coords.y);
+            if (dist < pointHitRadius && dist < bestEndpointDist) {
+              bestEndpointDist = dist;
+              hitEndpoint = { pathIndex: i, pointIndex };
+            }
+          }
+        }
+
+        if (hitEndpoint) {
+          commitHistory({ paths, currentPath, images, layers });
+          const sourcePath = paths[hitEndpoint.pathIndex];
+          const reverseForEdit = hitEndpoint.pointIndex === 0 && sourcePath.points.length > 1;
+          const resumedPoints = reverseForEdit
+            ? reversePathPoints(sourcePath.points)
+            : sourcePath.points.map(clonePoint);
+
+          setCurrentPathInfo({
+            layerId: sourcePath.layerId,
+            itemType: sourcePath.itemType || 'vector',
+            fillEnabled: sourcePath.fillEnabled ?? pathStyleDefaults.fillEnabled,
+            strokeEnabled: sourcePath.strokeEnabled ?? pathStyleDefaults.strokeEnabled,
+            resumePathId: sourcePath.id,
+            resumePathIndex: hitEndpoint.pathIndex,
+            resumeReverseOnSave: reverseForEdit
+          });
+          setCurrentPath(resumedPoints);
+          setActiveLayerId(sourcePath.layerId);
+          setActivePathEditId(null);
+          setSelectedPoints([]);
+          setGhostPoint(null);
+          setDrawHover(null);
+          setHoveredStartPoint(false);
+          setIsDrawingCurve('drawing');
+          return;
+        }
+
         let hitSegment = null;
         let hitT = 0;
         let bestDist = Infinity;
@@ -1396,16 +1446,22 @@ export default function App() {
       }
 
       if (clickedHandle) {
-        setActiveHandle(clickedHandle);
-        const alreadySelected = selectedPoints.some(sp => sp.pathIndex === clickedHandle.pathIndex && sp.pointIndex === clickedHandle.pointIndex);
-        if (!alreadySelected) {
-          if (e.shiftKey) {
-            setSelectedPoints(prev => [...prev, { pathIndex: clickedHandle.pathIndex, pointIndex: clickedHandle.pointIndex }]);
-          } else {
-            setSelectedPoints([{ pathIndex: clickedHandle.pathIndex, pointIndex: clickedHandle.pointIndex }]);
+        const anchor = paths[clickedHandle.pathIndex]?.points?.[clickedHandle.pointIndex];
+        const anchorDist = anchor ? Math.hypot(anchor.x - coords.x, anchor.y - coords.y) : Infinity;
+        const preferAnchorToggle = isDoubleClick && anchorDist < pointHitRadius;
+
+        if (!preferAnchorToggle) {
+          setActiveHandle(clickedHandle);
+          const alreadySelected = selectedPoints.some(sp => sp.pathIndex === clickedHandle.pathIndex && sp.pointIndex === clickedHandle.pointIndex);
+          if (!alreadySelected) {
+            if (e.shiftKey) {
+              setSelectedPoints(prev => [...prev, { pathIndex: clickedHandle.pathIndex, pointIndex: clickedHandle.pointIndex }]);
+            } else {
+              setSelectedPoints([{ pathIndex: clickedHandle.pathIndex, pointIndex: clickedHandle.pointIndex }]);
+            }
           }
+          return;
         }
-        return;
       }
 
       if (isDirectPathEdit) {
@@ -1465,11 +1521,14 @@ export default function App() {
                  const neighborP = path.points[neighborIdx];
                  const dx = neighborP.x - pt.x;
                  const dy = neighborP.y - pt.y;
-                 
+                 const handle = { x: pt.x + dx / 3, y: pt.y + dy / 3 };
+
                  if (ptIndex === 0) {
-                     pt.hOut = { x: pt.x + dx / 3, y: pt.y + dy / 3 }; 
+                     pt.hOut = handle;
+                     pt.hIn = { x: pt.x - (handle.x - pt.x), y: pt.y - (handle.y - pt.y) };
                  } else {
-                     pt.hIn = { x: pt.x + dx / 3, y: pt.y + dy / 3 };
+                     pt.hIn = handle;
+                     pt.hOut = { x: pt.x - (handle.x - pt.x), y: pt.y - (handle.y - pt.y) };
                  }
             }
           }
@@ -1479,7 +1538,8 @@ export default function App() {
           
           const newSel = [{ pathIndex: clickedPoint.pathIndex, pointIndex: clickedPoint.pointIndex }];
           setSelectedPoints(newSel);
-          startDragging(newSel);
+          setActiveHandle(null);
+          setIsDraggingPoints(false);
           return;
         }
 
@@ -2111,9 +2171,27 @@ export default function App() {
     if (mode === 'draw') {
 
       let snapPoint = null;
+      let endpointSnap = null;
       let segmentSnap = null;
 
       if (currentPath.length === 0) {
+        let bestEndpointDist = Infinity;
+        for (let i = paths.length - 1; i >= 0; i--) {
+          const path = paths[i];
+          if (!isPathVisible(path) || isPathLocked(path) || path.isClosed || path.points.length === 0) continue;
+          const endpointIndices = path.points.length === 1 ? [0] : [0, path.points.length - 1];
+          for (const pointIndex of endpointIndices) {
+            const endpoint = path.points[pointIndex];
+            const dist = Math.hypot(endpoint.x - coords.x, endpoint.y - coords.y);
+            if (dist < pointHitRadius && dist < bestEndpointDist) {
+              bestEndpointDist = dist;
+              endpointSnap = { pathIndex: i, pointIndex, point: endpoint };
+            }
+          }
+        }
+      }
+
+      if (currentPath.length === 0 && !endpointSnap) {
         let bestDist = Infinity;
         for (let i = paths.length - 1; i >= 0; i--) {
           const path = paths[i];
@@ -2133,6 +2211,10 @@ export default function App() {
         }
       }
 
+      if (endpointSnap) {
+        snapPoint = { x: endpointSnap.point.x, y: endpointSnap.point.y };
+      }
+
       if (currentPath.length > 0) {
         const startP = currentPath[0];
         if (currentPath.length > 2 && Math.hypot(startP.x - coords.x, startP.y - coords.y) < closePathHitRadius) {
@@ -2147,7 +2229,10 @@ export default function App() {
           snappedCoords = applyShiftSnap(snappedCoords, currentPath[currentPath.length - 1], true);
       }
 
-      setSnapState({ endpoint: null, segment: segmentSnap });
+      setSnapState({
+        endpoint: endpointSnap ? { pathIndex: endpointSnap.pathIndex, pointIndex: endpointSnap.pointIndex } : null,
+        segment: endpointSnap ? null : segmentSnap
+      });
       setGhostPoint(snapPoint || snappedCoords);
 
       if (isDrawingCurve) {
@@ -2184,7 +2269,9 @@ export default function App() {
         setDrawHover(null);
       } else {
         setHoveredStartPoint(false);
-        if (segmentSnap && snapPoint) {
+        if (endpointSnap && snapPoint) {
+          setDrawHover({ x: snapPoint.x, y: snapPoint.y, type: 'endpoint' });
+        } else if (segmentSnap && snapPoint) {
           setDrawHover({ x: snapPoint.x, y: snapPoint.y, type: 'segment' });
         } else {
           setDrawHover(null);
@@ -2772,16 +2859,32 @@ export default function App() {
           setLayers(prev => [newLayer, ...prev]);
           targetLayerId = newLayer.id;
       }
+      const pointsToSave = currentPathInfo?.resumeReverseOnSave
+        ? reversePathPoints(currentPath)
+        : currentPath.map(clonePoint);
+      const resumePathId = currentPathInfo?.resumePathId;
       const newPath = {
-        id: Date.now(),
-        points: currentPath,
+        id: resumePathId ?? Date.now(),
+        points: pointsToSave,
         isClosed,
         layerId: targetLayerId,
         itemType: layerType,
         fillEnabled: currentPathInfo?.fillEnabled ?? pathStyleDefaults.fillEnabled,
         strokeEnabled: currentPathInfo?.strokeEnabled ?? pathStyleDefaults.strokeEnabled
       };
-      const nextPaths = [...paths, newPath];
+      let nextPaths = [...paths, newPath];
+      if (resumePathId != null) {
+        const existingIndex = paths.findIndex(p => p.id === resumePathId);
+        if (existingIndex !== -1) {
+          nextPaths = paths.map((p, idx) => (idx === existingIndex ? newPath : p));
+        } else if (Number.isInteger(currentPathInfo?.resumePathIndex)) {
+          nextPaths = [...paths];
+          const insertIndex = Math.max(0, Math.min(currentPathInfo.resumePathIndex, nextPaths.length));
+          nextPaths.splice(insertIndex, 0, newPath);
+        } else {
+          nextPaths = [...paths, newPath];
+        }
+      }
       setPaths(nextPaths);
       if (enterDirectEdit) {
         activatePathEditSession(nextPaths, newPath.id);
@@ -3657,10 +3760,11 @@ export default function App() {
     setOpenPanels({ grid: false, image: false, guides: false, layers: false });
     setExpandedPanel(null);
   };
-  const mobileNavClearance = 56;
+  const mobileNavClearance = 52;
   const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
-  const mobileToolbarBottom = `calc(${computedBottomInset} + 12px)`;
-  const mobileMenuDrawerBottom = `calc(${computedBottomInset} + 92px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + 8px)`;
+  const mobileMenuDrawerBottom = `calc(${computedBottomInset} + 74px)`;
+  const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
   return (
     <div className="w-screen h-screen bg-[#f4f1ed] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
@@ -3870,6 +3974,7 @@ export default function App() {
               {/* Layer Paths */}
               {paths.map((path, i) => {
                 if (path.layerId !== layer.id) return null;
+                if (mode === 'draw' && currentPath.length > 0 && currentPathInfo?.resumePathId === path.id) return null;
                 const pathD = pointsToPath(path.points, path.isClosed);
 
                 return (
@@ -4225,35 +4330,38 @@ export default function App() {
             />
           )}
 
-          <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
-              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
+          <div
+            className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
+            style={{ top: mobileTopInset }}
+          >
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-lg shadow-sm border border-[#e8dfdb] p-0.5 flex items-center gap-0.5 max-w-full">
+              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={13} className="-scale-x-100" />} label="Undo" />
+              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={13} />} label="Redo" />
             </div>
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={15} />} label="Zoom Out" />
-              <div className="px-2 text-[11px] font-mono text-[#8c746f] min-w-[52px] text-center">
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-lg shadow-sm border border-[#e8dfdb] p-0.5 flex items-center gap-0.5 max-w-full">
+              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={13} />} label="Zoom Out" />
+              <div className="px-1.5 text-[10px] font-mono text-[#8c746f] min-w-[44px] text-center">
                 {Math.round(zoom * 100)}%
               </div>
-              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={15} />} label="Zoom In" />
+              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={13} />} label="Zoom In" />
             </div>
           </div>
 
           <div
-            className={`absolute left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 mobile-drawer max-h-[52vh] overflow-y-auto ${
+            className={`absolute left-2 right-2 z-20 bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-1.5 mobile-drawer max-h-[44vh] overflow-y-auto ${
               mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
             }`}
             style={{ bottom: mobileMenuDrawerBottom }}
           >
               <div className="grid grid-cols-4 gap-1">
-                <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={16} />} label="Nodes" />
+                <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
                 <MobileToolButton
                   active={fillToggleActive}
                   onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
-                  icon={<Droplet size={16} />}
+                  icon={<Droplet size={14} />}
                   label="Fill"
                 />
-                <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={16} />} label="Reverse" />
+                <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
                 <MobileToolButton
                   onClick={() => {
                     fileInputRef.current?.click();
@@ -4262,7 +4370,7 @@ export default function App() {
                     setExpandedPanel('image');
                     setMobileToolsOpen(false);
                   }}
-                  icon={<ImageIcon size={16} />}
+                  icon={<ImageIcon size={14} />}
                   label="Image"
                 />
                 <MobileToolButton
@@ -4273,7 +4381,7 @@ export default function App() {
                     setExpandedPanel('grid');
                     setMobileToolsOpen(false);
                   }}
-                  icon={<Grid size={16} />}
+                  icon={<Grid size={14} />}
                   label="Grid"
                 />
                 <MobileToolButton
@@ -4284,7 +4392,7 @@ export default function App() {
                     setExpandedPanel('guides');
                     setMobileToolsOpen(false);
                   }}
-                  icon={<Ruler size={16} />}
+                  icon={<Ruler size={14} />}
                   label="Guides"
                 />
                 <MobileToolButton
@@ -4295,55 +4403,55 @@ export default function App() {
                     setExpandedPanel('layers');
                     setMobileToolsOpen(false);
                   }}
-                  icon={<Layers size={16} />}
+                  icon={<Layers size={14} />}
                   label="Layers"
                 />
-                <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={16} />} label="Clear" />
+                <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={14} />} label="Clear" />
               </div>
             </div>
 
           <div
-            className="absolute left-3 right-3 z-20 pointer-events-none flex items-end gap-3"
+            className="absolute left-2 right-2 z-20 pointer-events-none flex items-end gap-2 max-w-[calc(100vw-16px)]"
             style={{ bottom: mobileToolbarBottom }}
           >
             <button
               onClick={() => setMobileToolsOpen(prev => !prev)}
-              className={`pointer-events-auto h-12 w-12 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
+              className={`pointer-events-auto h-10 w-10 rounded-lg border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
                 mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
               }`}
               title="Menu"
             >
-              <Menu size={18} />
+              <Menu size={16} />
             </button>
-            <div className="pointer-events-auto flex-1 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1.5">
-              <div className="flex items-center gap-1 overflow-x-auto">
-                <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={18} />} label="Edit" />
-                <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={18} />} label="Path" />
-                <MobileToolButton active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={18} />} label="Pencil" />
+            <div className="pointer-events-auto flex-1 bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-1 min-w-0">
+              <div className="flex items-center gap-0.5 overflow-x-auto">
+                <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
+                <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
+                <MobileToolButton active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
                 <MobileToolButton
                   active={mode === 'shape'}
                   onClick={() => {
                     changeMode('shape');
                     setShapeType('rectangle');
                   }}
-                  icon={<Square size={18} />}
+                  icon={<Square size={16} />}
                   label="Shape"
                 />
-                <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={18} />} label="Pan" />
+                <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
                 <MobileToolButton
                   active={hasActiveSelection}
                   onClick={deleteSelectedItems}
-                  icon={<Trash2 size={18} />}
+                  icon={<Trash2 size={16} />}
                   label="Delete"
                 />
               </div>
               {mode === 'shape' && (
-                <div className="mt-1.5 flex items-center gap-1 overflow-x-auto pt-1 border-t border-[#ece5e2]">
-                  <MobileToolButton active={shapeType === 'rectangle'} onClick={() => setShapeType('rectangle')} icon={<Square size={16} />} label="Rect" />
-                  <MobileToolButton active={shapeType === 'ellipse'} onClick={() => setShapeType('ellipse')} icon={<Circle size={16} />} label="Ellipse" />
-                  <MobileToolButton active={shapeType === 'polygon'} onClick={() => setShapeType('polygon')} icon={<Triangle size={16} />} label="Poly" />
-                  <MobileToolButton active={shapeType === 'star'} onClick={() => setShapeType('star')} icon={<Star size={16} />} label="Star" />
-                  <MobileToolButton active={shapeType === 'line'} onClick={() => setShapeType('line')} icon={<Minus size={16} />} label="Line" />
+                <div className="mt-1 flex items-center gap-0.5 overflow-x-auto pt-1 border-t border-[#ece5e2]">
+                  <MobileToolButton active={shapeType === 'rectangle'} onClick={() => setShapeType('rectangle')} icon={<Square size={14} />} label="Rect" />
+                  <MobileToolButton active={shapeType === 'ellipse'} onClick={() => setShapeType('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
+                  <MobileToolButton active={shapeType === 'polygon'} onClick={() => setShapeType('polygon')} icon={<Triangle size={14} />} label="Poly" />
+                  <MobileToolButton active={shapeType === 'star'} onClick={() => setShapeType('star')} icon={<Star size={14} />} label="Star" />
+                  <MobileToolButton active={shapeType === 'line'} onClick={() => setShapeType('line')} icon={<Minus size={14} />} label="Line" />
                 </div>
               )}
             </div>
@@ -4355,7 +4463,7 @@ export default function App() {
       <div
         className={`absolute flex flex-col gap-2 z-10 pointer-events-none ${
           isMobile
-            ? `top-16 left-3 right-3 max-h-[56vh] overflow-y-auto items-stretch mobile-panels-wrap ${
+            ? `top-14 left-2 right-2 max-h-[50vh] overflow-y-auto items-stretch mobile-panels-wrap ${
                 mobilePanelsOpen || anyPanelOpen ? 'mobile-panels-open' : 'mobile-panels-closed'
               }`
             : 'top-8 right-8 items-end'
@@ -4895,7 +5003,7 @@ function MobileToolButton({ active = false, onClick, icon, label }) {
     <button
       onClick={onClick}
       title={label}
-      className={`h-11 min-w-11 px-2 rounded-lg border transition-all duration-150 flex items-center justify-center shrink-0 ${
+      className={`h-9 min-w-9 px-1.5 rounded-md border transition-all duration-150 flex items-center justify-center shrink-0 ${
         active
           ? 'bg-[#ded9f4] border-[#d0c8f0] text-[#4f4a77]'
           : 'bg-[#f8f6f3] border-transparent text-[#6f6968] active:bg-[#ede6e2]'
