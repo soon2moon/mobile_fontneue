@@ -635,7 +635,7 @@ export default function App() {
     xHeight: 200,
     descender: 100
   });
-  const [showGuides, setShowGuides] = useState(true);
+  const [showGuides, setShowGuides] = useState(false);
 
   // Layers & Objects State
   const [layers, setLayers] = useState([]);
@@ -4522,6 +4522,12 @@ export default function App() {
               <div className="grid grid-cols-4 gap-1">
                 <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
                 <MobileToolButton
+                  active={showGuides}
+                  onClick={() => setShowGuides(prev => !prev)}
+                  icon={showGuides ? <Eye size={14} /> : <EyeOff size={14} />}
+                  label={showGuides ? "Hide Guides" : "Show Guides"}
+                />
+                <MobileToolButton
                   active={fillToggleActive}
                   onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
                   icon={<Droplet size={14} />}
@@ -4823,6 +4829,16 @@ export default function App() {
 
                   {panel.id === 'guides' && (
                     <div className="p-3.5 flex flex-col gap-2.5">
+                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e8dfdb]">
+                        <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest">Show Guides</label>
+                        <button
+                          onClick={() => setShowGuides(prev => !prev)}
+                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${showGuides ? 'bg-[#4a2622]' : 'bg-[#d4c8c5]'}`}
+                          title={showGuides ? "Hide Guides" : "Show Guides"}
+                        >
+                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showGuides ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
                       <div className="flex flex-col gap-2.5">
                         <div className="flex items-center justify-between px-1">
                           <label className="text-xs font-semibold text-[#7dd3fc]">Cap Height</label>
@@ -5094,6 +5110,12 @@ export default function App() {
             icon={<CircleDot size={20} />} 
             label="Show Nodes" 
             hotkey="N"
+          />
+          <ToolButton
+            active={showGuides}
+            onClick={() => setShowGuides(prev => !prev)}
+            icon={showGuides ? <Eye size={20} /> : <EyeOff size={20} />}
+            label={showGuides ? "Hide Guides" : "Show Guides"}
           />
           <ToolButton 
             active={fillToggleActive}
