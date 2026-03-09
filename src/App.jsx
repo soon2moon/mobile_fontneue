@@ -602,7 +602,7 @@ export default function App() {
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileBottomInset, setMobileBottomInset] = useState(0);
-  const [mobileTopFlash, setMobileTopFlash] = useState({ undo: false, redo: false });
+  const [mobileTopFlash, setMobileTopFlash] = useState({ undo: false, redo: false, zoomOut: false, zoomIn: false });
   const mobileTopFlashTimersRef = useRef({});
   
   // Tool State
@@ -3871,13 +3871,21 @@ export default function App() {
     triggerMobileTopFlash('redo');
     handleRedo();
   };
+  const handleMobileZoomOut = () => {
+    triggerMobileTopFlash('zoomOut');
+    stepZoom(-1);
+  };
+  const handleMobileZoomIn = () => {
+    triggerMobileTopFlash('zoomIn');
+    stepZoom(1);
+  };
   const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
   const mobileControlGapPx = 8;
   const mobileToolbarRowHeightPx = 48;
   const mobilePanelOffsetPx = mobileToolbarRowHeightPx + mobileControlGapPx;
-  const mobileNavClearance = 52;
+  const mobileNavClearance = 60;
   const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
-  const mobileToolbarBottom = `calc(${computedBottomInset} + 16px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + 20px)`;
   const mobileMenuDrawerBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
   const mobileShapePanelBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
@@ -4472,23 +4480,31 @@ export default function App() {
                 <RefreshCw size={13} />
               </button>
             </div>
-            <div className="pointer-events-auto h-11 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] px-2 flex items-center gap-2 max-w-full">
-              <div className="pr-1 text-[10px] font-mono text-[#8c746f] min-w-[44px] text-left">
+            <div className="pointer-events-auto h-11 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] px-1.5 flex items-center gap-1.5 max-w-full">
+              <div className="w-[44px] text-[12px] leading-none font-semibold font-mono text-[#7c6a66] text-center">
                 {Math.round(zoom * 100)}%
               </div>
               <div className="flex items-center gap-0.5">
                 <button
                   type="button"
-                  onClick={() => stepZoom(-1)}
-                  className="h-8 w-8 rounded-[8px] border border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df] transition-all duration-150 flex items-center justify-center"
+                  onClick={handleMobileZoomOut}
+                  className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
+                    mobileTopFlash.zoomOut
+                      ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
+                      : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
+                  }`}
                   title="Zoom Out"
                 >
                   <Minus size={13} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => stepZoom(1)}
-                  className="h-8 w-8 rounded-[8px] border border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df] transition-all duration-150 flex items-center justify-center"
+                  onClick={handleMobileZoomIn}
+                  className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
+                    mobileTopFlash.zoomIn
+                      ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
+                      : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
+                  }`}
                   title="Zoom In"
                 >
                   <Plus size={13} />
@@ -4579,7 +4595,7 @@ export default function App() {
                   icon={<Menu size={16} />}
                   label="Menu"
                 />
-                <div className="mx-1.5 h-7 w-px bg-[#ddd1cd] shrink-0" />
+                <div className="mx-2 h-7 w-px bg-[#ddd1cd] shrink-0" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
