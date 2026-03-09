@@ -602,6 +602,8 @@ export default function App() {
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileBottomInset, setMobileBottomInset] = useState(0);
+  const [mobileTopFlash, setMobileTopFlash] = useState({ undo: false, redo: false });
+  const mobileTopFlashTimersRef = useRef({});
   
   // Tool State
   const [mode, setMode] = useState('pan'); 
@@ -755,6 +757,23 @@ export default function App() {
       setMobileShapePanelOpen(false);
     }
   }, [isMobile]);
+
+  useEffect(() => () => {
+    Object.values(mobileTopFlashTimersRef.current).forEach(timer => {
+      if (timer) clearTimeout(timer);
+    });
+  }, []);
+
+  const triggerMobileTopFlash = useCallback((key) => {
+    setMobileTopFlash(prev => ({ ...prev, [key]: true }));
+    if (mobileTopFlashTimersRef.current[key]) {
+      clearTimeout(mobileTopFlashTimersRef.current[key]);
+    }
+    mobileTopFlashTimersRef.current[key] = setTimeout(() => {
+      setMobileTopFlash(prev => ({ ...prev, [key]: false }));
+      mobileTopFlashTimersRef.current[key] = null;
+    }, 150);
+  }, []);
 
   const shortestDeltaDeg = (current, previous) => {
     let delta = current - previous;
@@ -3837,6 +3856,21 @@ export default function App() {
     changeMode('shape');
     setMobileShapePanelOpen(false);
   };
+  const getShapeToolIcon = (size = 16) => {
+    if (shapeType === 'ellipse') return <Circle size={size} />;
+    if (shapeType === 'polygon') return <Triangle size={size} />;
+    if (shapeType === 'star') return <Star size={size} />;
+    if (shapeType === 'line') return <Minus size={size} />;
+    return <Square size={size} />;
+  };
+  const handleMobileUndo = () => {
+    triggerMobileTopFlash('undo');
+    handleUndo();
+  };
+  const handleMobileRedo = () => {
+    triggerMobileTopFlash('redo');
+    handleRedo();
+  };
   const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
   const mobileControlGapPx = 8;
   const mobileToolbarRowHeightPx = 48;
@@ -4412,16 +4446,54 @@ export default function App() {
             className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
             style={{ top: mobileTopInset }}
           >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1 flex items-center gap-1 max-w-full">
-              <MobileToolButton radiusClass="rounded-[8px]" onClick={handleUndo} icon={<RefreshCw size={13} className="-scale-x-100" />} label="Undo" />
-              <MobileToolButton radiusClass="rounded-[8px]" onClick={handleRedo} icon={<RefreshCw size={13} />} label="Redo" />
+            <div className="pointer-events-auto h-11 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] px-2 flex items-center gap-1 max-w-full">
+              <button
+                type="button"
+                onClick={handleMobileUndo}
+                className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
+                  mobileTopFlash.undo
+                    ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
+                    : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
+                }`}
+                title="Undo"
+              >
+                <RefreshCw size={13} className="-scale-x-100" />
+              </button>
+              <button
+                type="button"
+                onClick={handleMobileRedo}
+                className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
+                  mobileTopFlash.redo
+                    ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
+                    : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
+                }`}
+                title="Redo"
+              >
+                <RefreshCw size={13} />
+              </button>
             </div>
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1 flex items-center gap-1 max-w-full">
-              <MobileToolButton radiusClass="rounded-[8px]" onClick={() => stepZoom(-1)} icon={<Minus size={13} />} label="Zoom Out" />
-              <div className="px-1.5 text-[10px] font-mono text-[#8c746f] min-w-[44px] text-center">
+            <div className="pointer-events-auto h-11 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] px-2 flex items-center gap-2 max-w-full">
+              <div className="pr-1 text-[10px] font-mono text-[#8c746f] min-w-[44px] text-left">
                 {Math.round(zoom * 100)}%
               </div>
-              <MobileToolButton radiusClass="rounded-[8px]" onClick={() => stepZoom(1)} icon={<Plus size={13} />} label="Zoom In" />
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => stepZoom(-1)}
+                  className="h-8 w-8 rounded-[8px] border border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df] transition-all duration-150 flex items-center justify-center"
+                  title="Zoom Out"
+                >
+                  <Minus size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepZoom(1)}
+                  className="h-8 w-8 rounded-[8px] border border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df] transition-all duration-150 flex items-center justify-center"
+                  title="Zoom In"
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -4497,39 +4569,37 @@ export default function App() {
             className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none w-max max-w-[calc(100vw-16px)]"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={toggleMobileToolsMenu}
-                className={`pointer-events-auto h-9 w-9 rounded-[8px] border transition-all duration-150 flex items-center justify-center shrink-0 ${
-                  mobileToolsOpen
-                    ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
-                    : 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df]'
-                }`}
-                title="Menu"
-              >
-                <Menu size={16} />
-              </button>
-              <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-68px)]">
-                <div className="flex items-center gap-1 overflow-x-auto">
-                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
-                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
-                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
-                  <MobileToolButton
-                    radiusClass="rounded-[8px]"
-                    active={mode === 'shape'}
-                    onClick={toggleMobileShapePanel}
-                    icon={<Square size={16} />}
-                    label="Shape"
-                  />
-                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
-                  <MobileToolButton
-                    radiusClass="rounded-[8px]"
-                    active={hasActiveSelection}
-                    onClick={deleteSelectedItems}
-                    icon={<Trash2 size={16} />}
-                    label="Delete"
-                  />
-                </div>
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-16px)]">
+              <div className="flex items-center gap-1 overflow-x-auto">
+                <MobileToolButton
+                  variant="toolbar"
+                  radiusClass="rounded-[8px]"
+                  active={mobileToolsOpen}
+                  onClick={toggleMobileToolsMenu}
+                  icon={<Menu size={16} />}
+                  label="Menu"
+                />
+                <div className="mx-1.5 h-7 w-px bg-[#ddd1cd] shrink-0" />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
+                <MobileToolButton
+                  variant="toolbar"
+                  radiusClass="rounded-[8px]"
+                  active={mode === 'shape'}
+                  onClick={toggleMobileShapePanel}
+                  icon={getShapeToolIcon(16)}
+                  label="Shape"
+                />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
+                <MobileToolButton
+                  variant="toolbar"
+                  radiusClass="rounded-[8px]"
+                  active={hasActiveSelection}
+                  onClick={deleteSelectedItems}
+                  icon={<Trash2 size={16} />}
+                  label="Delete"
+                />
               </div>
             </div>
           </div>
@@ -5075,15 +5145,18 @@ function ToolButton({ active, onClick, icon, label, hotkey }) {
   );
 }
 
-function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg' }) {
+function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg', variant = 'solid' }) {
+  const activeStyle = 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]';
+  const solidIdleStyle = 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]';
+  const toolbarIdleStyle = 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df]';
+  const idleStyle = variant === 'toolbar' ? toolbarIdleStyle : solidIdleStyle;
+
   return (
     <button
       onClick={onClick}
       title={label}
       className={`h-9 min-w-9 px-1.5 ${radiusClass} border transition-all duration-150 flex items-center justify-center shrink-0 ${
-        active
-          ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
-          : 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]'
+        active ? activeStyle : idleStyle
       }`}
     >
       {icon}
