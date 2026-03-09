@@ -3838,11 +3838,14 @@ export default function App() {
     setMobileShapePanelOpen(false);
   };
   const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
+  const mobileControlGapPx = 8;
+  const mobileToolbarRowHeightPx = 48;
+  const mobilePanelOffsetPx = mobileToolbarRowHeightPx + mobileControlGapPx;
   const mobileNavClearance = 52;
   const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
   const mobileToolbarBottom = `calc(${computedBottomInset} + 16px)`;
-  const mobileMenuDrawerBottom = `calc(${mobileToolbarBottom} + 46px)`;
-  const mobileShapePanelBottom = `calc(${mobileToolbarBottom} + 46px)`;
+  const mobileMenuDrawerBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
+  const mobileShapePanelBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
   return (
@@ -4409,21 +4412,21 @@ export default function App() {
             className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
             style={{ top: mobileTopInset }}
           >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-lg shadow-sm border border-[#e8dfdb] p-0.5 flex items-center gap-0.5 max-w-full">
-              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={13} className="-scale-x-100" />} label="Undo" />
-              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={13} />} label="Redo" />
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1 flex items-center gap-1 max-w-full">
+              <MobileToolButton radiusClass="rounded-[8px]" onClick={handleUndo} icon={<RefreshCw size={13} className="-scale-x-100" />} label="Undo" />
+              <MobileToolButton radiusClass="rounded-[8px]" onClick={handleRedo} icon={<RefreshCw size={13} />} label="Redo" />
             </div>
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-lg shadow-sm border border-[#e8dfdb] p-0.5 flex items-center gap-0.5 max-w-full">
-              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={13} />} label="Zoom Out" />
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1 flex items-center gap-1 max-w-full">
+              <MobileToolButton radiusClass="rounded-[8px]" onClick={() => stepZoom(-1)} icon={<Minus size={13} />} label="Zoom Out" />
               <div className="px-1.5 text-[10px] font-mono text-[#8c746f] min-w-[44px] text-center">
                 {Math.round(zoom * 100)}%
               </div>
-              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={13} />} label="Zoom In" />
+              <MobileToolButton radiusClass="rounded-[8px]" onClick={() => stepZoom(1)} icon={<Plus size={13} />} label="Zoom In" />
             </div>
           </div>
 
           <div
-            className={`absolute left-2 right-2 z-20 bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-1.5 mobile-drawer max-h-[44vh] overflow-y-auto ${
+            className={`absolute left-2 right-2 z-20 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1.5 mobile-drawer max-h-[44vh] overflow-y-auto ${
               mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
             }`}
             style={{ bottom: mobileMenuDrawerBottom }}
@@ -4478,7 +4481,7 @@ export default function App() {
               className="absolute left-1/2 -translate-x-1/2 z-[21] pointer-events-none w-max max-w-[calc(100vw-16px)]"
               style={{ bottom: mobileShapePanelBottom }}
             >
-              <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-1 w-max max-w-[calc(100vw-16px)]">
+              <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1 w-max max-w-[calc(100vw-16px)]">
                 <div className="flex items-center gap-0.5 overflow-x-auto">
                   <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
                   <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
@@ -4497,14 +4500,16 @@ export default function App() {
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={toggleMobileToolsMenu}
-                className={`pointer-events-auto h-10 w-10 rounded-[10px] border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
-                  mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f6f1ed] text-[#7d6a66]'
+                className={`pointer-events-auto h-9 w-9 rounded-[8px] border transition-all duration-150 flex items-center justify-center shrink-0 ${
+                  mobileToolsOpen
+                    ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
+                    : 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df]'
                 }`}
                 title="Menu"
               >
                 <Menu size={16} />
               </button>
-              <div className="pointer-events-auto bg-[#fdfcfa] rounded-[18px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-68px)]">
+              <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-68px)]">
                 <div className="flex items-center gap-1 overflow-x-auto">
                   <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
                   <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
