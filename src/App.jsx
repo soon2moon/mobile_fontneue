@@ -4497,26 +4497,28 @@ export default function App() {
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={toggleMobileToolsMenu}
-                className={`pointer-events-auto h-10 w-10 rounded-lg border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
+                className={`pointer-events-auto h-10 w-10 rounded-[10px] border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
                   mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f6f1ed] text-[#7d6a66]'
                 }`}
                 title="Menu"
               >
                 <Menu size={16} />
               </button>
-              <div className="pointer-events-auto bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1 w-max max-w-[calc(100vw-68px)]">
-                <div className="flex items-center gap-0.5 overflow-x-auto">
-                  <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
-                  <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
-                  <MobileToolButton active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
+              <div className="pointer-events-auto bg-[#fdfcfa] rounded-[18px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-68px)]">
+                <div className="flex items-center gap-1 overflow-x-auto">
+                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
+                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
+                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
                   <MobileToolButton
+                    radiusClass="rounded-[8px]"
                     active={mode === 'shape'}
                     onClick={toggleMobileShapePanel}
                     icon={<Square size={16} />}
                     label="Shape"
                   />
-                  <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
+                  <MobileToolButton radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
                   <MobileToolButton
+                    radiusClass="rounded-[8px]"
                     active={hasActiveSelection}
                     onClick={deleteSelectedItems}
                     icon={<Trash2 size={16} />}
@@ -5068,12 +5070,12 @@ function ToolButton({ active, onClick, icon, label, hotkey }) {
   );
 }
 
-function MobileToolButton({ active = false, onClick, icon, label }) {
+function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg' }) {
   return (
     <button
       onClick={onClick}
       title={label}
-      className={`h-9 min-w-9 px-1.5 rounded-lg border transition-all duration-150 flex items-center justify-center shrink-0 ${
+      className={`h-9 min-w-9 px-1.5 ${radiusClass} border transition-all duration-150 flex items-center justify-center shrink-0 ${
         active
           ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
           : 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]'
