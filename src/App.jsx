@@ -3657,19 +3657,10 @@ export default function App() {
     setOpenPanels({ grid: false, image: false, guides: false, layers: false });
     setExpandedPanel(null);
   };
-  const toggleMobilePanelTray = () => {
-    if (mobilePanelsOpen || anyPanelOpen) {
-      setMobilePanelsOpen(false);
-      closeAllPanels();
-      return;
-    }
-    setMobilePanelsOpen(true);
-    setOpenPanels(prev => ({ ...prev, layers: true }));
-    setExpandedPanel('layers');
-  };
-  const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset}px)`;
-  const mobileToolbarBottom = `calc(${computedBottomInset} + 22px)`;
-  const mobileUtilityBottom = `calc(${computedBottomInset} + 112px)`;
+  const mobileNavClearance = 56;
+  const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + 12px)`;
+  const mobileMenuDrawerBottom = `calc(${computedBottomInset} + 92px)`;
 
   return (
     <div className="w-screen h-screen bg-[#f4f1ed] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
@@ -3711,7 +3702,7 @@ export default function App() {
         }
         .mobile-drawer-closed {
           opacity: 0;
-          transform: translateY(-8px);
+          transform: translateY(10px);
           pointer-events: none;
         }
         .mobile-panels-wrap {
@@ -4221,10 +4212,11 @@ export default function App() {
 
       {isMobile && (
         <>
-          {(mobilePanelsOpen || anyPanelOpen) && (
+          {(mobileToolsOpen || mobilePanelsOpen || anyPanelOpen) && (
             <button
               type="button"
               onClick={() => {
+                setMobileToolsOpen(false);
                 setMobilePanelsOpen(false);
                 closeAllPanels();
               }}
@@ -4234,30 +4226,24 @@ export default function App() {
           )}
 
           <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-            <button
-              onClick={() => setMobileToolsOpen(prev => !prev)}
-              className={`pointer-events-auto h-11 w-11 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
-                mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
-              }`}
-              title="Tools"
-            >
-              <Menu size={18} />
-            </button>
-            <button
-              onClick={toggleMobilePanelTray}
-              className={`pointer-events-auto h-11 w-11 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
-                mobilePanelsOpen || anyPanelOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
-              }`}
-              title="Panels"
-            >
-              <Layers size={18} />
-            </button>
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
+              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
+              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
+            </div>
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
+              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={15} />} label="Zoom Out" />
+              <div className="px-2 text-[11px] font-mono text-[#8c746f] min-w-[52px] text-center">
+                {Math.round(zoom * 100)}%
+              </div>
+              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={15} />} label="Zoom In" />
+            </div>
           </div>
 
           <div
-            className={`absolute top-16 left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 mobile-drawer ${
+            className={`absolute left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 mobile-drawer max-h-[52vh] overflow-y-auto ${
               mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
             }`}
+            style={{ bottom: mobileMenuDrawerBottom }}
           >
               <div className="grid grid-cols-4 gap-1">
                 <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={16} />} label="Nodes" />
@@ -4317,27 +4303,19 @@ export default function App() {
             </div>
 
           <div
-            className="absolute left-3 right-3 z-20 flex items-center justify-between pointer-events-none"
-            style={{ bottom: mobileUtilityBottom }}
-          >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
-              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
-            </div>
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={15} />} label="Zoom Out" />
-              <div className="px-2 text-[11px] font-mono text-[#8c746f] min-w-[52px] text-center">
-                {Math.round(zoom * 100)}%
-              </div>
-              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={15} />} label="Zoom In" />
-            </div>
-          </div>
-
-          <div
-            className="absolute left-3 right-3 z-20 pointer-events-none"
+            className="absolute left-3 right-3 z-20 pointer-events-none flex items-end gap-3"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1.5">
+            <button
+              onClick={() => setMobileToolsOpen(prev => !prev)}
+              className={`pointer-events-auto h-12 w-12 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
+                mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
+              }`}
+              title="Menu"
+            >
+              <Menu size={18} />
+            </button>
+            <div className="pointer-events-auto flex-1 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1.5">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={18} />} label="Edit" />
                 <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={18} />} label="Path" />

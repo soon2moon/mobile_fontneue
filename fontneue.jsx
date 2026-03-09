@@ -594,9 +594,10 @@ export default function App() {
   const isMobile = viewportSize.width <= 900;
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
+  const [mobileBottomInset, setMobileBottomInset] = useState(0);
   
   // Tool State
-  const [mode, setMode] = useState('edit'); 
+  const [mode, setMode] = useState('pan'); 
   const [showNodes, setShowNodes] = useState(true);
   const [pathStyleDefaults, setPathStyleDefaults] = useState({ fillEnabled: false, strokeEnabled: true });
   
@@ -677,6 +678,8 @@ export default function App() {
     startClientY: 0,
     dragActivated: false
   });
+  const touchPointsRef = useRef(new Map());
+  const pinchGestureRef = useRef({ active: false, lastDistance: 0, lastMidpoint: null });
 
   const svgRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -713,6 +716,29 @@ export default function App() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const updateMobileBottomInset = () => {
+      if (!window.visualViewport) {
+        setMobileBottomInset(0);
+        return;
+      }
+      const viewport = window.visualViewport;
+      const bottomInset = Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop));
+      setMobileBottomInset(Math.round(bottomInset));
+    };
+
+    updateMobileBottomInset();
+    window.addEventListener('resize', updateMobileBottomInset);
+    window.visualViewport?.addEventListener('resize', updateMobileBottomInset);
+    window.visualViewport?.addEventListener('scroll', updateMobileBottomInset);
+
+    return () => {
+      window.removeEventListener('resize', updateMobileBottomInset);
+      window.visualViewport?.removeEventListener('resize', updateMobileBottomInset);
+      window.visualViewport?.removeEventListener('scroll', updateMobileBottomInset);
+    };
   }, []);
 
   useEffect(() => {
@@ -1096,6 +1122,21 @@ export default function App() {
 
   const handlePointerDown = (e) => {
     capturePointer(e);
+
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touchPointsRef.current.size >= 2) {
+        const [p1, p2] = Array.from(touchPointsRef.current.values());
+        pinchGestureRef.current = {
+          active: true,
+          lastDistance: Math.hypot(p2.x - p1.x, p2.y - p1.y),
+          lastMidpoint: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+        };
+        setIsPanning(false);
+        return;
+      }
+    }
+
     pointerGestureRef.current = {
       pointerId: e.pointerId ?? null,
       pointerType: e.pointerType || 'mouse',
@@ -1821,6 +1862,42 @@ export default function App() {
   };
 
   const handlePointerMove = (e) => {
+    if ((e.pointerType === 'touch' || e.pointerType === 'pen') && touchPointsRef.current.has(e.pointerId)) {
+      touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchGestureRef.current.active && touchPointsRef.current.size >= 2) {
+        const [p1, p2] = Array.from(touchPointsRef.current.values());
+        const midpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const distance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const prevMidpoint = pinchGestureRef.current.lastMidpoint;
+        const prevDistance = pinchGestureRef.current.lastDistance;
+
+        const midDeltaX = prevMidpoint ? midpoint.x - prevMidpoint.x : 0;
+        const midDeltaY = prevMidpoint ? midpoint.y - prevMidpoint.y : 0;
+
+        const currentZoom = zoomRef.current;
+        const currentPan = panRef.current;
+        const scaleMultiplier = prevDistance > 0 ? distance / prevDistance : 1;
+        const nextZoom = Math.min(Math.max(MIN_ZOOM, currentZoom * scaleMultiplier), MAX_ZOOM);
+
+        const worldX = (midpoint.x - currentPan.x) / currentZoom;
+        const worldY = (midpoint.y - currentPan.y) / currentZoom;
+
+        const nextPan = {
+          x: midpoint.x - worldX * nextZoom + midDeltaX,
+          y: midpoint.y - worldY * nextZoom + midDeltaY
+        };
+
+        panRef.current = nextPan;
+        zoomRef.current = nextZoom;
+        setPan(nextPan);
+        setZoom(nextZoom);
+
+        pinchGestureRef.current.lastDistance = distance;
+        pinchGestureRef.current.lastMidpoint = midpoint;
+        return;
+      }
+    }
+
     const dragThresholdPassed = hasPassedDragThreshold(e);
 
     if (isPanning) {
@@ -2499,6 +2576,15 @@ export default function App() {
 
   const handlePointerUp = (e) => {
     releasePointer(e);
+    touchPointsRef.current.delete(e.pointerId);
+    if (touchPointsRef.current.size < 2) {
+      pinchGestureRef.current = { active: false, lastDistance: 0, lastMidpoint: null };
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        setIsPanning(false);
+      }
+    }
+    if (pinchGestureRef.current.active) return;
+
     pointerGestureRef.current = {
       pointerId: null,
       pointerType: 'mouse',
@@ -2993,6 +3079,32 @@ export default function App() {
           const img = images.find(i => i.id === imgId);
           return img && !targetIdSet.has(img.layerId);
       }));
+    }
+  };
+
+  const deleteLayer = (layerId) => {
+    const pathIdsInLayer = new Set(paths.filter(path => path.layerId === layerId).map(path => path.id));
+    const imageIdsInLayer = new Set(images.filter(image => image.layerId === layerId).map(image => image.id));
+
+    if (pathIdsInLayer.size === 0 && imageIdsInLayer.size === 0) {
+      setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
+      return;
+    }
+
+    commitHistory({ paths, currentPath, images, layers });
+    setPaths(prevPaths => prevPaths.filter(path => path.layerId !== layerId));
+    setImages(prevImages => prevImages.filter(image => image.layerId !== layerId));
+    setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
+
+    setSelectedPoints(prev => prev.filter(sp => {
+      const path = paths[sp.pathIndex];
+      return path && path.layerId !== layerId && !pathIdsInLayer.has(path.id);
+    }));
+    setSelectedImageIds(prev => prev.filter(id => !imageIdsInLayer.has(id)));
+
+    if (activeLayerId === layerId) {
+      const fallbackLayer = layers.find(layer => layer.id !== layerId);
+      setActiveLayerId(fallbackLayer ? fallbackLayer.id : null);
     }
   };
 
@@ -3545,18 +3657,10 @@ export default function App() {
     setOpenPanels({ grid: false, image: false, guides: false, layers: false });
     setExpandedPanel(null);
   };
-  const toggleMobilePanelTray = () => {
-    if (mobilePanelsOpen || anyPanelOpen) {
-      setMobilePanelsOpen(false);
-      closeAllPanels();
-      return;
-    }
-    setMobilePanelsOpen(true);
-    setOpenPanels(prev => ({ ...prev, layers: true }));
-    setExpandedPanel('layers');
-  };
-  const mobileToolbarBottom = 'calc(env(safe-area-inset-bottom, 0px) + 16px)';
-  const mobileUtilityBottom = 'calc(env(safe-area-inset-bottom, 0px) + 96px)';
+  const mobileNavClearance = 56;
+  const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + 12px)`;
+  const mobileMenuDrawerBottom = `calc(${computedBottomInset} + 92px)`;
 
   return (
     <div className="w-screen h-screen bg-[#f4f1ed] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
@@ -3598,7 +3702,7 @@ export default function App() {
         }
         .mobile-drawer-closed {
           opacity: 0;
-          transform: translateY(-8px);
+          transform: translateY(10px);
           pointer-events: none;
         }
         .mobile-panels-wrap {
@@ -4108,10 +4212,11 @@ export default function App() {
 
       {isMobile && (
         <>
-          {(mobilePanelsOpen || anyPanelOpen) && (
+          {(mobileToolsOpen || mobilePanelsOpen || anyPanelOpen) && (
             <button
               type="button"
               onClick={() => {
+                setMobileToolsOpen(false);
                 setMobilePanelsOpen(false);
                 closeAllPanels();
               }}
@@ -4121,30 +4226,24 @@ export default function App() {
           )}
 
           <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-            <button
-              onClick={() => setMobileToolsOpen(prev => !prev)}
-              className={`pointer-events-auto h-11 w-11 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
-                mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
-              }`}
-              title="Tools"
-            >
-              <Menu size={18} />
-            </button>
-            <button
-              onClick={toggleMobilePanelTray}
-              className={`pointer-events-auto h-11 w-11 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors ${
-                mobilePanelsOpen || anyPanelOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
-              }`}
-              title="Panels"
-            >
-              <Layers size={18} />
-            </button>
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
+              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
+              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
+            </div>
+            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
+              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={15} />} label="Zoom Out" />
+              <div className="px-2 text-[11px] font-mono text-[#8c746f] min-w-[52px] text-center">
+                {Math.round(zoom * 100)}%
+              </div>
+              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={15} />} label="Zoom In" />
+            </div>
           </div>
 
           <div
-            className={`absolute top-16 left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 mobile-drawer ${
+            className={`absolute left-3 right-3 z-20 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-2 mobile-drawer max-h-[52vh] overflow-y-auto ${
               mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
             }`}
+            style={{ bottom: mobileMenuDrawerBottom }}
           >
               <div className="grid grid-cols-4 gap-1">
                 <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={16} />} label="Nodes" />
@@ -4204,27 +4303,19 @@ export default function App() {
             </div>
 
           <div
-            className="absolute left-3 right-3 z-20 flex items-center justify-between pointer-events-none"
-            style={{ bottom: mobileUtilityBottom }}
-          >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={handleUndo} icon={<RefreshCw size={15} className="-scale-x-100" />} label="Undo" />
-              <MobileToolButton onClick={handleRedo} icon={<RefreshCw size={15} />} label="Redo" />
-            </div>
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-md border border-[#e8dfdb] p-1 flex items-center gap-1">
-              <MobileToolButton onClick={() => stepZoom(-1)} icon={<Minus size={15} />} label="Zoom Out" />
-              <div className="px-2 text-[11px] font-mono text-[#8c746f] min-w-[52px] text-center">
-                {Math.round(zoom * 100)}%
-              </div>
-              <MobileToolButton onClick={() => stepZoom(1)} icon={<Plus size={15} />} label="Zoom In" />
-            </div>
-          </div>
-
-          <div
-            className="absolute left-3 right-3 z-20 pointer-events-none"
+            className="absolute left-3 right-3 z-20 pointer-events-none flex items-end gap-3"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1.5">
+            <button
+              onClick={() => setMobileToolsOpen(prev => !prev)}
+              className={`pointer-events-auto h-12 w-12 rounded-xl border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
+                mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
+              }`}
+              title="Menu"
+            >
+              <Menu size={18} />
+            </button>
+            <div className="pointer-events-auto flex-1 bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1.5">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={18} />} label="Edit" />
                 <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={18} />} label="Path" />
@@ -4569,6 +4660,13 @@ export default function App() {
                                         title={layer.locked ? "Unlock Layer" : "Lock Layer"}
                                       >
                                         {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
+                                        className="p-1.5 rounded-md hover:bg-[#f3d9d6] text-[#b25045] transition-colors"
+                                        title="Delete Layer"
+                                      >
+                                        <Trash2 size={14} />
                                       </button>
                                     </div>
                                 </div>
