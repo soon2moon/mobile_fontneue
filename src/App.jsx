@@ -2718,7 +2718,15 @@ export default function App() {
 
           setLayers(prev => [newLayer, ...prev]);
           setPaths(nextPaths);
-          activatePathEditSession(nextPaths, newPath.id);
+          setActiveLayerId(newLayer.id);
+          setActivePathEditId(null);
+          setSelectedPoints([]);
+          setSelectedImageIds([]);
+          setActiveHandle(null);
+          setSelectionBox(null);
+          setPointAction(null);
+          setBgAction(null);
+          setBgInitialState(null);
         }
         setDrawingShape(null);
       }
@@ -2770,7 +2778,15 @@ export default function App() {
         const nextPaths = [...paths, newPath];
         setLayers(prev => [newLayer, ...prev]);
         setPaths(nextPaths);
-        activatePathEditSession(nextPaths, newPath.id);
+        setActiveLayerId(newLayer.id);
+        setActivePathEditId(null);
+        setSelectedPoints([]);
+        setSelectedImageIds([]);
+        setActiveHandle(null);
+        setSelectionBox(null);
+        setPointAction(null);
+        setBgAction(null);
+        setBgInitialState(null);
       }
       setCurrentPath([]);
       setCurrentPathInfo(null);
@@ -2864,7 +2880,7 @@ export default function App() {
     setBgInitialState(null);
   };
 
-  const finishPath = (isClosed = false, enterDirectEdit = true) => {
+  const finishPath = (isClosed = false, enterDirectEdit = false) => {
     if (currentPath.length > 0) {
       commitHistory({ paths, currentPath, images, layers });
       let targetLayerId = currentPathInfo?.layerId;
@@ -2903,8 +2919,18 @@ export default function App() {
         }
       }
       setPaths(nextPaths);
+      setActiveLayerId(targetLayerId);
       if (enterDirectEdit) {
         activatePathEditSession(nextPaths, newPath.id);
+      } else {
+        setActivePathEditId(null);
+        setSelectedPoints([]);
+        setSelectedImageIds([]);
+        setActiveHandle(null);
+        setSelectionBox(null);
+        setPointAction(null);
+        setBgAction(null);
+        setBgInitialState(null);
       }
     }
     setCurrentPath([]);
@@ -4042,7 +4068,7 @@ export default function App() {
                     />
                     
                     {/* Nodes and Handles (controlled by Show Nodes, hidden only in pencil mode, and when unlocked) */}
-                    {showNodes && (mode === 'edit' || mode === 'draw') && !layer.locked && activePathEditId === path.id && (
+                    {showNodes && mode === 'edit' && !layer.locked && activePathEditId === path.id && (
                       <g>
                         {/* Draw Bezier Handles for ALL Points (Persistent) */}
                         {path.points.map((p, j) => {
@@ -4478,7 +4504,7 @@ export default function App() {
               >
                 <Menu size={16} />
               </button>
-              <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-0.5 w-max max-w-[calc(100vw-68px)]">
+              <div className="pointer-events-auto bg-[#fdfcfa] rounded-2xl shadow-lg border border-[#e8dfdb] p-1 w-max max-w-[calc(100vw-68px)]">
                 <div className="flex items-center gap-0.5 overflow-x-auto">
                   <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
                   <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
@@ -5047,7 +5073,7 @@ function MobileToolButton({ active = false, onClick, icon, label }) {
     <button
       onClick={onClick}
       title={label}
-      className={`h-9 min-w-9 px-1.5 rounded-md border transition-all duration-150 flex items-center justify-center shrink-0 ${
+      className={`h-9 min-w-9 px-1.5 rounded-lg border transition-all duration-150 flex items-center justify-center shrink-0 ${
         active
           ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
           : 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]'
