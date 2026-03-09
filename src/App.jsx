@@ -602,8 +602,10 @@ export default function App() {
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileBottomInset, setMobileBottomInset] = useState(0);
+  const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
   const [mobileTopFlash, setMobileTopFlash] = useState({ undo: false, redo: false, zoomOut: false, zoomIn: false });
   const mobileTopFlashTimersRef = useRef({});
+  const mobileToolbarShellRef = useRef(null);
   
   // Tool State
   const [mode, setMode] = useState('pan'); 
@@ -636,6 +638,7 @@ export default function App() {
     descender: 100
   });
   const [showGuides, setShowGuides] = useState(false);
+  const [showBackgroundAids, setShowBackgroundAids] = useState(true);
 
   // Layers & Objects State
   const [layers, setLayers] = useState([]);
@@ -729,26 +732,63 @@ export default function App() {
 
   useEffect(() => {
     const updateMobileBottomInset = () => {
+      const layoutHeight = document.documentElement?.clientHeight || window.innerHeight;
       if (!window.visualViewport) {
-        setMobileBottomInset(0);
+        const fallbackInset = Math.max(0, window.innerHeight - layoutHeight);
+        setMobileBottomInset(Math.round(fallbackInset));
         return;
       }
       const viewport = window.visualViewport;
-      const bottomInset = Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop));
-      setMobileBottomInset(Math.round(bottomInset));
+      const visualBottom = viewport.height + viewport.offsetTop;
+      const viewportInset = Math.max(0, layoutHeight - visualBottom);
+      const windowInset = Math.max(0, window.innerHeight - visualBottom);
+      setMobileBottomInset(Math.round(Math.max(viewportInset, windowInset)));
     };
 
     updateMobileBottomInset();
     window.addEventListener('resize', updateMobileBottomInset);
+    window.addEventListener('orientationchange', updateMobileBottomInset);
     window.visualViewport?.addEventListener('resize', updateMobileBottomInset);
     window.visualViewport?.addEventListener('scroll', updateMobileBottomInset);
 
     return () => {
       window.removeEventListener('resize', updateMobileBottomInset);
+      window.removeEventListener('orientationchange', updateMobileBottomInset);
       window.visualViewport?.removeEventListener('resize', updateMobileBottomInset);
       window.visualViewport?.removeEventListener('scroll', updateMobileBottomInset);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileToolbarWidth(0);
+      return;
+    }
+    const toolbarShell = mobileToolbarShellRef.current;
+    if (!toolbarShell) return;
+
+    const syncMobileToolbarWidth = () => {
+      const measured = Math.round(toolbarShell.getBoundingClientRect().width);
+      if (measured > 0) {
+        setMobileToolbarWidth(prev => (prev === measured ? prev : measured));
+      }
+    };
+
+    syncMobileToolbarWidth();
+    let observer = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(syncMobileToolbarWidth);
+      observer.observe(toolbarShell);
+    }
+
+    window.addEventListener('resize', syncMobileToolbarWidth);
+    window.visualViewport?.addEventListener('resize', syncMobileToolbarWidth);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', syncMobileToolbarWidth);
+      window.visualViewport?.removeEventListener('resize', syncMobileToolbarWidth);
+    };
+  }, [isMobile]);
 
   useEffect(() => {
     if (!isMobile) {
@@ -3023,41 +3063,47 @@ export default function App() {
     setSelectedImageIds([]);
   };
 
+  const insertImageFromFile = useCallback((file) => {
+    if (!file) return false;
+    if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;
+
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      commitHistory({ paths, currentPath, images, layers });
+      const count = layers.filter(l => l.itemType === 'image').length;
+      const newLayer = createLayer('image', count);
+      setLayers(prev => [newLayer, ...prev]);
+      setActiveLayerId(newLayer.id);
+
+      const newImg = {
+        id: Date.now(),
+        url,
+        width: img.width,
+        height: img.height,
+        x: 0,
+        y: 0,
+        scale: 1,
+        rotation: 0,
+        opacity: 0.35,
+        locked: false,
+        layerId: newLayer.id
+      };
+      setImages(prev => [...prev, newImg]);
+      setSelectedImageIds([newImg.id]);
+      setSelectedPoints([]);
+      setOpenPanels(prev => ({ ...prev, image: true }));
+      setExpandedPanel('image');
+    };
+    img.src = url;
+    return true;
+  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers]);
+
   // --- SKETCH UPLOAD ---
   const handleImageUpload = (e) => {
-    if (activeLayerId && lockedLayerIds.has(activeLayerId)) return;
-
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      const img = new window.Image();
-      img.onload = () => {
-        commitHistory({ paths, currentPath, images, layers });
-        const count = layers.filter(l => l.itemType === 'image').length;
-        const newLayer = createLayer('image', count);
-        setLayers(prev => [newLayer, ...prev]);
-        setActiveLayerId(newLayer.id);
-
-        const newImg = {
-          id: Date.now(),
-          url,
-          width: img.width,
-          height: img.height,
-          x: 0,
-          y: 0,
-          scale: 1,
-          rotation: 0,
-          opacity: 0.35,
-          locked: false,
-          layerId: newLayer.id
-        };
-        setImages(prev => [...prev, newImg]);
-        setSelectedImageIds([newImg.id]);
-        setSelectedPoints([]);
-        setOpenPanels(prev => ({ ...prev, image: true }));
-        setExpandedPanel('image');
-      };
-      img.src = url;
+      insertImageFromFile(file);
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -3067,8 +3113,9 @@ export default function App() {
   // --- PASTE HANDLER ---
   useEffect(() => {
     const handlePaste = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (activeLayerId && lockedLayerIds.has(activeLayerId)) return;
+      const target = e.target;
+      const tagName = target?.tagName?.toUpperCase();
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || target?.isContentEditable) return;
 
       // 1. Try to paste JSON paths first
       try {
@@ -3150,41 +3197,27 @@ export default function App() {
 
       // 2. Fallback to image paste
       const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          const file = items[i].getAsFile();
-          if (file) {
-            const url = URL.createObjectURL(file);
-            const img = new window.Image();
-            img.onload = () => {
-              commitHistory({ paths, currentPath, images, layers });
-              const count = layers.filter(l => l.itemType === 'image').length;
-              const newLayer = createLayer('image', count);
-              setLayers(prev => [newLayer, ...prev]);
-
-              const newImg = {
-                id: Date.now(),
-                url, width: img.width, height: img.height,
-                x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.35, locked: false,
-                layerId: newLayer.id
-              };
-              setImages(prev => [...prev, newImg]);
-              setSelectedImageIds([newImg.id]);
-              setOpenPanels(prev => ({ ...prev, image: true }));
-              setExpandedPanel('image');
-            };
-            img.src = url;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type?.indexOf('image') !== -1) {
+            const file = items[i].getAsFile();
+            if (file && insertImageFromFile(file)) {
+              e.preventDefault();
+            }
+            return;
           }
-          break; 
         }
+      }
+
+      const fallbackImage = Array.from(e.clipboardData?.files || []).find(file => file.type?.startsWith('image/'));
+      if (fallbackImage && insertImageFromFile(fallbackImage)) {
+        e.preventDefault();
       }
     };
 
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [layers, paths, currentPath, images, commitHistory, mode, activeLayerId, lockedLayerIds]);
+    document.addEventListener('paste', handlePaste, true);
+    return () => document.removeEventListener('paste', handlePaste, true);
+  }, [layers, paths, currentPath, images, commitHistory, mode, insertImageFromFile]);
 
   // --- LAYER MANAGEMENT ---
   const toggleLayerVisibility = (id) => {
@@ -3751,6 +3784,10 @@ export default function App() {
   let patternH = s;
   let patternContent = null;
   const showPixelGrid = zoom >= PIXEL_GRID_MIN_ZOOM;
+  const showBackgroundGridPattern = showBackgroundAids && gridConfig.type !== 'none' && gridConfig.type !== 'circular';
+  const showCircularGrid = showBackgroundAids && gridConfig.type === 'circular';
+  const showTypographicGuides = showBackgroundAids && showGuides;
+  const showPixelGridOverlay = showBackgroundAids && showPixelGrid;
 
   if (gridConfig.type === 'dots') {
     patternW = s;
@@ -3879,15 +3916,34 @@ export default function App() {
     triggerMobileTopFlash('zoomIn');
     stepZoom(1);
   };
+  const toggleGuidesVisibility = () => {
+    setShowGuides(prev => {
+      const next = !prev;
+      if (next) {
+        setShowBackgroundAids(true);
+      }
+      return next;
+    });
+  };
   const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
   const mobileControlGapPx = 8;
   const mobileToolbarRowHeightPx = 48;
   const mobilePanelOffsetPx = mobileToolbarRowHeightPx + mobileControlGapPx;
-  const mobileNavClearance = 60;
-  const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
-  const mobileToolbarBottom = `calc(${computedBottomInset} + 20px)`;
+  const mobileToolbarMinimumClearancePx = 44;
+  const mobileToolbarDesignGapPx = 16;
+  const resolvedMobileInsetPx = Math.max(mobileBottomInset, mobileToolbarMinimumClearancePx);
+  const computedBottomInset = `max(env(safe-area-inset-bottom, 0px), ${resolvedMobileInsetPx}px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + ${mobileToolbarDesignGapPx}px)`;
   const mobileMenuDrawerBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
   const mobileShapePanelBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
+  const mobileToolbarMaxWidth = Math.max(0, viewportSize.width - 16);
+  const measuredMobileToolbarWidth = mobileToolbarWidth > 0
+    ? Math.min(mobileToolbarWidth, mobileToolbarMaxWidth)
+    : mobileToolbarMaxWidth;
+  const mobileToolbarSharedWidthStyle = {
+    width: measuredMobileToolbarWidth > 0 ? `${measuredMobileToolbarWidth}px` : 'calc(100vw - 16px)',
+    maxWidth: 'calc(100vw - 16px)'
+  };
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
   return (
@@ -3959,7 +4015,7 @@ export default function App() {
         onPointerCancel={handlePointerUp}
       >
         <defs>
-          {gridConfig.type !== 'none' && gridConfig.type !== 'circular' && (
+          {showBackgroundGridPattern && (
             <pattern 
               id="bg-grid" 
               width={patternW * zoom} 
@@ -3972,7 +4028,7 @@ export default function App() {
               </g>
             </pattern>
           )}
-          {showPixelGrid && (
+          {showPixelGridOverlay && (
             <pattern
               id="pixel-grid"
               width={zoom}
@@ -3994,13 +4050,13 @@ export default function App() {
         </defs>
 
         {/* Background Grid */}
-        {gridConfig.type !== 'none' && gridConfig.type !== 'circular' && <rect width="100%" height="100%" fill="url(#bg-grid)" />}
+        {showBackgroundGridPattern && <rect width="100%" height="100%" fill="url(#bg-grid)" />}
 
         {/* Transform Group for Pan & Zoom */}
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           
           {/* Circular Grid (Drawn inside world coordinates) */}
-          {gridConfig.type === 'circular' && (
+          {showCircularGrid && (
             <g className="opacity-60 pointer-events-none">
               {Array.from({length: 100}).map((_, i) => (
                 <circle key={`circ-${i}`} cx={0} cy={0} r={(i + 1) * s} stroke="#d1ccc7" strokeWidth={1/zoom} fill="none" />
@@ -4013,7 +4069,7 @@ export default function App() {
           )}
 
           {/* Typographic Guides */}
-          {showGuides && (
+          {showTypographicGuides && (
             <g className="opacity-60 pointer-events-none">
               <line x1="-10000" y1={-guides.capHeight} x2="10000" y2={-guides.capHeight} stroke="#7dd3fc" strokeWidth={1/zoom} strokeDasharray={`${4/zoom},${4/zoom}`} />
               <text x="10" y={-guides.capHeight - 5/zoom} fontSize={12/zoom} fill="#7dd3fc" className="uppercase tracking-widest font-mono">Cap Height</text>
@@ -4057,8 +4113,8 @@ export default function App() {
                       width={img.width}
                       height={img.height}
                       opacity={img.opacity}
-                      imageRendering={showPixelGrid ? 'pixelated' : 'auto'}
-                      style={showPixelGrid ? { imageRendering: 'pixelated' } : undefined}
+                      imageRendering={showPixelGridOverlay ? 'pixelated' : 'auto'}
+                      style={showPixelGridOverlay ? { imageRendering: 'pixelated' } : undefined}
                       pointerEvents="none"
                       transform={`translate(${img.x}, ${img.y}) scale(${img.scale}) rotate(${img.rotation})`}
                     />
@@ -4418,7 +4474,7 @@ export default function App() {
         </g>
 
         {/* Pixel Grid Overlay (Visible from 800%+) */}
-        {showPixelGrid && (
+        {showPixelGridOverlay && (
           <rect
             width="100%"
             height="100%"
@@ -4514,74 +4570,82 @@ export default function App() {
           </div>
 
           <div
-            className={`absolute left-2 right-2 z-20 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1.5 mobile-drawer max-h-[44vh] overflow-y-auto ${
-              mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
-            }`}
-            style={{ bottom: mobileMenuDrawerBottom }}
+            className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+            style={{ ...mobileToolbarSharedWidthStyle, bottom: mobileMenuDrawerBottom }}
           >
-              <div className="grid grid-cols-4 gap-1">
-                <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
-                <MobileToolButton
-                  active={showGuides}
-                  onClick={() => setShowGuides(prev => !prev)}
-                  icon={showGuides ? <Eye size={14} /> : <EyeOff size={14} />}
-                  label={showGuides ? "Hide Guides" : "Show Guides"}
-                />
-                <MobileToolButton
-                  active={fillToggleActive}
-                  onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
-                  icon={<Droplet size={14} />}
-                  label="Fill"
-                />
-                <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
-                <MobileToolButton
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    openMobilePanel('image');
-                  }}
-                  icon={<ImageIcon size={14} />}
-                  label="Image"
-                />
-                <MobileToolButton
-                  active={openPanels.grid}
-                  onClick={() => {
-                    openMobilePanel('grid');
-                  }}
-                  icon={<Grid size={14} />}
-                  label="Grid"
-                />
-                <MobileToolButton
-                  active={openPanels.guides}
-                  onClick={() => {
-                    openMobilePanel('guides');
-                  }}
-                  icon={<Ruler size={14} />}
-                  label="Guides"
-                />
-                <MobileToolButton
-                  active={openPanels.layers}
-                  onClick={() => {
-                    openMobilePanel('layers');
-                  }}
-                  icon={<Layers size={14} />}
-                  label="Layers"
-                />
-                <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={14} />} label="Clear" />
+            <div
+              className={`pointer-events-auto w-full rounded-[16px] shadow-[0_12px_28px_rgba(74,38,34,0.16)] mobile-drawer ${
+                mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
+              }`}
+            >
+              <div className="bg-[#fdfcfa] rounded-[16px] border border-[#e8dfdb] p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
+                <div className="grid grid-cols-4 gap-1">
+                  <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
+                  <MobileToolButton
+                    active={showBackgroundAids}
+                    onClick={() => setShowBackgroundAids(prev => !prev)}
+                    icon={showBackgroundAids ? <Eye size={14} /> : <EyeOff size={14} />}
+                    label={showBackgroundAids ? "Hide Background Aids" : "Show Background Aids"}
+                  />
+                  <MobileToolButton
+                    active={fillToggleActive}
+                    onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
+                    icon={<Droplet size={14} />}
+                    label="Fill"
+                  />
+                  <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
+                  <MobileToolButton
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      openMobilePanel('image');
+                    }}
+                    icon={<ImageIcon size={14} />}
+                    label="Image"
+                  />
+                  <MobileToolButton
+                    active={openPanels.grid}
+                    onClick={() => {
+                      openMobilePanel('grid');
+                    }}
+                    icon={<Grid size={14} />}
+                    label="Grid"
+                  />
+                  <MobileToolButton
+                    active={openPanels.guides}
+                    onClick={() => {
+                      openMobilePanel('guides');
+                    }}
+                    icon={<Ruler size={14} />}
+                    label="Guides"
+                  />
+                  <MobileToolButton
+                    active={openPanels.layers}
+                    onClick={() => {
+                      openMobilePanel('layers');
+                    }}
+                    icon={<Layers size={14} />}
+                    label="Layers"
+                  />
+                  <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={14} />} label="Clear" />
+                </div>
               </div>
             </div>
+          </div>
 
           {mobileShapePanelOpen && (
             <div
               className="absolute left-1/2 -translate-x-1/2 z-[21] pointer-events-none w-max max-w-[calc(100vw-16px)]"
               style={{ bottom: mobileShapePanelBottom }}
             >
-              <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-1 w-max max-w-[calc(100vw-16px)]">
-                <div className="flex items-center gap-0.5 overflow-x-auto">
-                  <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
-                  <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
-                  <MobileToolButton active={shapeType === 'polygon'} onClick={() => selectMobileShape('polygon')} icon={<Triangle size={14} />} label="Poly" />
-                  <MobileToolButton active={shapeType === 'star'} onClick={() => selectMobileShape('star')} icon={<Star size={14} />} label="Star" />
-                  <MobileToolButton active={shapeType === 'line'} onClick={() => selectMobileShape('line')} icon={<Minus size={14} />} label="Line" />
+              <div className="pointer-events-auto rounded-[16px] shadow-[0_12px_28px_rgba(74,38,34,0.16)] w-max max-w-[calc(100vw-16px)]">
+                <div className="bg-[#fdfcfa] rounded-[16px] border border-[#e8dfdb] p-1 overflow-hidden">
+                  <div className="flex items-center gap-0.5 overflow-x-auto">
+                    <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
+                    <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
+                    <MobileToolButton active={shapeType === 'polygon'} onClick={() => selectMobileShape('polygon')} icon={<Triangle size={14} />} label="Poly" />
+                    <MobileToolButton active={shapeType === 'star'} onClick={() => selectMobileShape('star')} icon={<Star size={14} />} label="Star" />
+                    <MobileToolButton active={shapeType === 'line'} onClick={() => selectMobileShape('line')} icon={<Minus size={14} />} label="Line" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -4591,7 +4655,7 @@ export default function App() {
             className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none w-max max-w-[calc(100vw-16px)]"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <div className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-16px)]">
+            <div ref={mobileToolbarShellRef} className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-16px)]">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <MobileToolButton
                   variant="toolbar"
@@ -4632,7 +4696,7 @@ export default function App() {
       <div
         className={`absolute flex flex-col gap-2 z-10 pointer-events-none ${
           isMobile
-            ? `top-14 left-2 right-2 max-h-[50vh] overflow-y-auto items-stretch mobile-panels-wrap ${
+            ? `top-14 left-2 right-2 max-h-[50vh] overflow-y-auto overflow-x-visible pb-1 items-stretch mobile-panels-wrap ${
                 mobilePanelsOpen || anyPanelOpen ? 'mobile-panels-open' : 'mobile-panels-closed'
               }`
             : 'top-8 right-8 items-end'
@@ -4832,13 +4896,18 @@ export default function App() {
                       <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e8dfdb]">
                         <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest">Show Guides</label>
                         <button
-                          onClick={() => setShowGuides(prev => !prev)}
+                          onClick={toggleGuidesVisibility}
                           className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${showGuides ? 'bg-[#4a2622]' : 'bg-[#d4c8c5]'}`}
                           title={showGuides ? "Hide Guides" : "Show Guides"}
                         >
                           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showGuides ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
+                      {!showBackgroundAids && (
+                        <p className="px-1 text-[10px] font-medium text-[#a18d88]">
+                          Background aids are globally hidden in the menu.
+                        </p>
+                      )}
                       <div className="flex flex-col gap-2.5">
                         <div className="flex items-center justify-between px-1">
                           <label className="text-xs font-semibold text-[#7dd3fc]">Cap Height</label>
@@ -5113,7 +5182,7 @@ export default function App() {
           />
           <ToolButton
             active={showGuides}
-            onClick={() => setShowGuides(prev => !prev)}
+            onClick={toggleGuidesVisibility}
             icon={showGuides ? <Eye size={20} /> : <EyeOff size={20} />}
             label={showGuides ? "Hide Guides" : "Show Guides"}
           />
