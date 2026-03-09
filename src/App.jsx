@@ -600,6 +600,7 @@ export default function App() {
   const isMobile = viewportSize.width <= 900;
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
+  const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileBottomInset, setMobileBottomInset] = useState(0);
   
   // Tool State
@@ -751,6 +752,7 @@ export default function App() {
     if (!isMobile) {
       setMobileToolsOpen(false);
       setMobilePanelsOpen(false);
+      setMobileShapePanelOpen(false);
     }
   }, [isMobile]);
 
@@ -793,6 +795,21 @@ export default function App() {
   };
 
   const togglePanel = (panelId) => {
+    if (isMobile) {
+      const isSameOpen = openPanels[panelId] && expandedPanel === panelId;
+      setMobileToolsOpen(false);
+      setMobileShapePanelOpen(false);
+      if (isSameOpen) {
+        setOpenPanels({ grid: false, image: false, guides: false, layers: false });
+        setExpandedPanel(null);
+        setMobilePanelsOpen(false);
+      } else {
+        setOpenPanels({ grid: false, image: false, guides: false, layers: false, [panelId]: true });
+        setExpandedPanel(panelId);
+        setMobilePanelsOpen(true);
+      }
+      return;
+    }
     setOpenPanels(prev => {
       const isCurrentlyOpen = prev[panelId];
       if (isCurrentlyOpen) {
@@ -2912,6 +2929,9 @@ export default function App() {
     setShowShapeMenu(false);
     if (isMobile) {
       setMobileToolsOpen(false);
+      if (targetMode !== 'shape') {
+        setMobileShapePanelOpen(false);
+      }
     }
 
     if (targetMode !== 'shape') {
@@ -3757,13 +3777,46 @@ export default function App() {
     .join(' ');
   const anyPanelOpen = Object.values(openPanels).some(Boolean);
   const closeAllPanels = () => {
+    setMobileToolsOpen(false);
+    setMobileShapePanelOpen(false);
+    setMobilePanelsOpen(false);
     setOpenPanels({ grid: false, image: false, guides: false, layers: false });
     setExpandedPanel(null);
   };
+  const openMobilePanel = (panelId) => {
+    setMobileToolsOpen(false);
+    setMobileShapePanelOpen(false);
+    setOpenPanels({ grid: false, image: false, guides: false, layers: false, [panelId]: true });
+    setExpandedPanel(panelId);
+    setMobilePanelsOpen(true);
+  };
+  const toggleMobileToolsMenu = () => {
+    if (mobileToolsOpen) {
+      setMobileToolsOpen(false);
+      return;
+    }
+    closeAllPanels();
+    setMobileToolsOpen(true);
+  };
+  const toggleMobileShapePanel = () => {
+    const shouldOpen = mode !== 'shape' || !mobileShapePanelOpen;
+    closeAllPanels();
+    changeMode('shape');
+    if (shouldOpen) {
+      setMobileShapePanelOpen(true);
+    }
+  };
+  const selectMobileShape = (nextShape) => {
+    setShapeType(nextShape);
+    changeMode('shape');
+    setMobileShapePanelOpen(false);
+  };
+  const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
   const mobileNavClearance = 52;
   const computedBottomInset = `calc(env(safe-area-inset-bottom, 0px) + ${mobileBottomInset + mobileNavClearance}px)`;
-  const mobileToolbarBottom = `calc(${computedBottomInset} + 8px)`;
-  const mobileMenuDrawerBottom = `calc(${computedBottomInset} + 74px)`;
+  const mobileToolbarBottom = `calc(${computedBottomInset} + 16px)`;
+  const mobileMenuDrawerBottom = `calc(${mobileToolbarBottom} + 46px)`;
+  const mobileShapePanelBottom = `calc(${mobileToolbarBottom} + 46px)`;
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
   return (
@@ -4317,15 +4370,11 @@ export default function App() {
 
       {isMobile && (
         <>
-          {(mobileToolsOpen || mobilePanelsOpen || anyPanelOpen) && (
+          {anyMobileOverlayOpen && (
             <button
               type="button"
-              onClick={() => {
-                setMobileToolsOpen(false);
-                setMobilePanelsOpen(false);
-                closeAllPanels();
-              }}
-              className="absolute inset-0 z-[9] bg-[#4a2622]/8 backdrop-blur-[1px]"
+              onClick={closeAllPanels}
+              className="absolute inset-0 z-[9] bg-[#4a2622]/8"
               aria-label="Close panels overlay"
             />
           )}
@@ -4365,10 +4414,7 @@ export default function App() {
                 <MobileToolButton
                   onClick={() => {
                     fileInputRef.current?.click();
-                    setMobilePanelsOpen(true);
-                    setOpenPanels(prev => ({ ...prev, image: true }));
-                    setExpandedPanel('image');
-                    setMobileToolsOpen(false);
+                    openMobilePanel('image');
                   }}
                   icon={<ImageIcon size={14} />}
                   label="Image"
@@ -4376,10 +4422,7 @@ export default function App() {
                 <MobileToolButton
                   active={openPanels.grid}
                   onClick={() => {
-                    setMobilePanelsOpen(true);
-                    setOpenPanels(prev => ({ ...prev, grid: true }));
-                    setExpandedPanel('grid');
-                    setMobileToolsOpen(false);
+                    openMobilePanel('grid');
                   }}
                   icon={<Grid size={14} />}
                   label="Grid"
@@ -4387,10 +4430,7 @@ export default function App() {
                 <MobileToolButton
                   active={openPanels.guides}
                   onClick={() => {
-                    setMobilePanelsOpen(true);
-                    setOpenPanels(prev => ({ ...prev, guides: true }));
-                    setExpandedPanel('guides');
-                    setMobileToolsOpen(false);
+                    openMobilePanel('guides');
                   }}
                   icon={<Ruler size={14} />}
                   label="Guides"
@@ -4398,10 +4438,7 @@ export default function App() {
                 <MobileToolButton
                   active={openPanels.layers}
                   onClick={() => {
-                    setMobilePanelsOpen(true);
-                    setOpenPanels(prev => ({ ...prev, layers: true }));
-                    setExpandedPanel('layers');
-                    setMobileToolsOpen(false);
+                    openMobilePanel('layers');
                   }}
                   icon={<Layers size={14} />}
                   label="Layers"
@@ -4410,50 +4447,57 @@ export default function App() {
               </div>
             </div>
 
+          {mobileShapePanelOpen && (
+            <div
+              className="absolute left-1/2 -translate-x-1/2 z-[21] pointer-events-none w-max max-w-[calc(100vw-16px)]"
+              style={{ bottom: mobileShapePanelBottom }}
+            >
+              <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-1 w-max max-w-[calc(100vw-16px)]">
+                <div className="flex items-center gap-0.5 overflow-x-auto">
+                  <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
+                  <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
+                  <MobileToolButton active={shapeType === 'polygon'} onClick={() => selectMobileShape('polygon')} icon={<Triangle size={14} />} label="Poly" />
+                  <MobileToolButton active={shapeType === 'star'} onClick={() => selectMobileShape('star')} icon={<Star size={14} />} label="Star" />
+                  <MobileToolButton active={shapeType === 'line'} onClick={() => selectMobileShape('line')} icon={<Minus size={14} />} label="Line" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div
-            className="absolute left-2 right-2 z-20 pointer-events-none flex items-end gap-2 max-w-[calc(100vw-16px)]"
+            className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none w-max max-w-[calc(100vw-16px)]"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <button
-              onClick={() => setMobileToolsOpen(prev => !prev)}
-              className={`pointer-events-auto h-10 w-10 rounded-lg border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
-                mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f1f0f5] text-[#6d6a76]'
-              }`}
-              title="Menu"
-            >
-              <Menu size={16} />
-            </button>
-            <div className="pointer-events-auto flex-1 bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-1 min-w-0">
-              <div className="flex items-center gap-0.5 overflow-x-auto">
-                <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
-                <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
-                <MobileToolButton active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
-                <MobileToolButton
-                  active={mode === 'shape'}
-                  onClick={() => {
-                    changeMode('shape');
-                    setShapeType('rectangle');
-                  }}
-                  icon={<Square size={16} />}
-                  label="Shape"
-                />
-                <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
-                <MobileToolButton
-                  active={hasActiveSelection}
-                  onClick={deleteSelectedItems}
-                  icon={<Trash2 size={16} />}
-                  label="Delete"
-                />
-              </div>
-              {mode === 'shape' && (
-                <div className="mt-1 flex items-center gap-0.5 overflow-x-auto pt-1 border-t border-[#ece5e2]">
-                  <MobileToolButton active={shapeType === 'rectangle'} onClick={() => setShapeType('rectangle')} icon={<Square size={14} />} label="Rect" />
-                  <MobileToolButton active={shapeType === 'ellipse'} onClick={() => setShapeType('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
-                  <MobileToolButton active={shapeType === 'polygon'} onClick={() => setShapeType('polygon')} icon={<Triangle size={14} />} label="Poly" />
-                  <MobileToolButton active={shapeType === 'star'} onClick={() => setShapeType('star')} icon={<Star size={14} />} label="Star" />
-                  <MobileToolButton active={shapeType === 'line'} onClick={() => setShapeType('line')} icon={<Minus size={14} />} label="Line" />
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={toggleMobileToolsMenu}
+                className={`pointer-events-auto h-10 w-10 rounded-lg border border-[#e8dfdb] shadow-sm flex items-center justify-center transition-colors shrink-0 ${
+                  mobileToolsOpen ? 'bg-[#ede3e1] text-[#4a2622]' : 'bg-[#f6f1ed] text-[#7d6a66]'
+                }`}
+                title="Menu"
+              >
+                <Menu size={16} />
+              </button>
+              <div className="pointer-events-auto bg-[#fdfcfa] rounded-xl shadow-lg border border-[#e8dfdb] p-0.5 w-max max-w-[calc(100vw-68px)]">
+                <div className="flex items-center gap-0.5 overflow-x-auto">
+                  <MobileToolButton active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
+                  <MobileToolButton active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
+                  <MobileToolButton active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
+                  <MobileToolButton
+                    active={mode === 'shape'}
+                    onClick={toggleMobileShapePanel}
+                    icon={<Square size={16} />}
+                    label="Shape"
+                  />
+                  <MobileToolButton active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
+                  <MobileToolButton
+                    active={hasActiveSelection}
+                    onClick={deleteSelectedItems}
+                    icon={<Trash2 size={16} />}
+                    label="Delete"
+                  />
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </>
@@ -5005,8 +5049,8 @@ function MobileToolButton({ active = false, onClick, icon, label }) {
       title={label}
       className={`h-9 min-w-9 px-1.5 rounded-md border transition-all duration-150 flex items-center justify-center shrink-0 ${
         active
-          ? 'bg-[#ded9f4] border-[#d0c8f0] text-[#4f4a77]'
-          : 'bg-[#f8f6f3] border-transparent text-[#6f6968] active:bg-[#ede6e2]'
+          ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
+          : 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]'
       }`}
     >
       {icon}
