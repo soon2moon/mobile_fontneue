@@ -1561,46 +1561,6 @@ export default function App() {
     return true;
   }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers]);
 
-  const pasteFromAvailableClipboard = useCallback(async () => {
-    if (copiedContentRef.current && insertClipboardPayload(copiedContentRef.current)) {
-      return true;
-    }
-
-    if (navigator.clipboard?.read) {
-      try {
-        const clipboardItems = await navigator.clipboard.read();
-        for (const item of clipboardItems) {
-          const imageType = item.types.find(type => type.startsWith('image/'));
-          if (!imageType) continue;
-          const blob = await item.getType(imageType);
-          const ext = imageType.split('/')[1] || 'png';
-          const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type: imageType });
-          if (insertImageFromFile(file)) {
-            return true;
-          }
-        }
-      } catch (err) {
-        // Permission or platform clipboard limitation; continue to text fallback.
-      }
-    }
-
-    if (navigator.clipboard?.readText) {
-      try {
-        const textData = await navigator.clipboard.readText();
-        if (textData) {
-          const parsed = JSON.parse(textData);
-          if (insertClipboardPayload(parsed)) {
-            return true;
-          }
-        }
-      } catch (err) {
-        // Clipboard text unavailable or not our payload.
-      }
-    }
-
-    return false;
-  }, [insertClipboardPayload, insertImageFromFile]);
-
   const copyPathById = useCallback((pathId) => {
     const pathIndex = paths.findIndex(path => path.id === pathId);
     if (pathIndex === -1) return false;
@@ -1615,11 +1575,6 @@ export default function App() {
     removeObjectsByIds([pathId], []);
     return true;
   }, [paths, isPathLocked, copyPathById, removeObjectsByIds]);
-
-  const handleMobileContextPaste = useCallback(async () => {
-    await pasteFromAvailableClipboard();
-    closeMobileContextMenu();
-  }, [pasteFromAvailableClipboard, closeMobileContextMenu]);
 
   // --- EVENT HANDLERS ---
   const capturePointer = (e) => {
@@ -3622,6 +3577,51 @@ export default function App() {
     img.src = url;
     return true;
   }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers, viewportSize.width, viewportSize.height]);
+
+  const pasteFromAvailableClipboard = useCallback(async () => {
+    if (copiedContentRef.current && insertClipboardPayload(copiedContentRef.current)) {
+      return true;
+    }
+
+    if (navigator.clipboard?.read) {
+      try {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          const imageType = item.types.find(type => type.startsWith('image/'));
+          if (!imageType) continue;
+          const blob = await item.getType(imageType);
+          const ext = imageType.split('/')[1] || 'png';
+          const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type: imageType });
+          if (insertImageFromFile(file)) {
+            return true;
+          }
+        }
+      } catch (err) {
+        // Permission or platform clipboard limitation; continue to text fallback.
+      }
+    }
+
+    if (navigator.clipboard?.readText) {
+      try {
+        const textData = await navigator.clipboard.readText();
+        if (textData) {
+          const parsed = JSON.parse(textData);
+          if (insertClipboardPayload(parsed)) {
+            return true;
+          }
+        }
+      } catch (err) {
+        // Clipboard text unavailable or not our payload.
+      }
+    }
+
+    return false;
+  }, [insertClipboardPayload, insertImageFromFile]);
+
+  const handleMobileContextPaste = useCallback(async () => {
+    await pasteFromAvailableClipboard();
+    closeMobileContextMenu();
+  }, [pasteFromAvailableClipboard, closeMobileContextMenu]);
 
   // --- SKETCH UPLOAD ---
   const handleImageUpload = (e) => {
