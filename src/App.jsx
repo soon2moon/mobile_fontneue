@@ -30,7 +30,8 @@ import {
   Copy,
   Scissors,
   ClipboardPaste,
-  Download
+  Download,
+  Type
 } from 'lucide-react';
 
 // --- THEME ---
@@ -41,6 +42,10 @@ const THEME = {
   handle: "#7c4a45",
   guide: "#d4c8c5"
 };
+
+const DEFAULT_STROKE_WIDTH = 1.5;
+const DEFAULT_STROKE_COLOR = THEME.main;
+const DEFAULT_STROKE_ALIGN = 'center';
 
 // --- UTILS ---
 const SNAP_RADIUS = 10;
@@ -253,6 +258,70 @@ const reversePathPoints = (pointsArray) => (
   }))
 );
 
+const simplifyPolylinePoints = (pointsArray, tolerance = 0) => {
+  if (!Array.isArray(pointsArray) || pointsArray.length <= 2) {
+    return pointsArray.map(clonePoint);
+  }
+
+  const tol = Math.max(0, Number(tolerance) || 0);
+  if (tol <= 0.0001) {
+    return pointsArray.map(clonePoint);
+  }
+
+  const keep = new Array(pointsArray.length).fill(false);
+  keep[0] = true;
+  keep[pointsArray.length - 1] = true;
+
+  const pointSegmentDistance = (point, a, b) => {
+    const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+    if (l2 === 0) return Math.hypot(point.x - a.x, point.y - a.y);
+    let t = ((point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const projX = a.x + t * (b.x - a.x);
+    const projY = a.y + t * (b.y - a.y);
+    return Math.hypot(point.x - projX, point.y - projY);
+  };
+
+  const simplifyRange = (startIdx, endIdx) => {
+    if (endIdx <= startIdx + 1) return;
+    let maxDist = 0;
+    let index = -1;
+    const a = pointsArray[startIdx];
+    const b = pointsArray[endIdx];
+    for (let i = startIdx + 1; i < endIdx; i++) {
+      const dist = pointSegmentDistance(pointsArray[i], a, b);
+      if (dist > maxDist) {
+        maxDist = dist;
+        index = i;
+      }
+    }
+    if (index !== -1 && maxDist > tol) {
+      keep[index] = true;
+      simplifyRange(startIdx, index);
+      simplifyRange(index, endIdx);
+    }
+  };
+
+  simplifyRange(0, pointsArray.length - 1);
+
+  const simplified = [];
+  for (let i = 0; i < pointsArray.length; i++) {
+    if (!keep[i]) continue;
+    const p = pointsArray[i];
+    simplified.push({
+      x: p.x,
+      y: p.y,
+      hIn: { x: p.x, y: p.y },
+      hOut: { x: p.x, y: p.y }
+    });
+  }
+
+  if (simplified.length < 2) {
+    return [clonePoint(pointsArray[0]), clonePoint(pointsArray[pointsArray.length - 1])];
+  }
+  return simplified;
+};
+
 const clonePaths = (pathsArray) => {
   return pathsArray.map(p => ({
     ...p,
@@ -273,6 +342,38 @@ const escapeXml = (value) => String(value)
   .replace(/'/g, '&apos;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;');
+
+const normalizeStrokeWidth = (value, fallback = DEFAULT_STROKE_WIDTH) => {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, parsed);
+};
+
+const normalizeStrokeColor = (value, fallback = DEFAULT_STROKE_COLOR) => {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toLowerCase() : fallback;
+};
+
+const normalizeStrokeAlign = (value, fallback = DEFAULT_STROKE_ALIGN) => {
+  if (value === 'inside' || value === 'outside' || value === 'center') return value;
+  return fallback;
+};
+
+const getPathStrokeStyle = (path, defaults) => ({
+  strokeEnabled: path?.strokeEnabled !== false,
+  strokeWidth: normalizeStrokeWidth(path?.strokeWidth, defaults.strokeWidth),
+  strokeColor: normalizeStrokeColor(path?.strokeColor, defaults.strokeColor),
+  strokeAlign: normalizeStrokeAlign(path?.strokeAlign, defaults.strokeAlign)
+});
+
+const toSafeSvgId = (value) => String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
+const generateEditGroupId = () => `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const resolvePathEditGroupId = (path) => (
+  path?.editGroupId ?? (path?.id != null ? `path-${path.id}` : null)
+);
 
 const copyToClipboard = (text) => {
   const textArea = document.createElement("textarea");
@@ -388,6 +489,7 @@ const generateLayerId = () => `layer-${Date.now()}-${Math.random().toString(36).
 const createLayer = (type, existingCount) => {
    let name = "Vector";
    if (type === 'image') name = "Image";
+   else if (type === 'text') name = "Text";
    else if (type === 'rectangle') name = "Rectangle";
    else if (type === 'ellipse') name = "Ellipse";
    else if (type === 'polygon') name = "Polygon";
@@ -411,6 +513,7 @@ const LayerIcon = ({ type }) => {
         case 'star': return <Star size={14} className="text-[#8c746f]" />;
         case 'line': return <Minus size={14} className="text-[#8c746f]" />;
         case 'image': return <ImageIcon size={14} className="text-[#8c746f]" />;
+        case 'text': return <Type size={14} className="text-[#8c746f]" />;
         case 'vector':
         default: 
             return <PenTool size={14} className="text-[#8c746f]" />;
@@ -597,10 +700,12 @@ const ScrubbableNumberInput = ({
 const PANELS_CONFIG = [
   { id: 'layers', title: 'Layers' },
   { id: 'image', title: 'Image Settings' },
+  { id: 'stroke', title: 'Stroke' },
   { id: 'grid', title: 'Background Config' },
   { id: 'guides', title: 'Guides Config' },
   { id: 'export', title: 'Export' }
 ];
+const CLOSED_PANELS = { grid: false, image: false, guides: false, layers: false, export: false, stroke: false };
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -625,6 +730,8 @@ export default function App() {
   const [mobileExportScope, setMobileExportScope] = useState('selection');
   const [mobileExportFormat, setMobileExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
+  const [strokeWidthInput, setStrokeWidthInput] = useState(String(DEFAULT_STROKE_WIDTH));
+  const [strokeColorInput, setStrokeColorInput] = useState(DEFAULT_STROKE_COLOR.replace('#', ''));
   const mobileTopFlashTimersRef = useRef({});
   const mobileToolbarShellRef = useRef(null);
   const mobileLongPressRef = useRef({ timerId: null, pointerId: null, startX: 0, startY: 0, targetType: null, targetId: null, triggered: false });
@@ -632,7 +739,13 @@ export default function App() {
   // Tool State
   const [mode, setMode] = useState('pan'); 
   const [showNodes, setShowNodes] = useState(true);
-  const [pathStyleDefaults, setPathStyleDefaults] = useState({ fillEnabled: false, strokeEnabled: true });
+  const [pathStyleDefaults, setPathStyleDefaults] = useState({
+    fillEnabled: false,
+    strokeEnabled: true,
+    strokeWidth: DEFAULT_STROKE_WIDTH,
+    strokeColor: DEFAULT_STROKE_COLOR,
+    strokeAlign: DEFAULT_STROKE_ALIGN
+  });
   
   // Shape Tool State
   const [shapeType, setShapeType] = useState('rectangle');
@@ -641,7 +754,7 @@ export default function App() {
   const shapeMenuContainerRef = useRef(null);
   
   // Panels State (Accordion)
-  const [openPanels, setOpenPanels] = useState({ grid: false, image: false, guides: false, layers: false, export: false });
+  const [openPanels, setOpenPanels] = useState(CLOSED_PANELS);
   const [expandedPanel, setExpandedPanel] = useState(null);
 
   // Grid State
@@ -918,11 +1031,11 @@ export default function App() {
       setMobileToolsOpen(false);
       setMobileShapePanelOpen(false);
       if (isSameOpen) {
-        setOpenPanels({ grid: false, image: false, guides: false, layers: false, export: false });
+        setOpenPanels({ ...CLOSED_PANELS });
         setExpandedPanel(null);
         setMobilePanelsOpen(false);
       } else {
-        setOpenPanels({ grid: false, image: false, guides: false, layers: false, export: false, [panelId]: true });
+        setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
         setExpandedPanel(panelId);
         setMobilePanelsOpen(true);
       }
@@ -1001,11 +1114,13 @@ export default function App() {
   const activeEditPath = activePathEditId
     ? paths.find(path => path.id === activePathEditId) || null
     : null;
-  const activeEditLayerId = activeEditPath?.layerId ?? null;
+  const activeEditGroupId = activeEditPath
+    ? resolvePathEditGroupId(activeEditPath)
+    : null;
   const isPathInActiveEditContext = useCallback((path) => {
-    if (!path || activeEditLayerId == null) return false;
-    return path.layerId === activeEditLayerId;
-  }, [activeEditLayerId]);
+    if (!path || activeEditGroupId == null) return false;
+    return resolvePathEditGroupId(path) === activeEditGroupId;
+  }, [activeEditGroupId]);
 
   // --- COMPUTE SELECTION BOUNDS ---
   let selBBox = null;
@@ -1390,6 +1505,40 @@ export default function App() {
     return { path: bestPath, pathIndex: bestIndex };
   }, [paths, isPathVisible, isPathLocked, pointHitRadius, segmentHitRadius]);
 
+  const expandPathSelectionToGroups = useCallback((selectionPointsInput = []) => {
+    if (!Array.isArray(selectionPointsInput) || selectionPointsInput.length === 0) return [];
+    const selectedPathIndexSet = new Set(
+      selectionPointsInput
+        .map(sp => sp.pathIndex)
+        .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < paths.length)
+    );
+    if (selectedPathIndexSet.size === 0) return [];
+
+    const selectedGroupIds = new Set();
+    selectedPathIndexSet.forEach((pathIndex) => {
+      const path = paths[pathIndex];
+      if (!path) return;
+      const groupId = resolvePathEditGroupId(path);
+      if (groupId != null) {
+        selectedGroupIds.add(groupId);
+      }
+    });
+    if (selectedGroupIds.size === 0) {
+      return [...selectionPointsInput];
+    }
+
+    const expandedSelection = [];
+    paths.forEach((path, pathIndex) => {
+      const groupId = resolvePathEditGroupId(path);
+      if (!selectedGroupIds.has(groupId)) return;
+      path.points.forEach((_, pointIndex) => {
+        expandedSelection.push({ pathIndex, pointIndex });
+      });
+    });
+
+    return expandedSelection;
+  }, [paths]);
+
   const buildClipboardPayload = useCallback((selectionPoints = selectedPoints, selectionImages = selectedImageIds) => {
     const pathIndices = [...new Set(selectionPoints.map(sp => sp.pathIndex))]
       .filter(idx => idx >= 0 && idx < paths.length);
@@ -1457,16 +1606,18 @@ export default function App() {
   }, [paths, images, layers, currentPath, commitHistory, activeLayerId]);
 
   const copyCurrentSelection = useCallback(() => {
-    const payload = buildClipboardPayload();
+    const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(selectedPoints);
+    const payload = buildClipboardPayload(effectiveSelection, selectedImageIds);
     return writeClipboardPayload(payload);
-  }, [buildClipboardPayload, writeClipboardPayload]);
+  }, [activePathEditId, selectedPoints, selectedImageIds, expandPathSelectionToGroups, buildClipboardPayload, writeClipboardPayload]);
 
   const cutCurrentSelection = useCallback(() => {
-    const payload = buildClipboardPayload();
+    const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(selectedPoints);
+    const payload = buildClipboardPayload(effectiveSelection, selectedImageIds);
     if (!payload) return false;
     writeClipboardPayload(payload);
     const selectedPointsByPath = new Map();
-    selectedPoints.forEach(point => {
+    effectiveSelection.forEach(point => {
       selectedPointsByPath.set(point.pathIndex, (selectedPointsByPath.get(point.pathIndex) || 0) + 1);
     });
 
@@ -1489,7 +1640,7 @@ export default function App() {
 
     removeObjectsByIds(fullySelectedPathIds, selectedImageIds);
     return true;
-  }, [buildClipboardPayload, writeClipboardPayload, selectedPoints, selectedImageIds, paths, deleteSelectedItems, removeObjectsByIds]);
+  }, [activePathEditId, selectedPoints, selectedImageIds, expandPathSelectionToGroups, buildClipboardPayload, writeClipboardPayload, paths, deleteSelectedItems, removeObjectsByIds]);
 
   const insertClipboardPayload = useCallback((parsedPayload) => {
     if (!parsedPayload || parsedPayload.type !== 'typolab-paths') return false;
@@ -1503,6 +1654,7 @@ export default function App() {
     const newLayers = [];
     const newPaths = [];
     const newImages = [];
+    const groupIdMap = new Map();
 
     sourcePaths.forEach(path => {
       const layerType = path.itemType || 'vector';
@@ -1510,6 +1662,10 @@ export default function App() {
         + newLayers.filter(layer => layer.itemType === layerType).length;
       const layer = createLayer(layerType, count);
       newLayers.push(layer);
+      const sourceGroupId = resolvePathEditGroupId(path);
+      if (!groupIdMap.has(sourceGroupId)) {
+        groupIdMap.set(sourceGroupId, generateEditGroupId());
+      }
       newPaths.push({
         ...path,
         id: Date.now() + Math.random(),
@@ -1517,7 +1673,11 @@ export default function App() {
         itemType: layerType,
         points: (path.points || []).map(clonePoint),
         fillEnabled: !!path.fillEnabled,
-        strokeEnabled: path.strokeEnabled !== false
+        strokeEnabled: path.strokeEnabled !== false,
+        strokeWidth: normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH),
+        strokeColor: normalizeStrokeColor(path.strokeColor, DEFAULT_STROKE_COLOR),
+        strokeAlign: normalizeStrokeAlign(path.strokeAlign, DEFAULT_STROKE_ALIGN),
+        editGroupId: groupIdMap.get(sourceGroupId)
       });
     });
 
@@ -1564,17 +1724,29 @@ export default function App() {
   const copyPathById = useCallback((pathId) => {
     const pathIndex = paths.findIndex(path => path.id === pathId);
     if (pathIndex === -1) return false;
-    const payload = buildClipboardPayload(getPathSelection(pathIndex), []);
+    const groupSelection = expandPathSelectionToGroups(getPathSelection(pathIndex));
+    const payload = buildClipboardPayload(groupSelection, []);
     return writeClipboardPayload(payload);
-  }, [paths, buildClipboardPayload, getPathSelection, writeClipboardPayload]);
+  }, [paths, expandPathSelectionToGroups, buildClipboardPayload, getPathSelection, writeClipboardPayload]);
 
   const cutPathById = useCallback((pathId) => {
-    const path = paths.find(candidate => candidate.id === pathId);
-    if (!path || isPathLocked(path)) return false;
+    const pathIndex = paths.findIndex(candidate => candidate.id === pathId);
+    if (pathIndex === -1) return false;
+    const groupSelection = expandPathSelectionToGroups(getPathSelection(pathIndex));
+    const groupPathIds = [...new Set(groupSelection.map(point => {
+      const path = paths[point.pathIndex];
+      return path?.id;
+    }).filter(Boolean))];
+    if (groupPathIds.length === 0) return false;
+    const hasLockedPath = groupPathIds.some(id => {
+      const candidatePath = paths.find(path => path.id === id);
+      return candidatePath ? isPathLocked(candidatePath) : false;
+    });
+    if (hasLockedPath) return false;
     if (!copyPathById(pathId)) return false;
-    removeObjectsByIds([pathId], []);
+    removeObjectsByIds(groupPathIds, []);
     return true;
-  }, [paths, isPathLocked, copyPathById, removeObjectsByIds]);
+  }, [paths, isPathLocked, expandPathSelectionToGroups, getPathSelection, copyPathById, removeObjectsByIds]);
 
   // --- EVENT HANDLERS ---
   const capturePointer = (e) => {
@@ -1718,10 +1890,14 @@ export default function App() {
         hOut: { x: coords.x, y: coords.y } 
       };
       setCurrentPathInfo({
-        layerId: resolveReusableLayerId('vector'),
+        layerId: (activeEditGroupId && activeEditPath?.layerId) || resolveReusableLayerId('vector'),
         itemType: 'vector',
         fillEnabled: pathStyleDefaults.fillEnabled,
-        strokeEnabled: pathStyleDefaults.strokeEnabled
+        strokeEnabled: pathStyleDefaults.strokeEnabled,
+        strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
+        strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
+        strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+        editGroupId: activeEditGroupId || generateEditGroupId()
       });
       setCurrentPath([newPoint]);
       return;
@@ -1730,20 +1906,67 @@ export default function App() {
     if (mode === 'draw') {
 
       if (currentPath.length === 0) {
-        const drawStart = ghostPoint || snappedCoords;
+        let endpointSnapInfo = snapState.endpoint;
+        if (!endpointSnapInfo) {
+          let bestEndpointDist = Infinity;
+          for (let i = paths.length - 1; i >= 0; i--) {
+            const path = paths[i];
+            if (!isPathVisible(path) || isPathLocked(path) || path.isClosed || path.points.length === 0) continue;
+            const endpointIndices = path.points.length === 1 ? [0] : [0, path.points.length - 1];
+            for (const pointIndex of endpointIndices) {
+              const endpoint = path.points[pointIndex];
+              const dist = Math.hypot(endpoint.x - coords.x, endpoint.y - coords.y);
+              if (dist < pointHitRadius && dist < bestEndpointDist) {
+                bestEndpointDist = dist;
+                endpointSnapInfo = { pathIndex: i, pointIndex };
+              }
+            }
+          }
+        }
+
+        const resumePath = endpointSnapInfo ? paths[endpointSnapInfo.pathIndex] : null;
         commitHistory({ paths, currentPath, images, layers });
-        const newPoint = { 
-          x: drawStart.x, y: drawStart.y, 
-          hIn: { x: drawStart.x, y: drawStart.y }, 
-          hOut: { x: drawStart.x, y: drawStart.y } 
-        };
-        setCurrentPathInfo({
-          layerId: resolveReusableLayerId('vector'),
-          itemType: 'vector',
-          fillEnabled: pathStyleDefaults.fillEnabled,
-          strokeEnabled: pathStyleDefaults.strokeEnabled
-        });
-        setCurrentPath([newPoint]);
+
+        if (resumePath && !resumePath.isClosed && resumePath.points.length > 0) {
+          const shouldReverseForResume = resumePath.points.length > 1 && endpointSnapInfo.pointIndex === 0;
+          const basePathPoints = resumePath.points.map(clonePoint);
+          const resumedPoints = shouldReverseForResume
+            ? reversePathPoints(basePathPoints)
+            : basePathPoints;
+          const existingStroke = getPathStrokeStyle(resumePath, pathStyleDefaults);
+          setCurrentPathInfo({
+            layerId: resumePath.layerId,
+            itemType: resumePath.itemType || 'vector',
+            fillEnabled: resumePath.fillEnabled ?? pathStyleDefaults.fillEnabled,
+            strokeEnabled: existingStroke.strokeEnabled,
+            strokeWidth: existingStroke.strokeWidth,
+            strokeColor: existingStroke.strokeColor,
+            strokeAlign: existingStroke.strokeAlign,
+            editGroupId: resolvePathEditGroupId(resumePath),
+            resumePathId: resumePath.id,
+            resumePathIndex: endpointSnapInfo.pathIndex,
+            resumeReverseOnSave: shouldReverseForResume
+          });
+          setCurrentPath(resumedPoints);
+        } else {
+          const drawStart = ghostPoint || snappedCoords;
+          const newPoint = {
+            x: drawStart.x, y: drawStart.y,
+            hIn: { x: drawStart.x, y: drawStart.y },
+            hOut: { x: drawStart.x, y: drawStart.y }
+          };
+          setCurrentPathInfo({
+            layerId: (activeEditGroupId && activeEditPath?.layerId) || resolveReusableLayerId('vector'),
+            itemType: 'vector',
+            fillEnabled: pathStyleDefaults.fillEnabled,
+            strokeEnabled: pathStyleDefaults.strokeEnabled,
+            strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
+            strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
+            strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+            editGroupId: activeEditGroupId || generateEditGroupId()
+          });
+          setCurrentPath([newPoint]);
+        }
         setIsDrawingCurve('drawing');
       } else {
         const startP = currentPath[0];
@@ -1754,7 +1977,79 @@ export default function App() {
           setGhostPoint(startP);
           setIsDrawingCurve('closing');
         } else {
+          let endpointSnap = snapState.endpoint;
+          let endpointPath = endpointSnap ? paths[endpointSnap.pathIndex] : null;
+          if (!endpointPath) {
+            let bestEndpointDist = Infinity;
+            for (let i = paths.length - 1; i >= 0; i--) {
+              const path = paths[i];
+              if (!isPathVisible(path) || isPathLocked(path) || path.isClosed || path.points.length === 0) continue;
+              if (activePathEditId && !isPathInActiveEditContext(path)) continue;
+              if (currentPathInfo?.resumePathId != null && path.id === currentPathInfo.resumePathId) continue;
+              const endpointIndices = path.points.length === 1 ? [0] : [0, path.points.length - 1];
+              for (const pointIndex of endpointIndices) {
+                const endpoint = path.points[pointIndex];
+                const dist = Math.hypot(endpoint.x - coords.x, endpoint.y - coords.y);
+                if (dist < pointHitRadius && dist < bestEndpointDist) {
+                  bestEndpointDist = dist;
+                  endpointSnap = { pathIndex: i, pointIndex };
+                  endpointPath = path;
+                }
+              }
+            }
+          }
+          const canMergeIntoEndpointPath = !!endpointPath
+            && !endpointPath.isClosed
+            && endpointPath.points.length > 0
+            && endpointPath.id !== currentPathInfo?.resumePathId;
+
           commitHistory({ paths, currentPath, images, layers });
+
+          if (canMergeIntoEndpointPath) {
+            const endpointPathPoints = endpointPath.points.map(clonePoint);
+            const orderedEndpointPathPoints = endpointSnap.pointIndex === 0
+              ? endpointPathPoints
+              : reversePathPoints(endpointPathPoints);
+            const endpointAnchor = orderedEndpointPathPoints[0];
+            const mergedPath = currentPath.map(clonePoint);
+            const lastPoint = mergedPath[mergedPath.length - 1];
+            if (!lastPoint || Math.hypot(lastPoint.x - endpointAnchor.x, lastPoint.y - endpointAnchor.y) > 0.001) {
+              mergedPath.push(clonePoint(endpointAnchor));
+            }
+            mergedPath.push(...orderedEndpointPathPoints.slice(1).map(clonePoint));
+
+            setCurrentPath(mergedPath);
+            setCurrentPathInfo(prev => {
+              const mergedPathIds = new Set([...(prev?.mergedPathIds || []), endpointPath.id]);
+              return {
+                ...(prev || {}),
+                editGroupId: prev?.editGroupId || resolvePathEditGroupId(endpointPath),
+                mergedPathIds: [...mergedPathIds]
+              };
+            });
+            const nextPaths = paths.filter(path => path.id !== endpointPath.id);
+            setPaths(nextPaths);
+            setLayers(prevLayers => {
+              const usedLayerIds = new Set([
+                ...nextPaths.map(path => path.layerId),
+                ...images.map(img => img.layerId)
+              ]);
+              const filteredLayers = prevLayers.filter(layer => usedLayerIds.has(layer.id));
+              if (activeLayerId && !usedLayerIds.has(activeLayerId)) {
+                const preferredLayerId = currentPathInfo?.layerId && usedLayerIds.has(currentPathInfo.layerId)
+                  ? currentPathInfo.layerId
+                  : (filteredLayers[0]?.id ?? null);
+                setActiveLayerId(preferredLayerId);
+              }
+              return filteredLayers;
+            });
+            setSnapState({ endpoint: null, segment: null });
+            setGhostPoint(null);
+            setDrawHover(null);
+            setIsDrawingCurve('drawing');
+            return;
+          }
+
           if (e.shiftKey) {
              snappedCoords = applyShiftSnap(snappedCoords, currentPath[currentPath.length - 1], true);
           }
@@ -1792,11 +2087,37 @@ export default function App() {
         lastPointerDownRef.current.refPoint = bestRefPoint || coords;
         setIsDraggingPoints(true);
       };
-      const isDirectPathEdit = !!activeEditLayerId && showNodes;
+      const isDirectPathEdit = !!activeEditGroupId && showNodes;
       const buildPathSelection = (pathIndex) => {
         const path = paths[pathIndex];
         if (!path) return [];
         return path.points.map((_, idx) => ({ pathIndex, pointIndex: idx }));
+      };
+      const buildGroupPathIndices = (pathIndex) => {
+        const path = paths[pathIndex];
+        if (!path) return [];
+        const groupId = resolvePathEditGroupId(path);
+        if (groupId == null) return [pathIndex];
+        const members = [];
+        paths.forEach((candidate, idx) => {
+          if (!isPathVisible(candidate) || isPathLocked(candidate)) return;
+          if (resolvePathEditGroupId(candidate) === groupId) {
+            members.push(idx);
+          }
+        });
+        return members.length > 0 ? members : [pathIndex];
+      };
+      const buildGroupSelection = (pathIndex) => {
+        const members = buildGroupPathIndices(pathIndex);
+        const selection = [];
+        members.forEach((memberIndex) => {
+          const memberPath = paths[memberIndex];
+          if (!memberPath) return;
+          memberPath.points.forEach((_, pointIndex) => {
+            selection.push({ pathIndex: memberIndex, pointIndex });
+          });
+        });
+        return selection;
       };
       const buildEdgeSelection = (segment) => {
         if (!segment) return [];
@@ -2059,7 +2380,8 @@ export default function App() {
 
       if (clickedSegment) {
         const clickedPath = paths[clickedSegment.pathIndex];
-        const clickedPathSelection = buildPathSelection(clickedSegment.pathIndex);
+        const clickedPathSelection = buildGroupSelection(clickedSegment.pathIndex);
+        const clickedGroupPathIndices = new Set(buildGroupPathIndices(clickedSegment.pathIndex));
         const clickedEdgeSelection = buildEdgeSelection(clickedSegment);
         const isDirectClickOnActivePath = isDirectPathEdit && isPathInActiveEditContext(clickedPath);
 
@@ -2083,7 +2405,7 @@ export default function App() {
           setSelectedImageIds([]);
           if (e.shiftKey) {
             if (isPathSelected) {
-              setSelectedPoints(prev => prev.filter(sp => sp.pathIndex !== clickedSegment.pathIndex));
+              setSelectedPoints(prev => prev.filter(sp => !clickedGroupPathIndices.has(sp.pathIndex)));
               return;
             }
             const merged = [...selectedPoints];
@@ -2246,6 +2568,86 @@ export default function App() {
         }
       }
 
+      // 4.2 Check single-point paths (supports entering direct edit mode)
+      let clickedSinglePointPathIndex = -1;
+      for (let i = paths.length - 1; i >= 0; i--) {
+        const path = paths[i];
+        if (!isPathVisible(path) || isPathLocked(path)) continue;
+        if (path.points.length !== 1) continue;
+        const p = path.points[0];
+        const dist = Math.hypot(p.x - coords.x, p.y - coords.y);
+        if (dist < pointHitRadius) {
+          clickedSinglePointPathIndex = i;
+          break;
+        }
+      }
+
+      if (clickedSinglePointPathIndex !== -1) {
+        const path = paths[clickedSinglePointPathIndex];
+        const newSel = buildGroupSelection(clickedSinglePointPathIndex);
+        const clickedGroupPathIndices = new Set(buildGroupPathIndices(clickedSinglePointPathIndex));
+        const isDirectClickOnActivePath = isDirectPathEdit && isPathInActiveEditContext(path);
+        const alreadySelected = newSel.every(nsp => (
+          selectedPoints.some(sp => sp.pathIndex === nsp.pathIndex && sp.pointIndex === nsp.pointIndex)
+        ));
+
+        if (!isDirectClickOnActivePath) {
+          const shouldEnterDirect = isDoubleClick && path && lastClickedPathIdRef.current === path.id;
+          lastClickedPathIdRef.current = path?.id || null;
+
+          if (shouldEnterDirect && path) {
+            setShowNodes(true);
+            setActivePathEditId(path.id);
+            setSelectedPoints([]);
+            setSelectedImageIds([]);
+            setActiveLayerId(path.layerId);
+            return;
+          }
+
+          setActivePathEditId(null);
+          if (e.shiftKey) {
+            if (alreadySelected) {
+              setSelectedPoints(prev => prev.filter(sp => !clickedGroupPathIndices.has(sp.pathIndex)));
+              return;
+            }
+            const merged = [...selectedPoints];
+            newSel.forEach(nsp => {
+              if (!merged.some(sp => sp.pathIndex === nsp.pathIndex && sp.pointIndex === nsp.pointIndex)) {
+                merged.push(nsp);
+              }
+            });
+            setSelectedPoints(merged);
+            startDragging(merged);
+            return;
+          }
+
+          setSelectedPoints(newSel);
+          setSelectedImageIds([]);
+          startDragging(newSel);
+          return;
+        }
+
+        if (e.shiftKey) {
+          if (alreadySelected) {
+            setSelectedPoints(prev => prev.filter(sp => !clickedGroupPathIndices.has(sp.pathIndex)));
+            return;
+          }
+          const merged = [...selectedPoints];
+          newSel.forEach(nsp => {
+            if (!merged.some(sp => sp.pathIndex === nsp.pathIndex && sp.pointIndex === nsp.pointIndex)) {
+              merged.push(nsp);
+            }
+          });
+          setSelectedPoints(merged);
+          startDragging(merged);
+          return;
+        }
+
+        setSelectedPoints(newSel);
+        startDragging(newSel);
+        return;
+      }
+
       // 4.25 Check filled closed path bodies (click-to-select/move)
       let clickedFilledPathIndex = -1;
       for (let i = paths.length - 1; i >= 0; i--) {
@@ -2281,7 +2683,8 @@ export default function App() {
 
       if (clickedFilledPathIndex !== -1) {
         const path = paths[clickedFilledPathIndex];
-        const newSel = buildPathSelection(clickedFilledPathIndex);
+        const newSel = buildGroupSelection(clickedFilledPathIndex);
+        const clickedGroupPathIndices = new Set(buildGroupPathIndices(clickedFilledPathIndex));
         const isDirectClickOnActivePath = isDirectPathEdit && isPathInActiveEditContext(path);
         const alreadySelected = newSel.every(nsp =>
           selectedPoints.some(sp => sp.pathIndex === nsp.pathIndex && sp.pointIndex === nsp.pointIndex)
@@ -2303,7 +2706,7 @@ export default function App() {
           setActivePathEditId(null);
           if (e.shiftKey) {
             if (alreadySelected) {
-              setSelectedPoints(prev => prev.filter(sp => sp.pathIndex !== clickedFilledPathIndex));
+              setSelectedPoints(prev => prev.filter(sp => !clickedGroupPathIndices.has(sp.pathIndex)));
               return;
             }
             const merged = [...selectedPoints];
@@ -2329,7 +2732,7 @@ export default function App() {
 
         if (e.shiftKey) {
           if (alreadySelected) {
-            setSelectedPoints(prev => prev.filter(sp => sp.pathIndex !== clickedFilledPathIndex));
+            setSelectedPoints(prev => prev.filter(sp => !clickedGroupPathIndices.has(sp.pathIndex)));
             return;
           }
           const newSelMerged = [...selectedPoints];
@@ -2661,11 +3064,13 @@ export default function App() {
       let endpointSnap = null;
       let segmentSnap = null;
 
-      if (currentPath.length === 0) {
+      {
         let bestEndpointDist = Infinity;
         for (let i = paths.length - 1; i >= 0; i--) {
           const path = paths[i];
           if (!isPathVisible(path) || isPathLocked(path) || path.isClosed || path.points.length === 0) continue;
+          if (activePathEditId && !isPathInActiveEditContext(path)) continue;
+          if (currentPath.length > 0 && currentPathInfo?.resumePathId != null && path.id === currentPathInfo.resumePathId) continue;
           const endpointIndices = path.points.length === 1 ? [0] : [0, path.points.length - 1];
           for (const pointIndex of endpointIndices) {
             const endpoint = path.points[pointIndex];
@@ -3203,14 +3608,19 @@ export default function App() {
           const count = layers.filter(l => l.itemType === shapeType).length;
           const newLayer = reusableLayerId ? null : createLayer(shapeType, count);
           const targetLayerId = reusableLayerId || newLayer.id;
+          const newPathId = Date.now();
           const newPath = {
-            id: Date.now(),
+            id: newPathId,
             points: generated.points,
             isClosed: generated.isClosed,
             layerId: targetLayerId,
             itemType: shapeType,
             fillEnabled: pathStyleDefaults.fillEnabled,
-            strokeEnabled: pathStyleDefaults.strokeEnabled
+            strokeEnabled: pathStyleDefaults.strokeEnabled,
+            strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
+            strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
+            strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+            editGroupId: activeEditGroupId || `path-${newPathId}`
           };
           const nextPaths = [...paths, newPath];
 
@@ -3263,19 +3673,30 @@ export default function App() {
             finalPath.pop(); // Remove redundant end point and close loop
           }
         }
+
+        const simplificationTolerance = (isMobile ? 2.8 : 2) / zoom;
+        finalPath = simplifyPolylinePoints(finalPath, simplificationTolerance);
+        if (isClosed && finalPath.length < 3) {
+          isClosed = false;
+        }
         
         const count = layers.filter(l => l.itemType === 'vector').length;
         const reusableLayerId = resolveReusableLayerId('vector');
         const newLayer = reusableLayerId ? null : createLayer('vector', count);
         const targetLayerId = reusableLayerId || newLayer.id;
+        const newPathId = Date.now();
         const newPath = {
-          id: Date.now(),
+          id: newPathId,
           points: finalPath,
           isClosed,
           layerId: targetLayerId,
           itemType: 'vector',
           fillEnabled: pathStyleDefaults.fillEnabled,
-          strokeEnabled: pathStyleDefaults.strokeEnabled
+          strokeEnabled: pathStyleDefaults.strokeEnabled,
+          strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
+          strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
+          strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+          editGroupId: activeEditGroupId || `path-${newPathId}`
         };
         const nextPaths = [...paths, newPath];
         if (newLayer) {
@@ -3433,14 +3854,34 @@ export default function App() {
         ? reversePathPoints(currentPath)
         : currentPath.map(clonePoint);
       const resumePathId = currentPathInfo?.resumePathId;
+      const resumeSourcePath = resumePathId != null
+        ? paths.find(path => path.id === resumePathId)
+        : null;
+      const finalPathId = resumePathId ?? Date.now();
+      const finalEditGroupId = currentPathInfo?.editGroupId
+        || resolvePathEditGroupId(resumeSourcePath)
+        || `path-${finalPathId}`;
       const newPath = {
-        id: resumePathId ?? Date.now(),
+        id: finalPathId,
         points: pointsToSave,
         isClosed,
         layerId: targetLayerId,
         itemType: layerType,
         fillEnabled: currentPathInfo?.fillEnabled ?? pathStyleDefaults.fillEnabled,
-        strokeEnabled: currentPathInfo?.strokeEnabled ?? pathStyleDefaults.strokeEnabled
+        strokeEnabled: currentPathInfo?.strokeEnabled ?? pathStyleDefaults.strokeEnabled,
+        strokeWidth: normalizeStrokeWidth(
+          currentPathInfo?.strokeWidth,
+          normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH)
+        ),
+        strokeColor: normalizeStrokeColor(
+          currentPathInfo?.strokeColor,
+          normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR)
+        ),
+        strokeAlign: normalizeStrokeAlign(
+          currentPathInfo?.strokeAlign,
+          normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN)
+        ),
+        editGroupId: finalEditGroupId
       };
       let nextPaths = [...paths, newPath];
       if (resumePathId != null) {
@@ -3503,8 +3944,14 @@ export default function App() {
       setDrawingShape(null);
     }
 
-    if (targetMode !== 'edit') {
+    if (targetMode === 'edit' && ['draw', 'pencil', 'shape'].includes(mode)) {
       setActivePathEditId(null);
+    }
+
+    if (targetMode !== 'edit') {
+      if (!['draw', 'shape', 'pencil'].includes(targetMode)) {
+        setActivePathEditId(null);
+      }
       setSelectedPoints([]);
       setActiveHandle(null);
       setSelectionBox(null);
@@ -3533,16 +3980,21 @@ export default function App() {
     setSelectedImageIds([]);
   };
 
-  const insertImageFromFile = useCallback((file) => {
+  const insertImageFromFile = useCallback((file, options = {}) => {
     if (!file) return false;
     if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;
 
+    const layerType = options.layerType || 'image';
+    const initialOpacity = Number.isFinite(options.opacity)
+      ? Math.max(0, Math.min(1, options.opacity))
+      : 0.35;
+    const shouldOpenImagePanel = options.openImagePanel !== false;
     const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = () => {
       commitHistory({ paths, currentPath, images, layers });
-      const count = layers.filter(l => l.itemType === 'image').length;
-      const newLayer = createLayer('image', count);
+      const count = layers.filter(l => l.itemType === layerType).length;
+      const newLayer = createLayer(layerType, count);
       setLayers(prev => [newLayer, ...prev]);
       setActiveLayerId(newLayer.id);
 
@@ -3564,19 +4016,54 @@ export default function App() {
           return Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1;
         })(),
         rotation: 0,
-        opacity: 0.35,
+        opacity: initialOpacity,
         locked: false,
         layerId: newLayer.id
       };
       setImages(prev => [...prev, newImg]);
       setSelectedImageIds([newImg.id]);
       setSelectedPoints([]);
-      setOpenPanels(prev => ({ ...prev, image: true }));
-      setExpandedPanel('image');
+      if (shouldOpenImagePanel) {
+        setOpenPanels(prev => ({ ...prev, image: true }));
+        setExpandedPanel('image');
+      }
     };
     img.src = url;
     return true;
   }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers, viewportSize.width, viewportSize.height]);
+
+  const insertTextFromPrompt = useCallback(() => {
+    if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;
+    const rawText = window.prompt('Enter text', 'Text');
+    if (rawText == null) return false;
+
+    const normalizedLines = rawText
+      .split(/\r?\n/)
+      .map(line => line.trimEnd())
+      .filter((line, lineIndex, lines) => line.trim().length > 0 || (lines.length === 1 && lineIndex === 0));
+    if (normalizedLines.length === 0) return false;
+
+    const fontSize = 96;
+    const lineHeight = Math.round(fontSize * 1.14);
+    const padding = 24;
+    const maxCharCount = normalizedLines.reduce((maxChars, line) => Math.max(maxChars, line.length), 1);
+    const width = Math.max(96, Math.ceil(maxCharCount * fontSize * 0.62) + padding * 2);
+    const height = Math.max(fontSize + padding * 2, normalizedLines.length * lineHeight + padding * 2);
+    const fillColor = normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR);
+    const baseline = padding + fontSize;
+    const tspans = normalizedLines.map((line, index) => (
+      `<tspan x="${padding}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line || ' ')}</tspan>`
+    )).join('');
+
+    const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><text x="${padding}" y="${baseline}" font-size="${fontSize}" font-family="Arial, sans-serif" fill="${fillColor}">${tspans}</text></svg>`;
+    const file = new File(
+      [new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' })],
+      `text-${Date.now()}.svg`,
+      { type: 'image/svg+xml' }
+    );
+
+    return insertImageFromFile(file, { layerType: 'text', opacity: 1 });
+  }, [activeLayerId, lockedLayerIds, pathStyleDefaults.strokeColor, insertImageFromFile]);
 
   const pasteFromAvailableClipboard = useCallback(async () => {
     if (copiedContentRef.current && insertClipboardPayload(copiedContentRef.current)) {
@@ -4096,8 +4583,9 @@ export default function App() {
     const pathMarkup = exportPaths.map(path => {
       const d = pointsToPath(path.points, path.isClosed);
       const fill = path.fillEnabled ? THEME.main : 'none';
-      const stroke = path.strokeEnabled === false ? 'none' : THEME.main;
-      const strokeWidthValue = stroke === 'none' ? 0 : 1.5;
+      const strokeColor = normalizeStrokeColor(path.strokeColor, DEFAULT_STROKE_COLOR);
+      const stroke = path.strokeEnabled === false ? 'none' : strokeColor;
+      const strokeWidthValue = stroke === 'none' ? 0 : normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH);
       return `<path d="${escapeXml(d)}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
     }).join('');
 
@@ -4350,6 +4838,21 @@ export default function App() {
 
   // --- RENDER HELPERS ---
   const strokeWidth = 1.5 / zoom;
+  const defaultStrokeEnabled = pathStyleDefaults.strokeEnabled !== false;
+  const defaultStrokeRenderWidth = normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH) / zoom;
+  const defaultStrokeRenderColor = normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR);
+  const livePathStroke = currentPathInfo
+    ? {
+        strokeEnabled: currentPathInfo.strokeEnabled !== false,
+        strokeWidth: normalizeStrokeWidth(currentPathInfo.strokeWidth, normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH)),
+        strokeColor: normalizeStrokeColor(currentPathInfo.strokeColor, normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR))
+      }
+    : {
+        strokeEnabled: defaultStrokeEnabled,
+        strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
+        strokeColor: defaultStrokeRenderColor
+      };
+  const livePathStrokeRenderWidth = livePathStroke.strokeWidth / zoom;
 
   let dynamicCursor = 'cursor-default';
   if (mode === 'pan' || isPanning) dynamicCursor = 'cursor-grab active:cursor-grabbing';
@@ -4448,18 +4951,67 @@ export default function App() {
   const fillToggleActive = hasSelectedPaths
     ? selectedPathObjects.every(path => !!path.fillEnabled)
     : pathStyleDefaults.fillEnabled;
-  const strokeToggleActive = true;
+  const strokeToggleActive = hasSelectedPaths
+    ? selectedPathObjects.every(path => path.strokeEnabled !== false)
+    : pathStyleDefaults.strokeEnabled;
+  const representativePathStroke = hasSelectedPaths
+    ? getPathStrokeStyle(selectedPathObjects[0], pathStyleDefaults)
+    : null;
+  const strokePanelStyle = representativePathStroke || {
+    strokeEnabled: pathStyleDefaults.strokeEnabled !== false,
+    strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
+    strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
+    strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN)
+  };
 
   const applyPathStyle = (updates) => {
+    const normalizedUpdates = { ...updates };
+    if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'strokeWidth')) {
+      normalizedUpdates.strokeWidth = normalizeStrokeWidth(normalizedUpdates.strokeWidth, pathStyleDefaults.strokeWidth);
+    }
+    if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'strokeColor')) {
+      normalizedUpdates.strokeColor = normalizeStrokeColor(normalizedUpdates.strokeColor, pathStyleDefaults.strokeColor);
+    }
+    if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'strokeAlign')) {
+      normalizedUpdates.strokeAlign = normalizeStrokeAlign(normalizedUpdates.strokeAlign, pathStyleDefaults.strokeAlign);
+    }
+
     if (hasSelectedPaths) {
       commitHistory({ paths, currentPath, images, layers });
       const selectedSet = new Set(selectedPathIndices);
       setPaths(prev => prev.map((path, idx) => (
-        selectedSet.has(idx) ? { ...path, ...updates } : path
+        selectedSet.has(idx) ? { ...path, ...normalizedUpdates } : path
       )));
       return;
     }
-    setPathStyleDefaults(prev => ({ ...prev, ...updates }));
+    setPathStyleDefaults(prev => ({ ...prev, ...normalizedUpdates }));
+  };
+
+  useEffect(() => {
+    setStrokeWidthInput(String(Number(strokePanelStyle.strokeWidth.toFixed(2))));
+    setStrokeColorInput(strokePanelStyle.strokeColor.replace('#', ''));
+  }, [strokePanelStyle.strokeWidth, strokePanelStyle.strokeColor]);
+
+  const commitStrokeWidthInput = () => {
+    const parsedWidth = normalizeStrokeWidth(strokeWidthInput, strokePanelStyle.strokeWidth);
+    setStrokeWidthInput(String(Number(parsedWidth.toFixed(2))));
+    applyPathStyle({ strokeWidth: parsedWidth, strokeEnabled: true });
+  };
+
+  const handleStrokeWidthInputChange = (value) => {
+    const sanitized = value.replace(/[^0-9.]/g, '');
+    setStrokeWidthInput(sanitized);
+  };
+
+  const commitStrokeColorInput = () => {
+    const normalized = normalizeStrokeColor(`#${strokeColorInput}`, strokePanelStyle.strokeColor);
+    setStrokeColorInput(normalized.replace('#', ''));
+    applyPathStyle({ strokeColor: normalized, strokeEnabled: true });
+  };
+
+  const handleStrokeColorInputChange = (value) => {
+    const sanitized = value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6).toLowerCase();
+    setStrokeColorInput(sanitized);
   };
 
   const selectedLayerIds = new Set();
@@ -4483,14 +5035,14 @@ export default function App() {
     setMobileToolsOpen(false);
     setMobileShapePanelOpen(false);
     setMobilePanelsOpen(false);
-    setOpenPanels({ grid: false, image: false, guides: false, layers: false, export: false });
+    setOpenPanels({ ...CLOSED_PANELS });
     setExpandedPanel(null);
   };
   const openMobilePanel = (panelId) => {
     setMobileContextMenu(null);
     setMobileToolsOpen(false);
     setMobileShapePanelOpen(false);
-    setOpenPanels({ grid: false, image: false, guides: false, layers: false, export: false, [panelId]: true });
+    setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
     setExpandedPanel(panelId);
     setMobilePanelsOpen(true);
   };
@@ -4785,32 +5337,80 @@ export default function App() {
                 if (mode === 'draw' && currentPath.length > 0 && currentPathInfo?.resumePathId === path.id) return null;
                 const pathD = pointsToPath(path.points, path.isClosed);
                 const isSinglePointPath = path.points.length === 1;
+                const pathStroke = getPathStrokeStyle(path, pathStyleDefaults);
+                const renderStrokeWidth = pathStroke.strokeWidth / zoom;
+                const canOffsetStroke = pathStroke.strokeEnabled && path.isClosed && !isSinglePointPath;
+                const effectiveStrokeAlign = canOffsetStroke ? pathStroke.strokeAlign : 'center';
+                const strokeRenderIdBase = `stroke-${toSafeSvgId(path.id)}-${i}`;
 
                 return (
                   <g key={path.id}>
                     {isSinglePointPath ? (
-                      <circle
-                        cx={path.points[0].x}
-                        cy={path.points[0].y}
-                        r={3 / zoom}
-                        fill={THEME.main}
-                        stroke={THEME.main}
-                        strokeWidth={1 / zoom}
-                        vectorEffect="non-scaling-stroke"
-                      />
+                      pathStroke.strokeEnabled ? (
+                        <circle
+                          cx={path.points[0].x}
+                          cy={path.points[0].y}
+                          r={Math.max(2, pathStroke.strokeWidth * 1.5) / zoom}
+                          fill={pathStroke.strokeColor}
+                          stroke={pathStroke.strokeColor}
+                          strokeWidth={1 / zoom}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ) : null
                     ) : (
-                      <path 
-                        d={pathD} 
-                        fill="none" 
-                        stroke={THEME.main} 
-                        strokeWidth={strokeWidth}
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                      />
+                      <>
+                        {pathStroke.strokeEnabled && effectiveStrokeAlign === 'inside' && (
+                          <>
+                            <defs>
+                              <clipPath id={`${strokeRenderIdBase}-inside-clip`}>
+                                <path d={pathD} />
+                              </clipPath>
+                            </defs>
+                            <path
+                              d={pathD}
+                              fill="none"
+                              stroke={pathStroke.strokeColor}
+                              strokeWidth={(renderStrokeWidth * 2)}
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                              clipPath={`url(#${strokeRenderIdBase}-inside-clip)`}
+                            />
+                          </>
+                        )}
+                        {pathStroke.strokeEnabled && effectiveStrokeAlign === 'outside' && (
+                          <>
+                            <defs>
+                              <mask id={`${strokeRenderIdBase}-outside-mask`}>
+                                <rect x="-200000" y="-200000" width="400000" height="400000" fill="white" />
+                                <path d={pathD} fill="black" />
+                              </mask>
+                            </defs>
+                            <path
+                              d={pathD}
+                              fill="none"
+                              stroke={pathStroke.strokeColor}
+                              strokeWidth={(renderStrokeWidth * 2)}
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                              mask={`url(#${strokeRenderIdBase}-outside-mask)`}
+                            />
+                          </>
+                        )}
+                        {pathStroke.strokeEnabled && effectiveStrokeAlign === 'center' && (
+                          <path
+                            d={pathD}
+                            fill="none"
+                            stroke={pathStroke.strokeColor}
+                            strokeWidth={renderStrokeWidth}
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                        )}
+                      </>
                     )}
                     
                     {/* Nodes and Handles (controlled by Show Nodes, hidden only in pencil mode, and when unlocked) */}
-                    {showNodes && mode === 'edit' && !layer.locked && activeEditLayerId != null && path.layerId === activeEditLayerId && (
+                    {showNodes && (mode === 'edit' || mode === 'draw') && !layer.locked && activeEditGroupId != null && isPathInActiveEditContext(path) && (
                       <g>
                         {/* Draw Bezier Handles for ALL Points (Persistent) */}
                         {path.points.map((p, j) => {
@@ -4950,8 +5550,8 @@ export default function App() {
                  shapeType !== 'line'
               )}
               fill="none"
-              stroke={THEME.main}
-              strokeWidth={strokeWidth}
+              stroke={defaultStrokeEnabled ? defaultStrokeRenderColor : 'none'}
+              strokeWidth={defaultStrokeEnabled ? defaultStrokeRenderWidth : 0}
               strokeLinejoin="round"
               strokeLinecap="round"
             />
@@ -5026,8 +5626,8 @@ export default function App() {
               <path 
                 d={pointsToPath(currentPath, isDrawingCurve === 'closing')} 
                 fill="none" 
-                stroke={THEME.main} 
-                strokeWidth={strokeWidth}
+                stroke={livePathStroke.strokeEnabled ? livePathStroke.strokeColor : 'none'} 
+                strokeWidth={livePathStroke.strokeEnabled ? livePathStrokeRenderWidth : 0}
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
@@ -5305,6 +5905,14 @@ export default function App() {
                     icon={<Droplet size={14} />}
                     label="Fill"
                   />
+                  <MobileToolButton
+                    active={openPanels.stroke}
+                    onClick={() => {
+                      openMobilePanel('stroke');
+                    }}
+                    icon={<Minus size={14} />}
+                    label="Stroke"
+                  />
                   <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
                   <MobileToolButton
                     onClick={() => {
@@ -5313,6 +5921,14 @@ export default function App() {
                     }}
                     icon={<ImageIcon size={14} />}
                     label="Image"
+                  />
+                  <MobileToolButton
+                    onClick={() => {
+                      closeAllPanels();
+                      insertTextFromPrompt();
+                    }}
+                    icon={<Type size={14} />}
+                    label="Text"
                   />
                   <MobileToolButton
                     active={openPanels.grid}
@@ -5608,6 +6224,83 @@ export default function App() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {panel.id === 'stroke' && (
+                    <div className="p-3.5 flex flex-col gap-3">
+                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e8dfdb]">
+                        <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest">Enable Stroke</label>
+                        <button
+                          onClick={() => applyPathStyle({ strokeEnabled: !strokeToggleActive })}
+                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${strokeToggleActive ? 'bg-[#4a2622]' : 'bg-[#d4c8c5]'}`}
+                          title={strokeToggleActive ? 'Disable Stroke' : 'Enable Stroke'}
+                        >
+                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${strokeToggleActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-[1fr_88px] gap-2">
+                        <div className="h-8 flex items-center gap-2 bg-[#f4f1ed] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d4c8c5] transition-all">
+                          <input
+                            type="color"
+                            value={strokePanelStyle.strokeColor}
+                            onChange={(e) => {
+                              const next = normalizeStrokeColor(e.target.value, strokePanelStyle.strokeColor);
+                              setStrokeColorInput(next.replace('#', ''));
+                              applyPathStyle({ strokeColor: next, strokeEnabled: true });
+                            }}
+                            className="h-5 w-5 p-0 border border-[#d4c8c5] rounded cursor-pointer bg-transparent"
+                            title="Stroke Color"
+                          />
+                          <input
+                            type="text"
+                            value={strokeColorInput}
+                            onChange={(e) => handleStrokeColorInputChange(e.target.value)}
+                            onBlur={commitStrokeColorInput}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                commitStrokeColorInput();
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#4a2622] font-mono uppercase"
+                            placeholder="4A2622"
+                            maxLength={6}
+                          />
+                        </div>
+                        <div className="h-8 flex items-center gap-1 bg-[#f4f1ed] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d4c8c5] transition-all">
+                          <input
+                            type="text"
+                            value={strokeWidthInput}
+                            onChange={(e) => handleStrokeWidthInputChange(e.target.value)}
+                            onBlur={commitStrokeWidthInput}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                commitStrokeWidthInput();
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-[#4a2622] font-mono"
+                            placeholder="1.5"
+                          />
+                          <span className="text-xs text-[#8c746f] font-mono select-none">px</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[1fr] gap-2">
+                        <select
+                          value={strokePanelStyle.strokeAlign}
+                          onChange={(e) => applyPathStyle({ strokeAlign: e.target.value })}
+                          className="h-8 bg-[#f4f1ed] rounded-md border border-transparent px-2 text-xs text-[#4a2622] focus:outline-none focus:ring-1 focus:ring-[#d4c8c5]"
+                        >
+                          <option value="center">Center</option>
+                          <option value="inside">Inside</option>
+                          <option value="outside">Outside</option>
+                        </select>
+                      </div>
                     </div>
                   )}
 
@@ -5921,6 +6614,12 @@ export default function App() {
             label="Image Settings" 
             hotkey="U"
           />
+          <ToolButton
+            active={false}
+            onClick={insertTextFromPrompt}
+            icon={<Type size={20} />}
+            label="Add Text"
+          />
           <ToolButton 
             active={openPanels.grid} 
             onClick={() => togglePanel('grid')} 
@@ -5982,10 +6681,10 @@ export default function App() {
             label={hasSelectedPaths ? "Toggle Fill (Selection)" : "Toggle Fill (Default)"}
           />
           <ToolButton
-            active={strokeToggleActive}
-            onClick={() => {}}
+            active={openPanels.stroke}
+            onClick={() => togglePanel('stroke')}
             icon={<Minus size={20} />}
-            label={hasSelectedPaths ? "Toggle Stroke (Selection)" : "Toggle Stroke (Default)"}
+            label={hasSelectedPaths ? "Stroke Settings (Selection)" : "Stroke Settings (Default)"}
           />
         </div>
 
