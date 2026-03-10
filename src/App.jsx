@@ -828,6 +828,20 @@ export default function App() {
   const touchPointsRef = useRef(new Map());
   const pinchGestureRef = useRef({ active: false, lastDistance: 0, lastMidpoint: null });
   const pinchWasActiveRef = useRef(false);
+  const pendingTouchDrawActionRef = useRef({
+    active: false,
+    pointerId: null,
+    prevPath: [],
+    prevInfo: null,
+    prevPaths: null,
+    prevLayers: null,
+    prevActiveLayerId: null,
+    prevGhostPoint: null,
+    prevDrawHover: null,
+    prevHoveredStartPoint: false,
+    prevIsDrawingCurve: false,
+    prevSnapState: { endpoint: null, segment: null }
+  });
   const copiedContentRef = useRef(null);
 
   const svgRef = useRef(null);
@@ -864,6 +878,87 @@ export default function App() {
       triggered: false
     };
   }, []);
+
+  const clearPendingTouchDrawAction = useCallback(() => {
+    pendingTouchDrawActionRef.current = {
+      active: false,
+      pointerId: null,
+      prevPath: [],
+      prevInfo: null,
+      prevPaths: null,
+      prevLayers: null,
+      prevActiveLayerId: null,
+      prevGhostPoint: null,
+      prevDrawHover: null,
+      prevHoveredStartPoint: false,
+      prevIsDrawingCurve: false,
+      prevSnapState: { endpoint: null, segment: null }
+    };
+  }, []);
+
+  const beginPendingTouchDrawAction = useCallback((pointerId, snapshot = {}) => {
+    pendingTouchDrawActionRef.current = {
+      active: true,
+      pointerId,
+      prevPath: (snapshot.path || []).map(clonePoint),
+      prevInfo: snapshot.info
+        ? {
+            ...snapshot.info,
+            mergedPathIds: Array.isArray(snapshot.info.mergedPathIds) ? [...snapshot.info.mergedPathIds] : snapshot.info.mergedPathIds
+          }
+        : null,
+      prevPaths: snapshot.paths || null,
+      prevLayers: snapshot.layers || null,
+      prevActiveLayerId: snapshot.activeLayerId ?? null,
+      prevGhostPoint: snapshot.ghostPoint ? { ...snapshot.ghostPoint } : null,
+      prevDrawHover: snapshot.drawHover ? { ...snapshot.drawHover } : null,
+      prevHoveredStartPoint: !!snapshot.hoveredStartPoint,
+      prevIsDrawingCurve: snapshot.isDrawingCurve || false,
+      prevSnapState: snapshot.snapState
+        ? {
+            endpoint: snapshot.snapState.endpoint ? { ...snapshot.snapState.endpoint } : null,
+            segment: snapshot.snapState.segment ? { ...snapshot.snapState.segment } : null
+          }
+        : { endpoint: null, segment: null }
+    };
+  }, []);
+
+  const rollbackPendingTouchDrawAction = useCallback(() => {
+    const pending = pendingTouchDrawActionRef.current;
+    if (!pending.active) return false;
+    if (pending.prevPaths) {
+      setPaths(pending.prevPaths);
+    }
+    if (pending.prevLayers) {
+      setLayers(pending.prevLayers);
+    }
+    setActiveLayerId(pending.prevActiveLayerId ?? null);
+    setCurrentPath((pending.prevPath || []).map(clonePoint));
+    setCurrentPathInfo(
+      pending.prevInfo
+        ? {
+            ...pending.prevInfo,
+            mergedPathIds: Array.isArray(pending.prevInfo.mergedPathIds)
+              ? [...pending.prevInfo.mergedPathIds]
+              : pending.prevInfo.mergedPathIds
+          }
+        : null
+    );
+    setIsDrawingCurve(pending.prevIsDrawingCurve || false);
+    setGhostPoint(pending.prevGhostPoint ? { ...pending.prevGhostPoint } : null);
+    setDrawHover(pending.prevDrawHover ? { ...pending.prevDrawHover } : null);
+    setHoveredStartPoint(!!pending.prevHoveredStartPoint);
+    setSnapState(
+      pending.prevSnapState
+        ? {
+            endpoint: pending.prevSnapState.endpoint ? { ...pending.prevSnapState.endpoint } : null,
+            segment: pending.prevSnapState.segment ? { ...pending.prevSnapState.segment } : null
+          }
+        : { endpoint: null, segment: null }
+    );
+    clearPendingTouchDrawAction();
+    return true;
+  }, [clearPendingTouchDrawAction]);
 
   const getCanvasCoords = useCallback((clientX, clientY) => {
     return {
@@ -1772,8 +1867,9 @@ export default function App() {
 
   const handlePointerDown = (e) => {
     capturePointer(e);
+    const isTouchLikePointer = e.pointerType === 'touch' || e.pointerType === 'pen';
 
-    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+    if (isTouchLikePointer) {
       touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touchPointsRef.current.size >= 2) {
         const [p1, p2] = Array.from(touchPointsRef.current.values());
@@ -1783,6 +1879,7 @@ export default function App() {
           lastMidpoint: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
         };
         pinchWasActiveRef.current = true;
+        rollbackPendingTouchDrawAction();
         clearMobileLongPress();
         setIsPanning(false);
         return;
@@ -1798,6 +1895,9 @@ export default function App() {
     };
     if (showShapeMenu) setShowShapeMenu(false);
     setHoveredHandle(null);
+    if (!(mode === 'draw' && isTouchLikePointer)) {
+      clearPendingTouchDrawAction();
+    }
 
     if (e.button === 1 || mode === 'pan') { 
       setIsPanning(true);
@@ -1904,6 +2004,22 @@ export default function App() {
     }
 
     if (mode === 'draw') {
+      if (isTouchLikePointer) {
+        beginPendingTouchDrawAction(e.pointerId ?? null, {
+          path: currentPath,
+          info: currentPathInfo,
+          paths,
+          layers,
+          activeLayerId,
+          ghostPoint,
+          drawHover,
+          hoveredStartPoint,
+          isDrawingCurve,
+          snapState
+        });
+      } else {
+        clearPendingTouchDrawAction();
+      }
 
       if (currentPath.length === 0) {
         let endpointSnapInfo = snapState.endpoint;
@@ -3555,15 +3671,17 @@ export default function App() {
 
   const handlePointerUp = (e) => {
     releasePointer(e);
+    const isTouchLikePointer = e.pointerType === 'touch' || e.pointerType === 'pen';
     touchPointsRef.current.delete(e.pointerId);
     if (touchPointsRef.current.size < 2) {
       pinchGestureRef.current = { active: false, lastDistance: 0, lastMidpoint: null };
-      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      if (isTouchLikePointer) {
         setIsPanning(false);
       }
     }
     if (pinchGestureRef.current.active) return;
-    if (pinchWasActiveRef.current && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+    if (pinchWasActiveRef.current && isTouchLikePointer) {
+      clearPendingTouchDrawAction();
       if (touchPointsRef.current.size === 0) {
         pinchWasActiveRef.current = false;
         if (mode === 'shape') {
@@ -3578,6 +3696,10 @@ export default function App() {
         }
       }
       return;
+    }
+    const pendingTouchDrawAction = pendingTouchDrawActionRef.current;
+    if (pendingTouchDrawAction.active && pendingTouchDrawAction.pointerId === (e.pointerId ?? null)) {
+      clearPendingTouchDrawAction();
     }
 
     const longPressState = mobileLongPressRef.current;
@@ -3722,6 +3844,7 @@ export default function App() {
         finishPath(true);
       }
       setIsDrawingCurve(false);
+      clearPendingTouchDrawAction();
     } else if (mode === 'edit') {
       if (hasDraggedRef.current) {
         commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers });
@@ -3917,6 +4040,7 @@ export default function App() {
     setHoveredStartPoint(false);
     setIsDrawingCurve(false);
     setSnapState({ endpoint: null, segment: null });
+    clearPendingTouchDrawAction();
   };
 
   const changeMode = (newMode) => {
@@ -3927,6 +4051,7 @@ export default function App() {
     }
     setMobileContextMenu(null);
     clearMobileLongPress();
+    clearPendingTouchDrawAction();
     setMode(targetMode);
     setDrawHover(null);
     setHoveredHandle(null);
@@ -3978,6 +4103,7 @@ export default function App() {
     setDrawingShape(null);
     setCurrentPathInfo(null);
     setSelectedImageIds([]);
+    clearPendingTouchDrawAction();
   };
 
   const insertImageFromFile = useCallback((file, options = {}) => {
