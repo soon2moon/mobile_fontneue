@@ -852,15 +852,14 @@ export default function App() {
   const lockedLayerIds = new Set(layers.filter(l => l.locked).map(l => l.id));
   const isPathVisible = (path) => visibleLayerIds.has(path.layerId);
   const isPathLocked = (path) => lockedLayerIds.has(path.layerId);
-  const resolveReusableLayerId = useCallback((itemType) => {
-    if (!activeLayerId) return null;
-    const layer = layers.find(candidate => candidate.id === activeLayerId);
+  const resolveEditContextLayerId = useCallback(() => {
+    if (!activePathEditId) return null;
+    const contextPath = paths.find(candidate => candidate.id === activePathEditId);
+    if (!contextPath) return null;
+    const layer = layers.find(candidate => candidate.id === contextPath.layerId);
     if (!layer || !layer.visible || layer.locked) return null;
-    if (itemType === 'vector') {
-      return layer.itemType === 'vector' ? layer.id : null;
-    }
-    return layer.itemType === itemType ? layer.id : null;
-  }, [activeLayerId, layers]);
+    return layer.id;
+  }, [activePathEditId, paths, layers]);
   const clearMobileLongPress = useCallback(() => {
     const longPressState = mobileLongPressRef.current;
     if (longPressState.timerId) {
@@ -1971,7 +1970,7 @@ export default function App() {
         hOut: { x: coords.x, y: coords.y } 
       };
       setCurrentPathInfo({
-        layerId: (activeEditGroupId && activeEditPath?.layerId) || resolveReusableLayerId('vector'),
+        layerId: resolveEditContextLayerId(),
         itemType: 'vector',
         fillEnabled: pathStyleDefaults.fillEnabled,
         strokeEnabled: pathStyleDefaults.strokeEnabled,
@@ -2053,7 +2052,7 @@ export default function App() {
             hOut: { x: drawStart.x, y: drawStart.y }
           };
           setCurrentPathInfo({
-            layerId: (activeEditGroupId && activeEditPath?.layerId) || resolveReusableLayerId('vector'),
+            layerId: resolveEditContextLayerId(),
             itemType: 'vector',
             fillEnabled: pathStyleDefaults.fillEnabled,
             strokeEnabled: pathStyleDefaults.strokeEnabled,
@@ -3707,7 +3706,7 @@ export default function App() {
           const generated = generateShapePath(drawingShape.startX, drawingShape.startY, drawingShape.currentX, drawingShape.currentY, shapeType, drawingShape.shiftKey);
           commitHistory({ paths, currentPath, images, layers });
           
-          const reusableLayerId = resolveReusableLayerId(shapeType);
+          const reusableLayerId = resolveEditContextLayerId();
           const count = layers.filter(l => l.itemType === shapeType).length;
           const newLayer = reusableLayerId ? null : createLayer(shapeType, count);
           const targetLayerId = reusableLayerId || newLayer.id;
@@ -3784,7 +3783,7 @@ export default function App() {
         }
         
         const count = layers.filter(l => l.itemType === 'vector').length;
-        const reusableLayerId = resolveReusableLayerId('vector');
+        const reusableLayerId = resolveEditContextLayerId();
         const newLayer = reusableLayerId ? null : createLayer('vector', count);
         const targetLayerId = reusableLayerId || newLayer.id;
         const newPathId = Date.now();
