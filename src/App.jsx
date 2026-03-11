@@ -726,13 +726,11 @@ export default function App() {
   const [mobileBottomInset, setMobileBottomInset] = useState(0);
   const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
   const [mobileContextMenu, setMobileContextMenu] = useState(null);
-  const [mobileTopFlash, setMobileTopFlash] = useState({ undo: false, redo: false, zoomOut: false, zoomIn: false });
   const [mobileExportScope, setMobileExportScope] = useState('selection');
   const [mobileExportFormat, setMobileExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
   const [strokeWidthInput, setStrokeWidthInput] = useState(String(DEFAULT_STROKE_WIDTH));
   const [strokeColorInput, setStrokeColorInput] = useState(DEFAULT_STROKE_COLOR.replace('#', ''));
-  const mobileTopFlashTimersRef = useRef({});
   const mobileToolbarShellRef = useRef(null);
   const mobileLongPressRef = useRef({ timerId: null, pointerId: null, startX: 0, startY: 0, targetType: null, targetId: null, triggered: false });
   
@@ -1062,25 +1060,8 @@ export default function App() {
   }, [isMobile, clearMobileLongPress]);
 
   useEffect(() => () => {
-    Object.values(mobileTopFlashTimersRef.current).forEach(timer => {
-      if (timer) clearTimeout(timer);
-    });
-  }, []);
-
-  useEffect(() => () => {
     clearMobileLongPress();
   }, [clearMobileLongPress]);
-
-  const triggerMobileTopFlash = useCallback((key) => {
-    setMobileTopFlash(prev => ({ ...prev, [key]: true }));
-    if (mobileTopFlashTimersRef.current[key]) {
-      clearTimeout(mobileTopFlashTimersRef.current[key]);
-    }
-    mobileTopFlashTimersRef.current[key] = setTimeout(() => {
-      setMobileTopFlash(prev => ({ ...prev, [key]: false }));
-      mobileTopFlashTimersRef.current[key] = null;
-    }, 150);
-  }, []);
 
   const shortestDeltaDeg = (current, previous) => {
     let delta = current - previous;
@@ -5201,19 +5182,15 @@ export default function App() {
     return <Square size={size} />;
   };
   const handleMobileUndo = () => {
-    triggerMobileTopFlash('undo');
     handleUndo();
   };
   const handleMobileRedo = () => {
-    triggerMobileTopFlash('redo');
     handleRedo();
   };
   const handleMobileZoomOut = () => {
-    triggerMobileTopFlash('zoomOut');
     stepZoom(-1);
   };
   const handleMobileZoomIn = () => {
-    triggerMobileTopFlash('zoomIn');
     stepZoom(1);
   };
   const resetZoomToHundred = () => {
@@ -5947,11 +5924,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleMobileUndo}
-                className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
-                  mobileTopFlash.undo
-                    ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
-                    : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
-                }`}
+                className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Undo"
               >
                 <RefreshCw size={13} className="-scale-x-100" />
@@ -5959,11 +5932,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleMobileRedo}
-                className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
-                  mobileTopFlash.redo
-                    ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
-                    : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
-                }`}
+                className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Redo"
               >
                 <RefreshCw size={13} />
@@ -5973,7 +5942,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={resetZoomToHundred}
-                className="w-[44px] text-[12px] leading-none font-semibold font-mono text-[#7c6a66] text-center rounded-[8px] transition-colors hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1]"
+                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#7c6a66] bg-transparent hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Reset zoom to 100%"
               >
                 {Math.round(zoom * 100)}%
@@ -5982,11 +5951,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleMobileZoomOut}
-                  className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
-                    mobileTopFlash.zoomOut
-                      ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
-                      : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
-                  }`}
+                  className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                   title="Zoom Out"
                 >
                   <Minus size={13} />
@@ -5994,11 +5959,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleMobileZoomIn}
-                  className={`h-8 w-8 rounded-[8px] border transition-all duration-150 flex items-center justify-center ${
-                    mobileTopFlash.zoomIn
-                      ? 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]'
-                      : 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622]'
-                  }`}
+                  className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                   title="Zoom In"
                 >
                   <Plus size={13} />
