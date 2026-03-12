@@ -5245,6 +5245,11 @@ export default function App() {
         input[type="number"] {
           -moz-appearance: textfield;
         }
+        button,
+        [role='button'] {
+          -webkit-tap-highlight-color: transparent;
+          tap-highlight-color: transparent;
+        }
         .cursor-pen {
           cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%234a2622' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19l7-7 3 3-7 7-3-3z'/%3E%3Cpath d='M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='M2 2l7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='2'/%3E%3C/svg%3E") 2 2, crosshair !important;
         }
@@ -5930,6 +5935,8 @@ export default function App() {
                 onClick={handleMobileUndo}
                 onPointerUp={clearTapFocus}
                 onPointerCancel={clearTapFocus}
+                onTouchEnd={clearTapFocus}
+                onMouseUp={clearTapFocus}
                 className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Undo"
               >
@@ -5940,6 +5947,8 @@ export default function App() {
                 onClick={handleMobileRedo}
                 onPointerUp={clearTapFocus}
                 onPointerCancel={clearTapFocus}
+                onTouchEnd={clearTapFocus}
+                onMouseUp={clearTapFocus}
                 className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Redo"
               >
@@ -5952,6 +5961,8 @@ export default function App() {
                 onClick={resetZoomToHundred}
                 onPointerUp={clearTapFocus}
                 onPointerCancel={clearTapFocus}
+                onTouchEnd={clearTapFocus}
+                onMouseUp={clearTapFocus}
                 className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#7c6a66] bg-transparent active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Reset zoom to 100%"
               >
@@ -5963,6 +5974,8 @@ export default function App() {
                   onClick={handleMobileZoomOut}
                   onPointerUp={clearTapFocus}
                   onPointerCancel={clearTapFocus}
+                  onTouchEnd={clearTapFocus}
+                  onMouseUp={clearTapFocus}
                   className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                   title="Zoom Out"
                 >
@@ -5973,6 +5986,8 @@ export default function App() {
                   onClick={handleMobileZoomIn}
                   onPointerUp={clearTapFocus}
                   onPointerCancel={clearTapFocus}
+                  onTouchEnd={clearTapFocus}
+                  onMouseUp={clearTapFocus}
                   className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                   title="Zoom In"
                 >
@@ -6097,7 +6112,7 @@ export default function App() {
                 <MobileToolButton
                   variant="toolbar"
                   radiusClass="rounded-[8px]"
-                  active={mobileToolsOpen}
+                  active={false}
                   onClick={toggleMobileToolsMenu}
                   icon={<Menu size={16} />}
                   label="Menu"
@@ -6857,6 +6872,8 @@ function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 
       onClick={onClick}
       onPointerUp={handlePointerRelease}
       onPointerCancel={handlePointerRelease}
+      onTouchEnd={handlePointerRelease}
+      onMouseUp={handlePointerRelease}
       title={label}
       className={`h-9 min-w-9 px-1.5 ${radiusClass} border flex items-center justify-center shrink-0 ${
         active ? activeStyle : idleStyle
