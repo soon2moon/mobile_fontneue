@@ -5192,6 +5192,11 @@ export default function App() {
   const handleMobileZoomIn = () => {
     stepZoom(1);
   };
+  const clearTapFocus = (event) => {
+    if (event?.currentTarget && typeof event.currentTarget.blur === 'function') {
+      event.currentTarget.blur();
+    }
+  };
   const resetZoomToHundred = () => {
     const currentZoom = zoomRef.current;
     if (Math.abs(currentZoom - 1) < 0.0001) return;
@@ -5923,7 +5928,9 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleMobileUndo}
-                className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                onPointerUp={clearTapFocus}
+                onPointerCancel={clearTapFocus}
+                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Undo"
               >
                 <RefreshCw size={13} className="-scale-x-100" />
@@ -5931,7 +5938,9 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleMobileRedo}
-                className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                onPointerUp={clearTapFocus}
+                onPointerCancel={clearTapFocus}
+                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Redo"
               >
                 <RefreshCw size={13} />
@@ -5941,7 +5950,9 @@ export default function App() {
               <button
                 type="button"
                 onClick={resetZoomToHundred}
-                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#7c6a66] bg-transparent hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                onPointerUp={clearTapFocus}
+                onPointerCancel={clearTapFocus}
+                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#7c6a66] bg-transparent active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                 title="Reset zoom to 100%"
               >
                 {Math.round(zoom * 100)}%
@@ -5950,7 +5961,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleMobileZoomOut}
-                  className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                  onPointerUp={clearTapFocus}
+                  onPointerCancel={clearTapFocus}
+                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                   title="Zoom Out"
                 >
                   <Minus size={13} />
@@ -5958,7 +5971,9 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleMobileZoomIn}
-                  className="h-8 w-8 rounded-[8px] border border-transparent transition-all duration-150 flex items-center justify-center bg-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                  onPointerUp={clearTapFocus}
+                  onPointerCancel={clearTapFocus}
+                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
                   title="Zoom In"
                 >
                   <Plus size={13} />
@@ -6829,14 +6844,21 @@ function ToolButton({ active, onClick, icon, label, hotkey }) {
 function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg', variant = 'solid' }) {
   const activeStyle = 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]';
   const solidIdleStyle = 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]';
-  const toolbarIdleStyle = 'bg-transparent border-transparent text-[#7c6a66] hover:bg-[#efe4df] hover:text-[#4a2622] active:bg-[#efe4df]';
+  const toolbarIdleStyle = 'bg-transparent border-transparent text-[#7c6a66] active:bg-[#efe4df] active:text-[#4a2622] active:border-[#d4c8c5]';
   const idleStyle = variant === 'toolbar' ? toolbarIdleStyle : solidIdleStyle;
+  const handlePointerRelease = (event) => {
+    if (event?.currentTarget && typeof event.currentTarget.blur === 'function') {
+      event.currentTarget.blur();
+    }
+  };
 
   return (
     <button
       onClick={onClick}
+      onPointerUp={handlePointerRelease}
+      onPointerCancel={handlePointerRelease}
       title={label}
-      className={`h-9 min-w-9 px-1.5 ${radiusClass} border transition-all duration-150 flex items-center justify-center shrink-0 ${
+      className={`h-9 min-w-9 px-1.5 ${radiusClass} border flex items-center justify-center shrink-0 ${
         active ? activeStyle : idleStyle
       }`}
     >
