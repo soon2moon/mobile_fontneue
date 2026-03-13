@@ -3030,7 +3030,8 @@ export default function App() {
           const stepDelta = shortestDeltaDeg(currentAngle, pointRotateRef.current.lastAngle);
           pointRotateRef.current.lastAngle = currentAngle;
           pointRotateRef.current.accumulated += stepDelta;
-          const deltaAngle = e.shiftKey
+          const shouldSnapRotation = e.shiftKey || e.pointerType === 'touch' || e.pointerType === 'pen';
+          const deltaAngle = shouldSnapRotation
             ? Math.round(pointRotateRef.current.accumulated / 15) * 15
             : pointRotateRef.current.accumulated;
           
@@ -3128,7 +3129,8 @@ export default function App() {
           const stepDelta = shortestDeltaDeg(currentAngle, bgRotateRef.current.lastAngle);
           bgRotateRef.current.lastAngle = currentAngle;
           bgRotateRef.current.accumulated += stepDelta;
-          const deltaAngle = e.shiftKey
+          const shouldSnapRotation = e.shiftKey || e.pointerType === 'touch' || e.pointerType === 'pen';
+          const deltaAngle = shouldSnapRotation
             ? Math.round(bgRotateRef.current.accumulated / 15) * 15
             : bgRotateRef.current.accumulated;
           const newRotation = normalizeAngleDeg(init.rotation + deltaAngle);
