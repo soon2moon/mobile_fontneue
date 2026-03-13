@@ -58,6 +58,7 @@ const DEFAULT_CIRCULAR_STEP = 30;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 256; // 25600%
 const PIXEL_GRID_MIN_ZOOM = 8; // 800%
+const SESSION_STORAGE_KEY = 'typolab-session-v1';
 
 const distToSegmentSquared = (p, v, w) => {
   const l2 = (w.x - v.x)**2 + (w.y - v.y)**2;
@@ -374,23 +375,6 @@ const generateEditGroupId = () => `group-${Date.now()}-${Math.random().toString(
 const resolvePathEditGroupId = (path) => (
   path?.editGroupId ?? (path?.id != null ? `path-${path.id}` : null)
 );
-
-const copyToClipboard = (text) => {
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  textArea.style.top = "0";
-  textArea.style.left = "0";
-  textArea.style.position = "fixed";
-  document.body.appendChild(textArea);
-  textArea.focus();
-  textArea.select();
-  try {
-    document.execCommand('copy');
-  } catch (err) {
-    console.error('Fallback: Oops, unable to copy', err);
-  }
-  document.body.removeChild(textArea);
-};
 
 // --- SHAPE GENERATION HELPER ---
 const generateShapePath = (startX, startY, endX, endY, type, shiftKey) => {
@@ -781,6 +765,7 @@ export default function App() {
   const [lastSelectedLayerId, setLastSelectedLayerId] = useState(null);
   const [dragDropTarget, setDragDropTarget] = useState(null); // { id: 'layer-2', position: 'top' | 'bottom' }
   const [draggedLayerId, setDraggedLayerId] = useState(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   
   // Drawing & Editing State
   const [paths, setPaths] = useState([]); 
@@ -971,6 +956,95 @@ export default function App() {
   useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
+
+  useEffect(() => {
+    try {
+      const rawSession = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (!rawSession) {
+        setSessionLoaded(true);
+        return;
+      }
+      const parsedSession = JSON.parse(rawSession);
+      if (Array.isArray(parsedSession.layers)) {
+        setLayers(parsedSession.layers.map(layer => ({ ...layer })));
+      }
+      if (Array.isArray(parsedSession.paths)) {
+        setPaths(parsedSession.paths.map(path => ({
+          ...path,
+          points: Array.isArray(path.points) ? path.points.map(clonePoint) : []
+        })));
+      }
+      if (Array.isArray(parsedSession.images)) {
+        setImages(parsedSession.images.map(image => ({ ...image })));
+      }
+      if (Array.isArray(parsedSession.currentPath)) {
+        setCurrentPath(parsedSession.currentPath.map(clonePoint));
+      }
+      if (parsedSession.currentPathInfo && typeof parsedSession.currentPathInfo === 'object') {
+        setCurrentPathInfo({ ...parsedSession.currentPathInfo });
+      }
+      if (parsedSession.pathStyleDefaults && typeof parsedSession.pathStyleDefaults === 'object') {
+        setPathStyleDefaults(prev => ({ ...prev, ...parsedSession.pathStyleDefaults }));
+      }
+      if (parsedSession.gridConfig && typeof parsedSession.gridConfig === 'object') {
+        setGridConfig(prev => ({ ...prev, ...parsedSession.gridConfig }));
+      }
+      if (parsedSession.guides && typeof parsedSession.guides === 'object') {
+        setGuides(prev => ({ ...prev, ...parsedSession.guides }));
+      }
+      if (typeof parsedSession.showGuides === 'boolean') {
+        setShowGuides(parsedSession.showGuides);
+      }
+      if (typeof parsedSession.showBackgroundAids === 'boolean') {
+        setShowBackgroundAids(parsedSession.showBackgroundAids);
+      }
+      if (typeof parsedSession.activeLayerId === 'string' || parsedSession.activeLayerId === null) {
+        setActiveLayerId(parsedSession.activeLayerId);
+      }
+    } catch (err) {
+      // Ignore invalid session data and continue with defaults.
+    } finally {
+      setSessionLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sessionLoaded) return;
+    const sessionPayload = {
+      layers: layers.map(layer => ({ ...layer })),
+      paths: paths.map(path => ({
+        ...path,
+        points: (path.points || []).map(clonePoint)
+      })),
+      images: images.map(image => ({ ...image })),
+      currentPath: currentPath.map(clonePoint),
+      currentPathInfo: currentPathInfo ? { ...currentPathInfo } : null,
+      pathStyleDefaults: { ...pathStyleDefaults },
+      gridConfig: { ...gridConfig },
+      guides: { ...guides },
+      showGuides,
+      showBackgroundAids,
+      activeLayerId
+    };
+    try {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionPayload));
+    } catch (err) {
+      // Ignore storage quota or permission failures.
+    }
+  }, [
+    sessionLoaded,
+    layers,
+    paths,
+    images,
+    currentPath,
+    currentPathInfo,
+    pathStyleDefaults,
+    gridConfig,
+    guides,
+    showGuides,
+    showBackgroundAids,
+    activeLayerId
+  ]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -1467,40 +1541,6 @@ export default function App() {
     setSelectedImageIds([]);
   }, [paths, currentPath, images, layers, selectedPoints, selectedImageIds, activeLayerId, commitHistory]);
 
-  const deleteImageById = useCallback((imageId) => {
-    const targetImage = images.find(img => img.id === imageId);
-    if (!targetImage) {
-      setMobileContextMenu(null);
-      return;
-    }
-    const targetLayer = layers.find(layer => layer.id === targetImage.layerId);
-    if (!targetLayer || targetLayer.locked || targetImage.locked) {
-      setMobileContextMenu(null);
-      return;
-    }
-
-    commitHistory({ paths, currentPath, images, layers });
-    const nextImages = images.filter(img => img.id !== imageId);
-    setImages(nextImages);
-    setSelectedImageIds(prev => prev.filter(id => id !== imageId));
-    setBgAction(null);
-    setBgInitialState(null);
-
-    const hasPathsInLayer = paths.some(path => path.layerId === targetImage.layerId);
-    const hasOtherImagesInLayer = nextImages.some(img => img.layerId === targetImage.layerId);
-    if (!hasPathsInLayer && !hasOtherImagesInLayer) {
-      setLayers(prevLayers => {
-        const filteredLayers = prevLayers.filter(layer => layer.id !== targetImage.layerId);
-        if (activeLayerId === targetImage.layerId && !filteredLayers.some(layer => layer.id === activeLayerId)) {
-          setActiveLayerId(filteredLayers.length > 0 ? filteredLayers[0].id : null);
-        }
-        return filteredLayers;
-      });
-    }
-
-    setMobileContextMenu(null);
-  }, [images, layers, paths, currentPath, commitHistory, activeLayerId]);
-
   const closeMobileContextMenu = useCallback(() => {
     setMobileContextMenu(null);
   }, []);
@@ -1640,11 +1680,6 @@ export default function App() {
   const writeClipboardPayload = useCallback((payload) => {
     if (!payload) return false;
     copiedContentRef.current = payload;
-    const dataStr = JSON.stringify(payload);
-    copyToClipboard(dataStr);
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(dataStr).catch(() => {});
-    }
     return true;
   }, []);
 
@@ -1796,32 +1831,13 @@ export default function App() {
     return true;
   }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers]);
 
-  const copyPathById = useCallback((pathId) => {
-    const pathIndex = paths.findIndex(path => path.id === pathId);
-    if (pathIndex === -1) return false;
-    const groupSelection = expandPathSelectionToGroups(getPathSelection(pathIndex));
-    const payload = buildClipboardPayload(groupSelection, []);
-    return writeClipboardPayload(payload);
-  }, [paths, expandPathSelectionToGroups, buildClipboardPayload, getPathSelection, writeClipboardPayload]);
-
-  const cutPathById = useCallback((pathId) => {
-    const pathIndex = paths.findIndex(candidate => candidate.id === pathId);
-    if (pathIndex === -1) return false;
-    const groupSelection = expandPathSelectionToGroups(getPathSelection(pathIndex));
-    const groupPathIds = [...new Set(groupSelection.map(point => {
-      const path = paths[point.pathIndex];
-      return path?.id;
-    }).filter(Boolean))];
-    if (groupPathIds.length === 0) return false;
-    const hasLockedPath = groupPathIds.some(id => {
-      const candidatePath = paths.find(path => path.id === id);
-      return candidatePath ? isPathLocked(candidatePath) : false;
-    });
-    if (hasLockedPath) return false;
-    if (!copyPathById(pathId)) return false;
-    removeObjectsByIds(groupPathIds, []);
-    return true;
-  }, [paths, isPathLocked, expandPathSelectionToGroups, getPathSelection, copyPathById, removeObjectsByIds]);
+  const duplicateCurrentSelection = useCallback(() => {
+    const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(selectedPoints);
+    const payload = buildClipboardPayload(effectiveSelection, selectedImageIds);
+    if (!payload) return false;
+    copiedContentRef.current = payload;
+    return insertClipboardPayload(payload);
+  }, [activePathEditId, selectedPoints, selectedImageIds, expandPathSelectionToGroups, buildClipboardPayload, insertClipboardPayload]);
 
   // --- EVENT HANDLERS ---
   const capturePointer = (e) => {
@@ -1920,19 +1936,8 @@ export default function App() {
         setPointAction(null);
         setIsDraggingPoints(false);
 
-        if (longPressTargetType === 'image' && hitImage) {
-          setSelectedImageIds([hitImage.id]);
-          setSelectedPoints([]);
-          setActivePathEditId(null);
-        } else if (longPressTargetType === 'path' && hitPath) {
-          setSelectedPoints(getPathSelection(hitPath.pathIndex));
-          setSelectedImageIds([]);
-          setActivePathEditId(null);
-        }
-
         setMobileContextMenu({
-          type: longPressTargetType,
-          targetId: longPressTargetId,
+          type: 'paste',
           x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
           y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
         });
@@ -3688,10 +3693,63 @@ export default function App() {
     const wasLongPressAction = longPressState.pointerId != null
       && longPressState.pointerId === (e.pointerId ?? null)
       && longPressState.triggered;
+    const shortPressTargetType = longPressState.targetType;
+    const shortPressTargetId = longPressState.targetId;
+    const isShortPressAction = isMobile
+      && isTouchLikePointer
+      && longPressState.pointerId != null
+      && longPressState.pointerId === (e.pointerId ?? null)
+      && !longPressState.triggered
+      && !['draw', 'pencil', 'shape'].includes(mode);
     clearMobileLongPress();
     if (wasLongPressAction) {
       setIsPanning(false);
       return;
+    }
+    if (isShortPressAction && (shortPressTargetType === 'path' || shortPressTargetType === 'image')) {
+      const selectedPathIndicesSet = new Set(selectedPoints.map(point => point.pathIndex));
+      const totalSelectedObjects = selectedPathIndicesSet.size + selectedImageIds.length;
+      pointerGestureRef.current = {
+        pointerId: null,
+        pointerType: 'mouse',
+        startClientX: 0,
+        startClientY: 0,
+        dragActivated: false
+      };
+      setIsPanning(false);
+
+      if (shortPressTargetType === 'path') {
+        const targetPathIndex = paths.findIndex(path => path.id === shortPressTargetId);
+        if (targetPathIndex !== -1) {
+          const keepCurrentSelection = totalSelectedObjects > 1 && selectedPathIndicesSet.has(targetPathIndex);
+          if (!keepCurrentSelection) {
+            setSelectedPoints(getPathSelection(targetPathIndex));
+            setSelectedImageIds([]);
+          }
+          setActivePathEditId(null);
+          setMobileContextMenu({
+            type: 'actions',
+            x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
+            y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+          });
+          return;
+        }
+      }
+
+      if (shortPressTargetType === 'image') {
+        const keepCurrentSelection = totalSelectedObjects > 1 && selectedImageIds.includes(shortPressTargetId);
+        if (!keepCurrentSelection) {
+          setSelectedImageIds([shortPressTargetId]);
+          setSelectedPoints([]);
+        }
+        setActivePathEditId(null);
+        setMobileContextMenu({
+          type: 'actions',
+          x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
+          y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+        });
+        return;
+      }
     }
 
     pointerGestureRef.current = {
@@ -3857,8 +3915,7 @@ export default function App() {
     }
 
     setMobileContextMenu({
-      type: hitImage ? 'image' : (hitPath ? 'path' : 'canvas'),
-      targetId: hitImage ? hitImage.id : (hitPath ? hitPath.path.id : null),
+      type: hitImage || hitPath ? 'actions' : 'paste',
       x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
       y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
     });
@@ -4214,8 +4271,10 @@ export default function App() {
   }, [insertClipboardPayload, insertImageFromFile]);
 
   const handleMobileContextPaste = useCallback(async () => {
-    await pasteFromAvailableClipboard();
-    closeMobileContextMenu();
+    const didPaste = await pasteFromAvailableClipboard();
+    if (didPaste) {
+      closeMobileContextMenu();
+    }
   }, [pasteFromAvailableClipboard, closeMobileContextMenu]);
 
   // --- SKETCH UPLOAD ---
@@ -5875,43 +5934,44 @@ export default function App() {
               >
                 <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 bg-[#fdfcfa] border border-[#e8dfdb] rounded-[12px] shadow-[0_12px_24px_rgba(74,38,34,0.18)] p-1.5">
                   <div className="flex flex-col gap-1">
-                    {mobileContextMenu.type === 'image' && (
-                      <button
-                        type="button"
-                        onClick={() => deleteImageById(mobileContextMenu.targetId)}
-                        className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#7c3f35] active:bg-[#f0dfdc] flex items-center gap-2 text-xs font-semibold"
-                      >
-                        <Trash2 size={14} />
-                        Delete image
-                      </button>
-                    )}
-                    {mobileContextMenu.type === 'path' && (
+                    {mobileContextMenu.type === 'actions' && (
                       <>
                         <button
                           type="button"
                           onClick={() => {
-                            copyPathById(mobileContextMenu.targetId);
+                            copyCurrentSelection();
                             closeMobileContextMenu();
                           }}
                           className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#4a2622] active:bg-[#efe4df] flex items-center gap-2 text-xs font-semibold"
                         >
                           <Copy size={14} />
-                          Copy path
+                          Copy
                         </button>
                         <button
                           type="button"
                           onClick={() => {
-                            cutPathById(mobileContextMenu.targetId);
+                            cutCurrentSelection();
                             closeMobileContextMenu();
                           }}
                           className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#7c3f35] active:bg-[#f0dfdc] flex items-center gap-2 text-xs font-semibold"
                         >
                           <Scissors size={14} />
-                          Cut path
+                          Cut
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            duplicateCurrentSelection();
+                            closeMobileContextMenu();
+                          }}
+                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#4a2622] active:bg-[#efe4df] flex items-center gap-2 text-xs font-semibold"
+                        >
+                          <Plus size={14} />
+                          Duplicate
                         </button>
                       </>
                     )}
-                    {mobileContextMenu.type === 'canvas' && (
+                    {mobileContextMenu.type === 'paste' && (
                       <button
                         type="button"
                         onClick={handleMobileContextPaste}
