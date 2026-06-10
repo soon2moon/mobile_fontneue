@@ -4142,7 +4142,7 @@ export default function App() {
     const layerType = options.layerType || 'image';
     const initialOpacity = Number.isFinite(options.opacity)
       ? Math.max(0, Math.min(1, options.opacity))
-      : 0.35;
+      : 1;
     const shouldOpenImagePanel = options.openImagePanel !== false;
     const url = URL.createObjectURL(file);
     const img = new window.Image();
