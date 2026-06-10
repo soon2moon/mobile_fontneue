@@ -105,6 +105,8 @@ import { useExport } from './hooks/useExport';
 import { useImageImport } from './hooks/useImageImport';
 import { useClipboard } from './hooks/useClipboard';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { usePendingTouchDraw } from './hooks/usePendingTouchDraw';
+import { useUIShell } from './hooks/useUIShell';
 import { usePointerInteraction } from './hooks/usePointerInteraction';
 import { EditorProvider } from './state/EditorContext';
 import DesktopToolbar from './components/Toolbar/DesktopToolbar';
@@ -127,15 +129,20 @@ export default function App() {
     zoomAtScreenPoint,
     stepZoom
   } = useViewport(svgRef);
-  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
-  const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
-  const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
-  const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
-  const [mobileContextMenu, setMobileContextMenu] = useState(null);
+  const uiShell = useUIShell({ isMobile, viewportSize, mobileBottomInset });
+  const {
+    setOpenPanels, setExpandedPanel,
+    togglePanel,
+    closeAllPanels,
+    setMobileToolsOpen,
+    mobileShapePanelOpen, setMobileShapePanelOpen,
+    mobileContextMenu, setMobileContextMenu,
+    closeMobileContextMenu,
+    mobileLongPressRef,
+    clearMobileLongPress
+  } = uiShell;
   const [strokeWidthInput, setStrokeWidthInput] = useState(String(DEFAULT_STROKE_WIDTH));
   const [strokeColorInput, setStrokeColorInput] = useState(DEFAULT_STROKE_COLOR.replace('#', ''));
-  const mobileToolbarShellRef = useRef(null);
-  const mobileLongPressRef = useRef({ timerId: null, pointerId: null, startX: 0, startY: 0, targetType: null, targetId: null, triggered: false });
   
   // Tool State
   const [mode, setMode] = useState('pan'); 
@@ -154,10 +161,6 @@ export default function App() {
   const [drawingShape, setDrawingShape] = useState(null);
   const shapeMenuContainerRef = useRef(null);
   
-  // Panels State (Accordion)
-  const [openPanels, setOpenPanels] = useState(CLOSED_PANELS);
-  const [expandedPanel, setExpandedPanel] = useState(null);
-
   // Grid State
   const [gridConfig, setGridConfig] = useState({
     type: 'none',
@@ -232,20 +235,6 @@ export default function App() {
     showBackgroundAids, setShowBackgroundAids,
     activeLayerId, setActiveLayerId
   });
-  const pendingTouchDrawActionRef = useRef({
-    active: false,
-    pointerId: null,
-    prevPath: [],
-    prevInfo: null,
-    prevPaths: null,
-    prevLayers: null,
-    prevActiveLayerId: null,
-    prevGhostPoint: null,
-    prevDrawHover: null,
-    prevHoveredStartPoint: false,
-    prevIsDrawingCurve: false,
-    prevSnapState: { endpoint: null, segment: null }
-  });
   const lastFocusedPathEditIdRef = useRef(null);
 
   const visibleLayerIds = new Set(layers.filter(l => l.visible).map(l => l.id));
@@ -260,152 +249,23 @@ export default function App() {
     if (!layer || !layer.visible || layer.locked) return null;
     return layer.id;
   }, [activePathEditId, paths, layers]);
-  const clearMobileLongPress = useCallback(() => {
-    const longPressState = mobileLongPressRef.current;
-    if (longPressState.timerId) {
-      clearTimeout(longPressState.timerId);
-    }
-    mobileLongPressRef.current = {
-      timerId: null,
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      targetType: null,
-      targetId: null,
-      triggered: false
-    };
-  }, []);
-
-  const clearPendingTouchDrawAction = useCallback(() => {
-    pendingTouchDrawActionRef.current = {
-      active: false,
-      pointerId: null,
-      prevPath: [],
-      prevInfo: null,
-      prevPaths: null,
-      prevLayers: null,
-      prevActiveLayerId: null,
-      prevGhostPoint: null,
-      prevDrawHover: null,
-      prevHoveredStartPoint: false,
-      prevIsDrawingCurve: false,
-      prevSnapState: { endpoint: null, segment: null }
-    };
-  }, []);
-
-  const beginPendingTouchDrawAction = useCallback((pointerId, snapshot = {}) => {
-    pendingTouchDrawActionRef.current = {
-      active: true,
-      pointerId,
-      prevPath: (snapshot.path || []).map(clonePoint),
-      prevInfo: snapshot.info
-        ? {
-            ...snapshot.info,
-            mergedPathIds: Array.isArray(snapshot.info.mergedPathIds) ? [...snapshot.info.mergedPathIds] : snapshot.info.mergedPathIds
-          }
-        : null,
-      prevPaths: snapshot.paths || null,
-      prevLayers: snapshot.layers || null,
-      prevActiveLayerId: snapshot.activeLayerId ?? null,
-      prevGhostPoint: snapshot.ghostPoint ? { ...snapshot.ghostPoint } : null,
-      prevDrawHover: snapshot.drawHover ? { ...snapshot.drawHover } : null,
-      prevHoveredStartPoint: !!snapshot.hoveredStartPoint,
-      prevIsDrawingCurve: snapshot.isDrawingCurve || false,
-      prevSnapState: snapshot.snapState
-        ? {
-            endpoint: snapshot.snapState.endpoint ? { ...snapshot.snapState.endpoint } : null,
-            segment: snapshot.snapState.segment ? { ...snapshot.snapState.segment } : null
-          }
-        : { endpoint: null, segment: null }
-    };
-  }, []);
-
-  const rollbackPendingTouchDrawAction = useCallback(() => {
-    const pending = pendingTouchDrawActionRef.current;
-    if (!pending.active) return false;
-    if (pending.prevPaths) {
-      setPaths(pending.prevPaths);
-    }
-    if (pending.prevLayers) {
-      setLayers(pending.prevLayers);
-    }
-    setActiveLayerId(pending.prevActiveLayerId ?? null);
-    setCurrentPath((pending.prevPath || []).map(clonePoint));
-    setCurrentPathInfo(
-      pending.prevInfo
-        ? {
-            ...pending.prevInfo,
-            mergedPathIds: Array.isArray(pending.prevInfo.mergedPathIds)
-              ? [...pending.prevInfo.mergedPathIds]
-              : pending.prevInfo.mergedPathIds
-          }
-        : null
-    );
-    setIsDrawingCurve(pending.prevIsDrawingCurve || false);
-    setGhostPoint(pending.prevGhostPoint ? { ...pending.prevGhostPoint } : null);
-    setDrawHover(pending.prevDrawHover ? { ...pending.prevDrawHover } : null);
-    setHoveredStartPoint(!!pending.prevHoveredStartPoint);
-    setSnapState(
-      pending.prevSnapState
-        ? {
-            endpoint: pending.prevSnapState.endpoint ? { ...pending.prevSnapState.endpoint } : null,
-            segment: pending.prevSnapState.segment ? { ...pending.prevSnapState.segment } : null
-          }
-        : { endpoint: null, segment: null }
-    );
-    clearPendingTouchDrawAction();
-    return true;
-  }, [clearPendingTouchDrawAction]);
-
-  useEffect(() => {
-    if (!isMobile) {
-      setMobileToolbarWidth(0);
-      return;
-    }
-    const toolbarShell = mobileToolbarShellRef.current;
-    if (!toolbarShell) return;
-
-    const syncMobileToolbarWidth = () => {
-      const measured = Math.round(toolbarShell.getBoundingClientRect().width);
-      if (measured > 0) {
-        setMobileToolbarWidth(prev => (prev === measured ? prev : measured));
-      }
-    };
-
-    syncMobileToolbarWidth();
-    let observer = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(syncMobileToolbarWidth);
-      observer.observe(toolbarShell);
-    }
-
-    window.addEventListener('resize', syncMobileToolbarWidth);
-    window.visualViewport?.addEventListener('resize', syncMobileToolbarWidth);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', syncMobileToolbarWidth);
-      window.visualViewport?.removeEventListener('resize', syncMobileToolbarWidth);
-    };
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (!isMobile) {
-      setMobileToolsOpen(false);
-      setMobilePanelsOpen(false);
-      setMobileShapePanelOpen(false);
-    }
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (!isMobile) {
-      setMobileContextMenu(null);
-      clearMobileLongPress();
-    }
-  }, [isMobile, clearMobileLongPress]);
-
-  useEffect(() => () => {
-    clearMobileLongPress();
-  }, [clearMobileLongPress]);
+  const {
+    pendingTouchDrawActionRef,
+    clearPendingTouchDrawAction,
+    beginPendingTouchDrawAction,
+    rollbackPendingTouchDrawAction
+  } = usePendingTouchDraw({
+    setPaths,
+    setLayers,
+    setActiveLayerId,
+    setCurrentPath,
+    setCurrentPathInfo,
+    setIsDrawingCurve,
+    setGhostPoint,
+    setDrawHover,
+    setHoveredStartPoint,
+    setSnapState
+  });
 
   // Hit radii are shared by the pointer handlers (hit testing) and the
   // canvas render (handle/anchor visuals), so they live here.
@@ -420,45 +280,6 @@ export default function App() {
     pencilSamplingDistance,
     touchDragThresholdPx
   } = computeHitRadii(isMobile, zoom);
-
-  const togglePanel = (panelId) => {
-    if (isMobile) {
-      const isSameOpen = openPanels[panelId] && expandedPanel === panelId;
-      setMobileToolsOpen(false);
-      setMobileShapePanelOpen(false);
-      if (isSameOpen) {
-        setOpenPanels({ ...CLOSED_PANELS });
-        setExpandedPanel(null);
-        setMobilePanelsOpen(false);
-      } else {
-        setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
-        setExpandedPanel(panelId);
-        setMobilePanelsOpen(true);
-      }
-      return;
-    }
-    setOpenPanels(prev => {
-      const isCurrentlyOpen = prev[panelId];
-      if (isCurrentlyOpen) {
-        if (expandedPanel === panelId) {
-          setExpandedPanel(null);
-          return { ...prev, [panelId]: false };
-        } else {
-          setExpandedPanel(panelId);
-          return prev;
-        }
-      } else {
-        setExpandedPanel(panelId);
-        return { ...prev, [panelId]: true };
-      }
-    });
-  };
-
-  useEffect(() => {
-    if (!Object.values(openPanels).some(Boolean)) {
-      setMobilePanelsOpen(false);
-    }
-  }, [openPanels]);
 
   // Click Outside logic for Shape Dropdown
   useEffect(() => {
@@ -610,10 +431,6 @@ export default function App() {
     setPointAction(null);
     setSelectedImageIds([]);
   }, [paths, currentPath, images, layers, selectedPoints, selectedImageIds, activeLayerId, commitHistory]);
-
-  const closeMobileContextMenu = useCallback(() => {
-    setMobileContextMenu(null);
-  }, []);
 
   const getPathSelection = useCallback((pathIndex) => {
     const path = paths[pathIndex];
@@ -1164,31 +981,6 @@ export default function App() {
     .filter(path => path.isClosed && path.fillEnabled && visibleLayerIds.has(path.layerId))
     .map(path => pointsToPath(path.points, path.isClosed))
     .join(' ');
-  const anyPanelOpen = Object.values(openPanels).some(Boolean);
-  const closeAllPanels = () => {
-    setMobileContextMenu(null);
-    setMobileToolsOpen(false);
-    setMobileShapePanelOpen(false);
-    setMobilePanelsOpen(false);
-    setOpenPanels({ ...CLOSED_PANELS });
-    setExpandedPanel(null);
-  };
-  const openMobilePanel = (panelId) => {
-    setMobileContextMenu(null);
-    setMobileToolsOpen(false);
-    setMobileShapePanelOpen(false);
-    setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
-    setExpandedPanel(panelId);
-    setMobilePanelsOpen(true);
-  };
-  const toggleMobileToolsMenu = () => {
-    if (mobileToolsOpen) {
-      setMobileToolsOpen(false);
-      return;
-    }
-    closeAllPanels();
-    setMobileToolsOpen(true);
-  };
   const toggleMobileShapePanel = () => {
     const shouldOpen = mode !== 'shape' || !mobileShapePanelOpen;
     closeAllPanels();
@@ -1221,50 +1013,21 @@ export default function App() {
   const handleMobileZoomIn = () => {
     stepZoom(1);
   };
-  const clearTapFocus = (event) => {
-    if (event?.currentTarget && typeof event.currentTarget.blur === 'function') {
-      event.currentTarget.blur();
-    }
-  };
   const resetZoomToHundred = () => {
     const currentZoom = zoomRef.current;
     if (Math.abs(currentZoom - 1) < 0.0001) return;
     zoomAtScreenPoint(1 / currentZoom, viewportSize.width / 2, viewportSize.height / 2);
   };
-  const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
-  const mobileControlGapPx = 8;
-  const mobileToolbarRowHeightPx = 48;
-  const mobilePanelOffsetPx = mobileToolbarRowHeightPx + mobileControlGapPx;
-  const mobileToolbarMinimumClearancePx = 44;
-  const mobileToolbarDesignGapPx = 16;
-  const resolvedMobileInsetPx = Math.max(mobileBottomInset, mobileToolbarMinimumClearancePx);
-  const computedBottomInset = `max(env(safe-area-inset-bottom, 0px), ${resolvedMobileInsetPx}px)`;
-  const mobileToolbarBottom = `calc(${computedBottomInset} + ${mobileToolbarDesignGapPx}px)`;
-  const mobileMenuDrawerBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
-  const mobileShapePanelBottom = `calc(${mobileToolbarBottom} + ${mobilePanelOffsetPx}px)`;
-  const mobileToolbarMaxWidth = Math.max(0, viewportSize.width - 16);
-  const measuredMobileToolbarWidth = mobileToolbarWidth > 0
-    ? Math.min(mobileToolbarWidth, mobileToolbarMaxWidth)
-    : mobileToolbarMaxWidth;
-  const mobileToolbarSharedWidthStyle = {
-    width: measuredMobileToolbarWidth > 0 ? `${measuredMobileToolbarWidth}px` : 'calc(100vw - 16px)',
-    maxWidth: 'calc(100vw - 16px)'
-  };
-  const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
   const editor = {
+    ...uiShell,
     activeEditGroupId,
     activeImage,
     activeLayerId,
-    anyMobileOverlayOpen,
-    anyPanelOpen,
     applyPathStyle,
     canExportSelection,
     changeMode,
     clearCanvas,
-    clearTapFocus,
-    closeAllPanels,
-    closeMobileContextMenu,
     commitStrokeColorInput,
     commitStrokeWidthInput,
     compositeFillPathD,
@@ -1288,7 +1051,6 @@ export default function App() {
     editingLayerName,
     effectiveCircularStep,
     effectiveGridSize,
-    expandedPanel,
     fileInputRef,
     fillToggleActive,
     getLayerPreviewBounds,
@@ -1329,22 +1091,10 @@ export default function App() {
     layers,
     livePathStroke,
     livePathStrokeRenderWidth,
-    mobileContextMenu,
     mobileExportFormat,
     mobileExportScope,
-    mobileMenuDrawerBottom,
-    mobilePanelsOpen,
-    mobileShapePanelBottom,
-    mobileShapePanelOpen,
-    mobileToolbarBottom,
-    mobileToolbarSharedWidthStyle,
-    mobileToolbarShellRef,
-    mobileToolsOpen,
-    mobileTopInset,
     mode,
     moveSelectedLayerQuick,
-    openMobilePanel,
-    openPanels,
     pan,
     pathCountByLayerId,
     pathStyleDefaults,
@@ -1362,12 +1112,10 @@ export default function App() {
     selectionBox,
     setActiveLayerId,
     setEditingLayerName,
-    setExpandedPanel,
     setGridConfig,
     setHoveredHandle,
     setMobileExportFormat,
     setMobileExportScope,
-    setOpenPanels,
     setShapeType,
     setShowBackgroundAids,
     setShowNodes,
@@ -1388,8 +1136,6 @@ export default function App() {
     toggleLayerLock,
     toggleLayerVisibility,
     toggleMobileShapePanel,
-    toggleMobileToolsMenu,
-    togglePanel,
     updateActiveImage,
     zoom
   };
@@ -1398,67 +1144,6 @@ export default function App() {
     <EditorProvider value={editor}>
     <div className="w-screen h-screen bg-[#f2f4f7] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
       
-      {/* Global Style overrides to hide default number input spinners for cleaner UI */}
-      <style>{`
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield;
-        }
-        button,
-        [role='button'] {
-          -webkit-tap-highlight-color: transparent;
-          tap-highlight-color: transparent;
-        }
-        .cursor-pen {
-          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%23344054' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19l7-7 3 3-7 7-3-3z'/%3E%3Cpath d='M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='M2 2l7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='2'/%3E%3C/svg%3E") 2 2, crosshair !important;
-        }
-        .cursor-pencil {
-          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%23344054' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'/%3E%3C/svg%3E") 2 22, crosshair !important;
-        }
-        .cursor-rotate {
-          cursor: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8A7 7 0 0 1 12 15'/%3E%3Cpath d='M8.5 4.5L5 8l3.5 3.5'/%3E%3Cpath d='M8.5 11.5L12 15l3.5-3.5'/%3E%3C/g%3E%3Cg stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8A7 7 0 0 1 12 15'/%3E%3Cpath d='M8.5 4.5L5 8l3.5 3.5'/%3E%3Cpath d='M8.5 11.5L12 15l3.5-3.5'/%3E%3C/g%3E%3C/svg%3E") 10 10, crosshair !important;
-        }
-        .cursor-crosshair { cursor: crosshair !important; }
-        .cursor-nwse { cursor: nwse-resize !important; }
-        .cursor-nesw { cursor: nesw-resize !important; }
-        .cursor-move { cursor: move !important; }
-        .cursor-default { cursor: default !important; }
-        .cursor-grab { cursor: grab !important; }
-        .cursor-grabbing { cursor: grabbing !important; }
-        .mobile-drawer {
-          transition: opacity 180ms ease, transform 180ms ease;
-          will-change: transform, opacity;
-        }
-        .mobile-drawer-open {
-          opacity: 1;
-          transform: translateY(0);
-          pointer-events: auto;
-        }
-        .mobile-drawer-closed {
-          opacity: 0;
-          transform: translateY(10px);
-          pointer-events: none;
-        }
-        .mobile-panels-wrap {
-          transition: opacity 200ms ease, transform 200ms ease;
-          will-change: transform, opacity;
-        }
-        .mobile-panels-open {
-          opacity: 1;
-          transform: translateY(0);
-          pointer-events: auto;
-        }
-        .mobile-panels-closed {
-          opacity: 0;
-          transform: translateY(-10px);
-          pointer-events: none;
-        }
-      `}</style>
-
       {/* CANVAS */}
       <Canvas />
 

@@ -71,5 +71,6 @@ run(async (page) => {
   }
 
   await page.screenshot({ path: '/tmp/shots/export.png' });
+  await page.close(); // fresh page per run; don't leave it for reuse-mode scripts
   return report;
 }, { fresh: true });
