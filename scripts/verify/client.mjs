@@ -27,7 +27,7 @@ const BROWSER_URL = process.env.BROWSER_URL || 'http://127.0.0.1:9223';
 export const APP_URL = process.env.APP_URL || 'http://localhost:5174/';
 
 export async function withPage(fn, { fresh = false } = {}) {
-  const browser = await puppeteer.connect({ browserURL: BROWSER_URL, defaultViewport: null });
+  const browser = await puppeteer.connect({ browserURL: BROWSER_URL, defaultViewport: null, protocolTimeout: 30000 });
   const pages = await browser.pages();
   let page = pages.find(p => p.url().startsWith('http://localhost')) || pages[0];
   if (!page || fresh) page = await browser.newPage();
