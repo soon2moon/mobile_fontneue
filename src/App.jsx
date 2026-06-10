@@ -99,6 +99,8 @@ import { usePointerInteraction } from './hooks/usePointerInteraction';
 import { EditorProvider } from './state/EditorContext';
 import DesktopToolbar from './components/Toolbar/DesktopToolbar';
 import PanelsContainer from './components/Panels/PanelsContainer';
+import QuickLayerReorder from './components/Overlays/QuickLayerReorder';
+import MobileControls from './components/Toolbar/MobileControls';
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -2336,17 +2338,26 @@ export default function App() {
 
   const editor = {
     activeImage,
+    activeLayerId,
+    anyMobileOverlayOpen,
     anyPanelOpen,
     applyPathStyle,
     canExportSelection,
     changeMode,
     clearCanvas,
+    clearTapFocus,
+    closeAllPanels,
+    closeMobileContextMenu,
     commitStrokeColorInput,
     commitStrokeWidthInput,
+    copyCurrentSelection,
     correctPathDirections,
+    cutCurrentSelection,
     deleteLayer,
+    deleteSelectedItems,
     dragDropTarget,
     draggedLayerId,
+    duplicateCurrentSelection,
     editingLayerId,
     editingLayerName,
     effectiveCircularStep,
@@ -2354,6 +2365,8 @@ export default function App() {
     expandedPanel,
     fileInputRef,
     fillToggleActive,
+    getLayerPreviewBounds,
+    getShapeToolIcon,
     gridConfig,
     handleExport,
     handleLayerDragEnd,
@@ -2362,21 +2375,48 @@ export default function App() {
     handleLayerDrop,
     handleLayerNameKeyDown,
     handleLayerSelect,
+    handleMobileContextPaste,
+    handleMobileRedo,
+    handleMobileUndo,
+    handleMobileZoomIn,
+    handleMobileZoomOut,
     handleStrokeColorInputChange,
     handleStrokeWidthInputChange,
+    hasActiveSelection,
     hasSelectedPaths,
+    imageCountByLayerId,
+    imagesByLayerId,
     insertTextFromPrompt,
     isExporting,
     isMobile,
+    layerIndexById,
     layers,
+    mobileContextMenu,
     mobileExportFormat,
     mobileExportScope,
+    mobileMenuDrawerBottom,
     mobilePanelsOpen,
+    mobileShapePanelBottom,
+    mobileShapePanelOpen,
+    mobileToolbarBottom,
+    mobileToolbarSharedWidthStyle,
+    mobileToolbarShellRef,
+    mobileToolsOpen,
+    mobileTopInset,
     mode,
+    moveSelectedLayerQuick,
+    openMobilePanel,
     openPanels,
+    pathCountByLayerId,
+    pathStyleDefaults,
+    pathsByLayerId,
+    resetZoomToHundred,
     saveLayerName,
+    selectMobileShape,
     selectedLayerIds,
+    selectedLayersInStackOrder,
     selectedPoints,
+    setActiveLayerId,
     setEditingLayerName,
     setExpandedPanel,
     setGridConfig,
@@ -2384,11 +2424,13 @@ export default function App() {
     setMobileExportScope,
     setOpenPanels,
     setShapeType,
+    setShowBackgroundAids,
     setShowNodes,
     setShowShapeMenu,
     setStrokeColorInput,
     shapeMenuContainerRef,
     shapeType,
+    showBackgroundAids,
     showNodes,
     showShapeMenu,
     startEditingLayer,
@@ -2398,8 +2440,11 @@ export default function App() {
     strokeWidthInput,
     toggleLayerLock,
     toggleLayerVisibility,
+    toggleMobileShapePanel,
+    toggleMobileToolsMenu,
     togglePanel,
-    updateActiveImage
+    updateActiveImage,
+    zoom
   };
 
   return (
@@ -3002,431 +3047,10 @@ export default function App() {
         className="hidden" 
       />
 
-      {selectedLayersInStackOrder.length > 1 && !openPanels.layers && (!isMobile || !anyMobileOverlayOpen) && (
-        <div
-          className={`absolute z-[24] pointer-events-none ${
-            isMobile ? 'left-2 right-2' : 'top-7 left-1/2 -translate-x-1/2'
-          }`}
-          style={isMobile ? { top: 'calc(env(safe-area-inset-top, 0px) + 56px)' } : undefined}
-        >
-          <div className="pointer-events-auto w-full overflow-hidden rounded-2xl border border-[#e4e7ec] bg-[#f8fafc] shadow-[0_14px_32px_rgba(52,64,84,0.16)]">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[#e4e7ec] bg-[#f2f4f7]">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#667085]">
-                <Layers size={13} />
-                Quick Layer Reorder
-              </div>
-              <span className="text-[10px] font-semibold text-[#98a2b3]">
-                {selectedLayersInStackOrder.length} selected
-              </span>
-            </div>
-            <div className="p-2 max-h-[32vh] overflow-y-auto flex flex-col gap-1" style={{ touchAction: 'pan-y' }}>
-              {selectedLayersInStackOrder.map(layer => {
-                const layerIndex = layerIndexById.get(layer.id) ?? -1;
-                const canMoveUp = layerIndex > 0;
-                const canMoveDown = layerIndex >= 0 && layerIndex < layers.length - 1;
-                const instanceCount = (pathCountByLayerId[layer.id] || 0) + (imageCountByLayerId[layer.id] || 0);
-                const isActive = activeLayerId === layer.id;
-                const layerPaths = pathsByLayerId[layer.id] || [];
-                const layerImages = imagesByLayerId[layer.id] || [];
-                const previewBounds = getLayerPreviewBounds(layerPaths, layerImages);
+      <QuickLayerReorder />
 
-                return (
-                  <div
-                    key={`quick-layer-${layer.id}`}
-                    className={`flex items-center gap-2 rounded-xl border p-1.5 transition-colors ${
-                      isActive
-                        ? 'bg-[#eaecf0] border-[#d0d5dd]'
-                        : 'bg-[#f8fafc] border-[#e4e7ec]'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setActiveLayerId(layer.id)}
-                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 py-1 hover:bg-[#f2f4f7] transition-colors"
-                    >
-                      <div className="w-14 h-9 shrink-0 overflow-hidden rounded-md border border-[#d0d5dd] bg-white flex items-center justify-center">
-                        {previewBounds ? (
-                          <svg
-                            className="w-full h-full"
-                            viewBox={`${previewBounds.minX} ${previewBounds.minY} ${previewBounds.width} ${previewBounds.height}`}
-                            preserveAspectRatio="xMidYMid meet"
-                          >
-                            {layerImages.map(img => (
-                              <image
-                                key={`quick-layer-img-${img.id}`}
-                                href={img.url}
-                                x={-img.width / 2}
-                                y={-img.height / 2}
-                                width={img.width}
-                                height={img.height}
-                                opacity={Number.isFinite(img.opacity) ? Math.max(0, Math.min(1, img.opacity)) : 1}
-                                transform={`translate(${img.x}, ${img.y}) scale(${img.scale}) rotate(${img.rotation})`}
-                              />
-                            ))}
-                            {layerPaths.map((path, index) => {
-                              const pathD = pointsToPath(path.points, path.isClosed);
-                              const pathStroke = getPathStrokeStyle(path, pathStyleDefaults);
-                              const isSinglePointPath = path.points.length === 1;
+      {isMobile && <MobileControls />}
 
-                              if (isSinglePointPath) {
-                                if (!pathStroke.strokeEnabled) return null;
-                                return (
-                                  <circle
-                                    key={`quick-layer-path-dot-${path.id}-${index}`}
-                                    cx={path.points[0].x}
-                                    cy={path.points[0].y}
-                                    r={Math.max(2, pathStroke.strokeWidth * 1.2)}
-                                    fill={pathStroke.strokeColor}
-                                    stroke={pathStroke.strokeColor}
-                                    strokeWidth={0.5}
-                                  />
-                                );
-                              }
-
-                              return (
-                                <path
-                                  key={`quick-layer-path-${path.id}-${index}`}
-                                  d={pathD}
-                                  fill={path.fillEnabled ? THEME.main : 'none'}
-                                  stroke={pathStroke.strokeEnabled ? pathStroke.strokeColor : 'none'}
-                                  strokeWidth={pathStroke.strokeEnabled ? Math.max(0.8, pathStroke.strokeWidth) : 0}
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              );
-                            })}
-                          </svg>
-                        ) : (
-                          <LayerIcon type={layer.itemType} />
-                        )}
-                      </div>
-                      <span className="text-xs font-semibold text-[#344054] truncate">{layer.name}</span>
-                      <span className="text-[10px] text-[#98a2b3] shrink-0">{instanceCount} obj</span>
-                    </button>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => moveSelectedLayerQuick(layer.id, 'up')}
-                        disabled={!canMoveUp}
-                        className={`h-7 w-7 rounded-md border flex items-center justify-center transition-colors ${
-                          canMoveUp
-                            ? 'border-[#d0d5dd] text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-                            : 'border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed'
-                        }`}
-                        title="Move layer up"
-                      >
-                        <ChevronUp size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveSelectedLayerQuick(layer.id, 'down')}
-                        disabled={!canMoveDown}
-                        className={`h-7 w-7 rounded-md border flex items-center justify-center transition-colors ${
-                          canMoveDown
-                            ? 'border-[#d0d5dd] text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-                            : 'border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed'
-                        }`}
-                        title="Move layer down"
-                      >
-                        <ChevronUp size={13} className="rotate-180" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isMobile && (
-        <>
-          {anyMobileOverlayOpen && (
-            <button
-              type="button"
-              onClick={closeAllPanels}
-              className="absolute inset-0 z-[9] bg-[#344054]/8"
-              aria-label="Close panels overlay"
-            />
-          )}
-
-          {mobileContextMenu && (
-            <>
-              <button
-                type="button"
-                className="absolute inset-0 z-[22] bg-transparent"
-                onClick={closeMobileContextMenu}
-                aria-label="Close actions menu"
-              />
-              <div
-                className="absolute z-[23] pointer-events-none"
-                style={{ left: `${mobileContextMenu.x}px`, top: `${mobileContextMenu.y}px` }}
-              >
-                <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 bg-[#f8fafc] border border-[#e4e7ec] rounded-[12px] shadow-[0_12px_24px_rgba(52,64,84,0.14)] p-1.5">
-                  <div className="flex flex-col gap-1">
-                    {mobileContextMenu.type === 'actions' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            copyCurrentSelection();
-                            closeMobileContextMenu();
-                          }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Copy size={14} />
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            cutCurrentSelection();
-                            closeMobileContextMenu();
-                          }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#b42318] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Scissors size={14} />
-                          Cut
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            duplicateCurrentSelection();
-                            closeMobileContextMenu();
-                          }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Plus size={14} />
-                          Duplicate
-                        </button>
-                      </>
-                    )}
-                    {mobileContextMenu.type === 'paste' && (
-                      <button
-                        type="button"
-                        onClick={handleMobileContextPaste}
-                        className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                      >
-                        <ClipboardPaste size={14} />
-                        Paste
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          <div
-            className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
-            style={{ top: mobileTopInset }}
-          >
-            <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-2 flex items-center gap-1 max-w-full">
-              <button
-                type="button"
-                onClick={handleMobileUndo}
-                onPointerUp={clearTapFocus}
-                onPointerCancel={clearTapFocus}
-                onTouchEnd={clearTapFocus}
-                onMouseUp={clearTapFocus}
-                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
-                title="Undo"
-              >
-                <RefreshCw size={13} className="-scale-x-100" />
-              </button>
-              <button
-                type="button"
-                onClick={handleMobileRedo}
-                onPointerUp={clearTapFocus}
-                onPointerCancel={clearTapFocus}
-                onTouchEnd={clearTapFocus}
-                onMouseUp={clearTapFocus}
-                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
-                title="Redo"
-              >
-                <RefreshCw size={13} />
-              </button>
-            </div>
-            <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-1.5 flex items-center gap-1.5 max-w-full">
-              <button
-                type="button"
-                onClick={resetZoomToHundred}
-                onPointerUp={clearTapFocus}
-                onPointerCancel={clearTapFocus}
-                onTouchEnd={clearTapFocus}
-                onMouseUp={clearTapFocus}
-                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#667085] bg-transparent active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
-                title="Reset zoom to 100%"
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={handleMobileZoomOut}
-                  onPointerUp={clearTapFocus}
-                  onPointerCancel={clearTapFocus}
-                  onTouchEnd={clearTapFocus}
-                  onMouseUp={clearTapFocus}
-                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
-                  title="Zoom Out"
-                >
-                  <Minus size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleMobileZoomIn}
-                  onPointerUp={clearTapFocus}
-                  onPointerCancel={clearTapFocus}
-                  onTouchEnd={clearTapFocus}
-                  onMouseUp={clearTapFocus}
-                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
-                  title="Zoom In"
-                >
-                  <Plus size={13} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none"
-            style={{ ...mobileToolbarSharedWidthStyle, bottom: mobileMenuDrawerBottom }}
-          >
-            <div
-              className={`pointer-events-auto w-full rounded-[16px] shadow-[0_12px_28px_rgba(52,64,84,0.14)] mobile-drawer ${
-                mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
-              }`}
-            >
-              <div className="bg-[#f8fafc] rounded-[16px] border border-[#e4e7ec] p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
-                <div className="grid grid-cols-4 gap-1">
-                  <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
-                  <MobileToolButton
-                    active={showBackgroundAids}
-                    onClick={() => setShowBackgroundAids(prev => !prev)}
-                    icon={showBackgroundAids ? <Eye size={14} /> : <EyeOff size={14} />}
-                    label={showBackgroundAids ? "Hide Background Aids" : "Show Background Aids"}
-                  />
-                  <MobileToolButton
-                    active={fillToggleActive}
-                    onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
-                    icon={<Droplet size={14} />}
-                    label="Fill"
-                  />
-                  <MobileToolButton
-                    active={openPanels.stroke}
-                    onClick={() => {
-                      openMobilePanel('stroke');
-                    }}
-                    icon={<Minus size={14} />}
-                    label="Stroke"
-                  />
-                  <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
-                  <MobileToolButton
-                    onClick={() => {
-                      fileInputRef.current?.click();
-                      openMobilePanel('image');
-                    }}
-                    icon={<ImageIcon size={14} />}
-                    label="Image"
-                  />
-                  <MobileToolButton
-                    onClick={() => {
-                      closeAllPanels();
-                      insertTextFromPrompt();
-                    }}
-                    icon={<Type size={14} />}
-                    label="Text"
-                  />
-                  <MobileToolButton
-                    active={openPanels.grid}
-                    onClick={() => {
-                      openMobilePanel('grid');
-                    }}
-                    icon={<Grid size={14} />}
-                    label="Grid"
-                  />
-                  <MobileToolButton
-                    active={openPanels.layers}
-                    onClick={() => {
-                      openMobilePanel('layers');
-                    }}
-                    icon={<Layers size={14} />}
-                    label="Layers"
-                  />
-                  <MobileToolButton
-                    active={openPanels.export}
-                    onClick={() => {
-                      openMobilePanel('export');
-                    }}
-                    icon={<Download size={14} />}
-                    label="Export"
-                  />
-                  <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={14} />} label="Clear" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {mobileShapePanelOpen && (
-            <div
-              className="absolute left-1/2 -translate-x-1/2 z-[21] pointer-events-none w-max max-w-[calc(100vw-16px)]"
-              style={{ bottom: mobileShapePanelBottom }}
-            >
-              <div className="pointer-events-auto rounded-[16px] shadow-[0_12px_28px_rgba(52,64,84,0.14)] w-max max-w-[calc(100vw-16px)]">
-                <div className="bg-[#f8fafc] rounded-[16px] border border-[#e4e7ec] p-1 overflow-hidden">
-                  <div className="flex items-center gap-0.5 overflow-x-auto">
-                    <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
-                    <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
-                    <MobileToolButton active={shapeType === 'polygon'} onClick={() => selectMobileShape('polygon')} icon={<Triangle size={14} />} label="Poly" />
-                    <MobileToolButton active={shapeType === 'star'} onClick={() => selectMobileShape('star')} icon={<Star size={14} />} label="Star" />
-                    <MobileToolButton active={shapeType === 'line'} onClick={() => selectMobileShape('line')} icon={<Minus size={14} />} label="Line" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div
-            className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none w-max max-w-[calc(100vw-16px)]"
-            style={{ bottom: mobileToolbarBottom }}
-          >
-            <div ref={mobileToolbarShellRef} className="pointer-events-auto bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] p-[6px] w-max max-w-[calc(100vw-16px)]">
-              <div className="flex items-center gap-1 overflow-x-auto">
-                <MobileToolButton
-                  variant="toolbar"
-                  radiusClass="rounded-[8px]"
-                  active={false}
-                  onClick={toggleMobileToolsMenu}
-                  icon={<Menu size={16} />}
-                  label="Menu"
-                />
-                <div className="mx-2 h-7 w-px bg-[#d0d5dd] shrink-0" />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
-                <MobileToolButton
-                  variant="toolbar"
-                  radiusClass="rounded-[8px]"
-                  active={mode === 'shape'}
-                  onClick={toggleMobileShapePanel}
-                  icon={getShapeToolIcon(16)}
-                  label="Shape"
-                />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
-                <MobileToolButton
-                  variant="toolbar"
-                  radiusClass="rounded-[8px]"
-                  active={hasActiveSelection}
-                  onClick={deleteSelectedItems}
-                  icon={<Trash2 size={16} />}
-                  label="Delete"
-                />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* Right-Side Panels Container */}
       <PanelsContainer />
