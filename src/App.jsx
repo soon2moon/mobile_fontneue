@@ -36,11 +36,11 @@ import {
 
 // --- THEME ---
 const THEME = {
-  main: "#4a2622",
-  nodeFill: "#e4cfcc",
-  bg: "#f4f1ed",
-  handle: "#7c4a45",
-  guide: "#d4c8c5"
+  main: "#344054",
+  nodeFill: "#e4e7ec",
+  bg: "#f2f4f7",
+  handle: "#667085",
+  guide: "#d0d5dd"
 };
 
 const DEFAULT_STROKE_WIDTH = 1.5;
@@ -491,16 +491,16 @@ const createLayer = (type, existingCount) => {
 
 const LayerIcon = ({ type }) => {
     switch(type) {
-        case 'rectangle': return <Square size={14} className="text-[#8c746f]" />;
-        case 'ellipse': return <Circle size={14} className="text-[#8c746f]" />;
-        case 'polygon': return <Triangle size={14} className="text-[#8c746f]" />;
-        case 'star': return <Star size={14} className="text-[#8c746f]" />;
-        case 'line': return <Minus size={14} className="text-[#8c746f]" />;
-        case 'image': return <ImageIcon size={14} className="text-[#8c746f]" />;
-        case 'text': return <Type size={14} className="text-[#8c746f]" />;
+        case 'rectangle': return <Square size={14} className="text-[#667085]" />;
+        case 'ellipse': return <Circle size={14} className="text-[#667085]" />;
+        case 'polygon': return <Triangle size={14} className="text-[#667085]" />;
+        case 'star': return <Star size={14} className="text-[#667085]" />;
+        case 'line': return <Minus size={14} className="text-[#667085]" />;
+        case 'image': return <ImageIcon size={14} className="text-[#667085]" />;
+        case 'text': return <Type size={14} className="text-[#667085]" />;
         case 'vector':
         default: 
-            return <PenTool size={14} className="text-[#8c746f]" />;
+            return <PenTool size={14} className="text-[#667085]" />;
     }
 };
 
@@ -515,13 +515,13 @@ const ConfigInput = ({ icon, label, value, onChange, suffix = "", scaleFactor = 
   }, [displayValue, focused]);
 
   return (
-    <div className="flex items-center bg-[#f4f1ed] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d4c8c5] transition-all overflow-hidden h-8 gap-2">
+    <div className="flex items-center bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all overflow-hidden h-8 gap-2">
       {icon ? (
-        <span className="flex items-center justify-center text-[#a89b99] w-3.5 shrink-0">
+        <span className="flex items-center justify-center text-[#98a2b3] w-3.5 shrink-0">
           {icon}
         </span>
       ) : label ? (
-        <span className="text-xs font-medium text-[#a89b99] w-3.5 shrink-0 select-none flex items-center justify-center">
+        <span className="text-xs font-medium text-[#98a2b3] w-3.5 shrink-0 select-none flex items-center justify-center">
           {label}
         </span>
       ) : null}
@@ -546,7 +546,7 @@ const ConfigInput = ({ icon, label, value, onChange, suffix = "", scaleFactor = 
              onChange(parsed / scaleFactor);
            }
         }}
-        className="w-full text-xs text-left bg-transparent border-none outline-none py-1 text-[#4a2622] font-mono"
+        className="w-full text-xs text-left bg-transparent border-none outline-none py-1 text-[#344054] font-mono"
         {...props}
       />
     </div>
@@ -647,7 +647,7 @@ const ScrubbableNumberInput = ({
   };
 
   return (
-    <div className="flex items-center gap-1 bg-[#f4f1ed] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d4c8c5] transition-all overflow-hidden h-8">
+    <div className="flex items-center gap-1 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all overflow-hidden h-8">
       <input
         type="text"
         value={focused ? tempVal : String(Math.round(sanitizedValue))}
@@ -670,10 +670,10 @@ const ScrubbableNumberInput = ({
         onPointerMove={moveScrub}
         onPointerUp={endScrub}
         onPointerCancel={endScrub}
-        className={`flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#4a2622] font-mono ${focused ? 'cursor-text' : 'cursor-ew-resize'}`}
+        className={`flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#344054] font-mono ${focused ? 'cursor-text' : 'cursor-ew-resize'}`}
       />
       {suffix && (
-        <span className="shrink-0 text-xs text-[#8c746f] font-mono pointer-events-none select-none">
+        <span className="shrink-0 text-xs text-[#667085] font-mono pointer-events-none select-none">
           {suffix}
         </span>
       )}
@@ -4553,6 +4553,29 @@ export default function App() {
       setSelectedImageIds(newSelImages);
   };
 
+  const moveSelectedLayerQuick = (layerId, direction) => {
+    const currentIndex = layers.findIndex(layer => layer.id === layerId);
+    if (currentIndex === -1) return;
+
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= layers.length) return;
+
+    commitHistory({ paths, currentPath, images, layers });
+    setLayers(prevLayers => {
+      const fromIndex = prevLayers.findIndex(layer => layer.id === layerId);
+      if (fromIndex === -1) return prevLayers;
+
+      const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+      if (toIndex < 0 || toIndex >= prevLayers.length) return prevLayers;
+
+      const reordered = [...prevLayers];
+      const [movedLayer] = reordered.splice(fromIndex, 1);
+      reordered.splice(toIndex, 0, movedLayer);
+      return reordered;
+    });
+    setActiveLayerId(layerId);
+  };
+
   const correctPathDirections = () => {
     commitHistory({ paths, currentPath, images, layers });
     setPaths(prev => {
@@ -5081,24 +5104,24 @@ export default function App() {
   if (gridConfig.type === 'dots') {
     patternW = s;
     patternH = s;
-    patternContent = <circle cx={1/zoom} cy={1/zoom} r={1.5/zoom} fill="#d1ccc7" />;
+    patternContent = <circle cx={1/zoom} cy={1/zoom} r={1.5/zoom} fill="#d0d5dd" />;
   } else if (gridConfig.type === 'circles') {
     patternW = s;
     patternH = s;
-    patternContent = <circle cx={s/2} cy={s/2} r={s / 2} fill="none" stroke="#d1ccc7" strokeWidth={1/zoom} />;
+    patternContent = <circle cx={s/2} cy={s/2} r={s / 2} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
   } else if (gridConfig.type === 'lines') {
     if (gridConfig.edges === 4) {
       patternW = s;
       patternH = s;
-      patternContent = <path d={`M ${s} 0 L 0 0 L 0 ${s}`} fill="none" stroke="#d1ccc7" strokeWidth={1/zoom} />;
+      patternContent = <path d={`M ${s} 0 L 0 0 L 0 ${s}`} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
     } else if (gridConfig.edges === 3) {
       patternW = s;
       patternH = s * Math.sqrt(3);
-      patternContent = <path d={`M 0 0 L ${patternW} 0 M 0 ${patternH/2} L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} 0 M ${patternW/2} ${patternH} L ${patternW} ${patternH/2} M ${patternW/2} 0 L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} ${patternH}`} fill="none" stroke="#d1ccc7" strokeWidth={1/zoom} />;
+      patternContent = <path d={`M 0 0 L ${patternW} 0 M 0 ${patternH/2} L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} 0 M ${patternW/2} ${patternH} L ${patternW} ${patternH/2} M ${patternW/2} 0 L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} ${patternH}`} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
     } else if (gridConfig.edges === 6) {
       patternW = s * Math.sqrt(3);
       patternH = s * 3;
-      patternContent = <path d={`M 0 ${0.5*s} L ${patternW/2} 0 L ${patternW} ${0.5*s} L ${patternW} ${1.5*s} L ${patternW/2} ${2*s} L 0 ${1.5*s} Z M ${patternW/2} ${2*s} L ${patternW/2} ${3*s}`} fill="none" stroke="#d1ccc7" strokeWidth={1/zoom} />;
+      patternContent = <path d={`M 0 ${0.5*s} L ${patternW/2} 0 L ${patternW} ${0.5*s} L ${patternW} ${1.5*s} L ${patternW/2} ${2*s} L 0 ${1.5*s} Z M ${patternW/2} ${2*s} L ${patternW/2} ${3*s}`} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
     }
   }
 
@@ -5191,6 +5214,88 @@ export default function App() {
   selectedPoints.forEach(sp => {
       const path = paths[sp.pathIndex];
       if (path) selectedLayerIds.add(path.layerId);
+  });
+  const selectedLayersInStackOrder = layers.filter(layer => selectedLayerIds.has(layer.id));
+  const layerIndexById = new Map(layers.map((layer, index) => [layer.id, index]));
+  const pathsByLayerId = {};
+  paths.forEach(path => {
+    if (!pathsByLayerId[path.layerId]) pathsByLayerId[path.layerId] = [];
+    pathsByLayerId[path.layerId].push(path);
+  });
+  const imagesByLayerId = {};
+  images.forEach(image => {
+    if (!imagesByLayerId[image.layerId]) imagesByLayerId[image.layerId] = [];
+    imagesByLayerId[image.layerId].push(image);
+  });
+  const getLayerPreviewBounds = (layerPaths, layerImages) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    layerPaths.forEach(path => {
+      (path.points || []).forEach(point => {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+        if (point.hIn) {
+          minX = Math.min(minX, point.hIn.x);
+          minY = Math.min(minY, point.hIn.y);
+          maxX = Math.max(maxX, point.hIn.x);
+          maxY = Math.max(maxY, point.hIn.y);
+        }
+        if (point.hOut) {
+          minX = Math.min(minX, point.hOut.x);
+          minY = Math.min(minY, point.hOut.y);
+          maxX = Math.max(maxX, point.hOut.x);
+          maxY = Math.max(maxY, point.hOut.y);
+        }
+      });
+    });
+
+    layerImages.forEach(img => {
+      const scale = Number.isFinite(img.scale) ? img.scale : 1;
+      const halfW = (img.width * scale) / 2;
+      const halfH = (img.height * scale) / 2;
+      const rad = (img.rotation || 0) * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      [
+        { x: -halfW, y: -halfH },
+        { x: halfW, y: -halfH },
+        { x: halfW, y: halfH },
+        { x: -halfW, y: halfH }
+      ].forEach(corner => {
+        const worldX = img.x + (corner.x * cos - corner.y * sin);
+        const worldY = img.y + (corner.x * sin + corner.y * cos);
+        minX = Math.min(minX, worldX);
+        minY = Math.min(minY, worldY);
+        maxX = Math.max(maxX, worldX);
+        maxY = Math.max(maxY, worldY);
+      });
+    });
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return null;
+    }
+
+    const padding = 8;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+    const width = Math.max(1, maxX - minX);
+    const height = Math.max(1, maxY - minY);
+    return { minX, minY, width, height };
+  };
+  const pathCountByLayerId = {};
+  paths.forEach(path => {
+    pathCountByLayerId[path.layerId] = (pathCountByLayerId[path.layerId] || 0) + 1;
+  });
+  const imageCountByLayerId = {};
+  images.forEach(image => {
+    imageCountByLayerId[image.layerId] = (imageCountByLayerId[image.layerId] || 0) + 1;
   });
   const compositeFillPathD = paths
     .filter(path => path.isClosed && path.fillEnabled && visibleLayerIds.has(path.layerId))
@@ -5294,7 +5399,7 @@ export default function App() {
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
   return (
-    <div className="w-screen h-screen bg-[#f4f1ed] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
+    <div className="w-screen h-screen bg-[#f2f4f7] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
       
       {/* Global Style overrides to hide default number input spinners for cleaner UI */}
       <style>{`
@@ -5312,10 +5417,10 @@ export default function App() {
           tap-highlight-color: transparent;
         }
         .cursor-pen {
-          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%234a2622' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19l7-7 3 3-7 7-3-3z'/%3E%3Cpath d='M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='M2 2l7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='2'/%3E%3C/svg%3E") 2 2, crosshair !important;
+          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%23344054' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19l7-7 3 3-7 7-3-3z'/%3E%3Cpath d='M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='M2 2l7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='2'/%3E%3C/svg%3E") 2 2, crosshair !important;
         }
         .cursor-pencil {
-          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%234a2622' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'/%3E%3C/svg%3E") 2 22, crosshair !important;
+          cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='white' stroke='%23344054' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'/%3E%3C/svg%3E") 2 22, crosshair !important;
         }
         .cursor-rotate {
           cursor: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8A7 7 0 0 1 12 15'/%3E%3Cpath d='M8.5 4.5L5 8l3.5 3.5'/%3E%3Cpath d='M8.5 11.5L12 15l3.5-3.5'/%3E%3C/g%3E%3Cg stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8A7 7 0 0 1 12 15'/%3E%3Cpath d='M8.5 4.5L5 8l3.5 3.5'/%3E%3Cpath d='M8.5 11.5L12 15l3.5-3.5'/%3E%3C/g%3E%3C/svg%3E") 10 10, crosshair !important;
@@ -5393,7 +5498,7 @@ export default function App() {
                 <path
                   d="M 1 0 L 0 0 L 0 1"
                   fill="none"
-                  stroke="#8c746f"
+                  stroke="#667085"
                   strokeOpacity="0.22"
                   strokeWidth={1 / zoom}
                 />
@@ -5412,11 +5517,11 @@ export default function App() {
           {showCircularGrid && (
             <g className="opacity-60 pointer-events-none">
               {Array.from({length: 100}).map((_, i) => (
-                <circle key={`circ-${i}`} cx={0} cy={0} r={(i + 1) * s} stroke="#d1ccc7" strokeWidth={1/zoom} fill="none" />
+                <circle key={`circ-${i}`} cx={0} cy={0} r={(i + 1) * s} stroke="#d0d5dd" strokeWidth={1/zoom} fill="none" />
               ))}
               {Array.from({length: circularRayCount}).map((_, i) => {
                  const angle = (i * effectiveCircularStep * Math.PI) / 180;
-                 return <line key={`rad-${i}`} x1={-5000 * Math.cos(angle)} y1={-5000 * Math.sin(angle)} x2={5000 * Math.cos(angle)} y2={5000 * Math.sin(angle)} stroke="#d1ccc7" strokeWidth={1/zoom} />
+                 return <line key={`rad-${i}`} x1={-5000 * Math.cos(angle)} y1={-5000 * Math.sin(angle)} x2={5000 * Math.cos(angle)} y2={5000 * Math.sin(angle)} stroke="#d0d5dd" strokeWidth={1/zoom} />
               })}
             </g>
           )}
@@ -5810,7 +5915,7 @@ export default function App() {
                 <path 
                   d={`M ${currentPath[currentPath.length - 1].x} ${currentPath[currentPath.length - 1].y} C ${currentPath[currentPath.length - 1].hOut ? currentPath[currentPath.length - 1].hOut.x : currentPath[currentPath.length - 1].x} ${currentPath[currentPath.length - 1].hOut ? currentPath[currentPath.length - 1].hOut.y : currentPath[currentPath.length - 1].y}, ${ghostPoint.x} ${ghostPoint.y}, ${ghostPoint.x} ${ghostPoint.y}`}
                   fill="none"
-                  stroke="#a89b99" 
+                  stroke="#98a2b3" 
                   strokeWidth={strokeWidth}
                   strokeDasharray={`${4/zoom},${4/zoom}`}
                 />
@@ -5868,7 +5973,7 @@ export default function App() {
               
               {/* Ghost Node */}
               {ghostPoint && !hoveredStartPoint && !isDrawingCurve && showNodes && mode === 'draw' && (
-                <rect x={ghostPoint.x - 3/zoom} y={ghostPoint.y - 3/zoom} width={6/zoom} height={6/zoom} fill="#a89b99" />
+                <rect x={ghostPoint.x - 3/zoom} y={ghostPoint.y - 3/zoom} width={6/zoom} height={6/zoom} fill="#98a2b3" />
               )}
             </g>
           )}
@@ -5909,13 +6014,150 @@ export default function App() {
         className="hidden" 
       />
 
+      {selectedLayersInStackOrder.length > 1 && !openPanels.layers && (!isMobile || !anyMobileOverlayOpen) && (
+        <div
+          className={`absolute z-[24] pointer-events-none ${
+            isMobile ? 'left-2 right-2' : 'top-7 left-1/2 -translate-x-1/2'
+          }`}
+          style={isMobile ? { top: 'calc(env(safe-area-inset-top, 0px) + 56px)' } : undefined}
+        >
+          <div className="pointer-events-auto w-full overflow-hidden rounded-2xl border border-[#e4e7ec] bg-[#f8fafc] shadow-[0_14px_32px_rgba(52,64,84,0.16)]">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-[#e4e7ec] bg-[#f2f4f7]">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#667085]">
+                <Layers size={13} />
+                Quick Layer Reorder
+              </div>
+              <span className="text-[10px] font-semibold text-[#98a2b3]">
+                {selectedLayersInStackOrder.length} selected
+              </span>
+            </div>
+            <div className="p-2 max-h-[32vh] overflow-y-auto flex flex-col gap-1" style={{ touchAction: 'pan-y' }}>
+              {selectedLayersInStackOrder.map(layer => {
+                const layerIndex = layerIndexById.get(layer.id) ?? -1;
+                const canMoveUp = layerIndex > 0;
+                const canMoveDown = layerIndex >= 0 && layerIndex < layers.length - 1;
+                const instanceCount = (pathCountByLayerId[layer.id] || 0) + (imageCountByLayerId[layer.id] || 0);
+                const isActive = activeLayerId === layer.id;
+                const layerPaths = pathsByLayerId[layer.id] || [];
+                const layerImages = imagesByLayerId[layer.id] || [];
+                const previewBounds = getLayerPreviewBounds(layerPaths, layerImages);
+
+                return (
+                  <div
+                    key={`quick-layer-${layer.id}`}
+                    className={`flex items-center gap-2 rounded-xl border p-1.5 transition-colors ${
+                      isActive
+                        ? 'bg-[#eaecf0] border-[#d0d5dd]'
+                        : 'bg-[#f8fafc] border-[#e4e7ec]'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveLayerId(layer.id)}
+                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 py-1 hover:bg-[#f2f4f7] transition-colors"
+                    >
+                      <div className="w-14 h-9 shrink-0 overflow-hidden rounded-md border border-[#d0d5dd] bg-white flex items-center justify-center">
+                        {previewBounds ? (
+                          <svg
+                            className="w-full h-full"
+                            viewBox={`${previewBounds.minX} ${previewBounds.minY} ${previewBounds.width} ${previewBounds.height}`}
+                            preserveAspectRatio="xMidYMid meet"
+                          >
+                            {layerImages.map(img => (
+                              <image
+                                key={`quick-layer-img-${img.id}`}
+                                href={img.url}
+                                x={-img.width / 2}
+                                y={-img.height / 2}
+                                width={img.width}
+                                height={img.height}
+                                opacity={Number.isFinite(img.opacity) ? Math.max(0, Math.min(1, img.opacity)) : 1}
+                                transform={`translate(${img.x}, ${img.y}) scale(${img.scale}) rotate(${img.rotation})`}
+                              />
+                            ))}
+                            {layerPaths.map((path, index) => {
+                              const pathD = pointsToPath(path.points, path.isClosed);
+                              const pathStroke = getPathStrokeStyle(path, pathStyleDefaults);
+                              const isSinglePointPath = path.points.length === 1;
+
+                              if (isSinglePointPath) {
+                                if (!pathStroke.strokeEnabled) return null;
+                                return (
+                                  <circle
+                                    key={`quick-layer-path-dot-${path.id}-${index}`}
+                                    cx={path.points[0].x}
+                                    cy={path.points[0].y}
+                                    r={Math.max(2, pathStroke.strokeWidth * 1.2)}
+                                    fill={pathStroke.strokeColor}
+                                    stroke={pathStroke.strokeColor}
+                                    strokeWidth={0.5}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <path
+                                  key={`quick-layer-path-${path.id}-${index}`}
+                                  d={pathD}
+                                  fill={path.fillEnabled ? THEME.main : 'none'}
+                                  stroke={pathStroke.strokeEnabled ? pathStroke.strokeColor : 'none'}
+                                  strokeWidth={pathStroke.strokeEnabled ? Math.max(0.8, pathStroke.strokeWidth) : 0}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              );
+                            })}
+                          </svg>
+                        ) : (
+                          <LayerIcon type={layer.itemType} />
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-[#344054] truncate">{layer.name}</span>
+                      <span className="text-[10px] text-[#98a2b3] shrink-0">{instanceCount} obj</span>
+                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => moveSelectedLayerQuick(layer.id, 'up')}
+                        disabled={!canMoveUp}
+                        className={`h-7 w-7 rounded-md border flex items-center justify-center transition-colors ${
+                          canMoveUp
+                            ? 'border-[#d0d5dd] text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
+                            : 'border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed'
+                        }`}
+                        title="Move layer up"
+                      >
+                        <ChevronUp size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveSelectedLayerQuick(layer.id, 'down')}
+                        disabled={!canMoveDown}
+                        className={`h-7 w-7 rounded-md border flex items-center justify-center transition-colors ${
+                          canMoveDown
+                            ? 'border-[#d0d5dd] text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
+                            : 'border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed'
+                        }`}
+                        title="Move layer down"
+                      >
+                        <ChevronUp size={13} className="rotate-180" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isMobile && (
         <>
           {anyMobileOverlayOpen && (
             <button
               type="button"
               onClick={closeAllPanels}
-              className="absolute inset-0 z-[9] bg-[#4a2622]/8"
+              className="absolute inset-0 z-[9] bg-[#344054]/8"
               aria-label="Close panels overlay"
             />
           )}
@@ -5932,7 +6174,7 @@ export default function App() {
                 className="absolute z-[23] pointer-events-none"
                 style={{ left: `${mobileContextMenu.x}px`, top: `${mobileContextMenu.y}px` }}
               >
-                <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 bg-[#fdfcfa] border border-[#e8dfdb] rounded-[12px] shadow-[0_12px_24px_rgba(74,38,34,0.18)] p-1.5">
+                <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 bg-[#f8fafc] border border-[#e4e7ec] rounded-[12px] shadow-[0_12px_24px_rgba(52,64,84,0.14)] p-1.5">
                   <div className="flex flex-col gap-1">
                     {mobileContextMenu.type === 'actions' && (
                       <>
@@ -5942,7 +6184,7 @@ export default function App() {
                             copyCurrentSelection();
                             closeMobileContextMenu();
                           }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#4a2622] active:bg-[#efe4df] flex items-center gap-2 text-xs font-semibold"
+                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
                         >
                           <Copy size={14} />
                           Copy
@@ -5953,7 +6195,7 @@ export default function App() {
                             cutCurrentSelection();
                             closeMobileContextMenu();
                           }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#7c3f35] active:bg-[#f0dfdc] flex items-center gap-2 text-xs font-semibold"
+                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#b42318] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
                         >
                           <Scissors size={14} />
                           Cut
@@ -5964,7 +6206,7 @@ export default function App() {
                             duplicateCurrentSelection();
                             closeMobileContextMenu();
                           }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#4a2622] active:bg-[#efe4df] flex items-center gap-2 text-xs font-semibold"
+                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
                         >
                           <Plus size={14} />
                           Duplicate
@@ -5975,7 +6217,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={handleMobileContextPaste}
-                        className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f8f4f2] text-[#4a2622] active:bg-[#efe4df] flex items-center gap-2 text-xs font-semibold"
+                        className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
                       >
                         <ClipboardPaste size={14} />
                         Paste
@@ -5991,7 +6233,7 @@ export default function App() {
             className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
             style={{ top: mobileTopInset }}
           >
-            <div className="pointer-events-auto h-11 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] px-2 flex items-center gap-1 max-w-full">
+            <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-2 flex items-center gap-1 max-w-full">
               <button
                 type="button"
                 onClick={handleMobileUndo}
@@ -5999,7 +6241,7 @@ export default function App() {
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
                 onMouseUp={clearTapFocus}
-                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
                 title="Undo"
               >
                 <RefreshCw size={13} className="-scale-x-100" />
@@ -6011,13 +6253,13 @@ export default function App() {
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
                 onMouseUp={clearTapFocus}
-                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
                 title="Redo"
               >
                 <RefreshCw size={13} />
               </button>
             </div>
-            <div className="pointer-events-auto h-11 bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] px-1.5 flex items-center gap-1.5 max-w-full">
+            <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-1.5 flex items-center gap-1.5 max-w-full">
               <button
                 type="button"
                 onClick={resetZoomToHundred}
@@ -6025,7 +6267,7 @@ export default function App() {
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
                 onMouseUp={clearTapFocus}
-                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#7c6a66] bg-transparent active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#667085] bg-transparent active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
                 title="Reset zoom to 100%"
               >
                 {Math.round(zoom * 100)}%
@@ -6038,7 +6280,7 @@ export default function App() {
                   onPointerCancel={clearTapFocus}
                   onTouchEnd={clearTapFocus}
                   onMouseUp={clearTapFocus}
-                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
                   title="Zoom Out"
                 >
                   <Minus size={13} />
@@ -6050,7 +6292,7 @@ export default function App() {
                   onPointerCancel={clearTapFocus}
                   onTouchEnd={clearTapFocus}
                   onMouseUp={clearTapFocus}
-                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#7c6a66] active:bg-[#ede3e1] active:border-[#d4c8c5] active:text-[#4a2622]"
+                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
                   title="Zoom In"
                 >
                   <Plus size={13} />
@@ -6064,11 +6306,11 @@ export default function App() {
             style={{ ...mobileToolbarSharedWidthStyle, bottom: mobileMenuDrawerBottom }}
           >
             <div
-              className={`pointer-events-auto w-full rounded-[16px] shadow-[0_12px_28px_rgba(74,38,34,0.16)] mobile-drawer ${
+              className={`pointer-events-auto w-full rounded-[16px] shadow-[0_12px_28px_rgba(52,64,84,0.14)] mobile-drawer ${
                 mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
               }`}
             >
-              <div className="bg-[#fdfcfa] rounded-[16px] border border-[#e8dfdb] p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
+              <div className="bg-[#f8fafc] rounded-[16px] border border-[#e4e7ec] p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
                 <div className="grid grid-cols-4 gap-1">
                   <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
                   <MobileToolButton
@@ -6151,8 +6393,8 @@ export default function App() {
               className="absolute left-1/2 -translate-x-1/2 z-[21] pointer-events-none w-max max-w-[calc(100vw-16px)]"
               style={{ bottom: mobileShapePanelBottom }}
             >
-              <div className="pointer-events-auto rounded-[16px] shadow-[0_12px_28px_rgba(74,38,34,0.16)] w-max max-w-[calc(100vw-16px)]">
-                <div className="bg-[#fdfcfa] rounded-[16px] border border-[#e8dfdb] p-1 overflow-hidden">
+              <div className="pointer-events-auto rounded-[16px] shadow-[0_12px_28px_rgba(52,64,84,0.14)] w-max max-w-[calc(100vw-16px)]">
+                <div className="bg-[#f8fafc] rounded-[16px] border border-[#e4e7ec] p-1 overflow-hidden">
                   <div className="flex items-center gap-0.5 overflow-x-auto">
                     <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
                     <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
@@ -6169,7 +6411,7 @@ export default function App() {
             className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none w-max max-w-[calc(100vw-16px)]"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <div ref={mobileToolbarShellRef} className="pointer-events-auto bg-[#fdfcfa] rounded-[16px] shadow-lg border border-[#e8dfdb] p-[6px] w-max max-w-[calc(100vw-16px)]">
+            <div ref={mobileToolbarShellRef} className="pointer-events-auto bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] p-[6px] w-max max-w-[calc(100vw-16px)]">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <MobileToolButton
                   variant="toolbar"
@@ -6179,7 +6421,7 @@ export default function App() {
                   icon={<Menu size={16} />}
                   label="Menu"
                 />
-                <div className="mx-2 h-7 w-px bg-[#ddd1cd] shrink-0" />
+                <div className="mx-2 h-7 w-px bg-[#d0d5dd] shrink-0" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
@@ -6222,20 +6464,20 @@ export default function App() {
           return (
             <div
               key={panel.id}
-              className={`bg-[#fdfcfa] rounded-2xl shadow-[0_14px_28px_rgba(74,38,34,0.16)] border border-[#e8dfdb] overflow-hidden flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
+              className={`bg-[#f8fafc] rounded-2xl shadow-[0_14px_28px_rgba(52,64,84,0.14)] border border-[#e4e7ec] overflow-hidden flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
                 isMobile ? 'w-full' : 'w-60'
               }`}
             >
               <div 
-                className={`flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-[#f4f1ed] transition-colors rounded-t-2xl ${!isExpanded ? 'rounded-b-2xl' : 'border-b border-[#e8dfdb] bg-[#f4f1ed]'}`}
+                className={`flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-[#f2f4f7] transition-colors rounded-t-2xl ${!isExpanded ? 'rounded-b-2xl' : 'border-b border-[#e4e7ec] bg-[#f2f4f7]'}`}
                 onClick={() => {
                   setExpandedPanel(isExpanded ? null : panel.id);
                 }}
               >
-                <h3 className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest select-none">{panel.title}</h3>
+                <h3 className="text-[10px] font-bold text-[#667085] uppercase tracking-widest select-none">{panel.title}</h3>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setOpenPanels(p => ({...p, [panel.id]: false})); if(expandedPanel===panel.id) setExpandedPanel(null); }}
-                  className="p-1 -mr-1 hover:bg-[#ede3e1] rounded text-[#8c746f] hover:text-[#4a2622] transition-colors"
+                  className="p-1 -mr-1 hover:bg-[#eaecf0] rounded text-[#667085] hover:text-[#344054] transition-colors"
                   title="Close Panel"
                 >
                   <X size={14} />
@@ -6247,43 +6489,43 @@ export default function App() {
                   {panel.id === 'grid' && (
                     <div className="p-3.5 flex flex-col gap-3">
                       <div className="flex flex-col gap-3">
-                        <div className="grid grid-cols-3 gap-2 bg-[#f4f1ed] p-1.5 rounded-lg">
+                        <div className="grid grid-cols-3 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'none' ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'none' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'none'})}
                            >None</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'dots' ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'dots' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'dots'})}
                            >Dots</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'lines' ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'lines' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'lines'})}
                            >Grid</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circular' ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circular' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'circular'})}
                            >Circular</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circles' ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circles' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'circles'})}
                            >Circles</button>
                         </div>
 
                         {gridConfig.type === 'lines' && (
                           <div className="flex flex-col gap-2 mt-1">
-                            <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest px-1">Grid Shape (Edges)</label>
-                            <div className="flex gap-2 bg-[#f4f1ed] p-1.5 rounded-lg">
+                            <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Grid Shape (Edges)</label>
+                            <div className="flex gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
                                <button
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 3 ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 3 ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                                   onClick={() => setGridConfig({...gridConfig, edges: 3})}
                                >3 (Tri)</button>
                                <button
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 4 ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 4 ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                                   onClick={() => setGridConfig({...gridConfig, edges: 4})}
                                >4 (Sqr)</button>
                                <button
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 6 ? 'bg-white shadow-sm text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622]'}`}
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 6 ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
                                   onClick={() => setGridConfig({...gridConfig, edges: 6})}
                                >6 (Hex)</button>
                             </div>
@@ -6293,7 +6535,7 @@ export default function App() {
                         {gridConfig.type !== 'none' && (
                           <div className="flex flex-col gap-2 mt-1">
                             <div className="grid grid-cols-[1fr_88px] items-center gap-2">
-                              <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest px-1">Grid Density</label>
+                              <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Grid Density</label>
                               <ScrubbableNumberInput
                                 value={effectiveGridSize}
                                 min={MIN_GRID_SIZE}
@@ -6308,7 +6550,7 @@ export default function App() {
                             </div>
                             {gridConfig.type === 'circular' && (
                               <div className="grid grid-cols-[1fr_88px] items-center gap-2">
-                                <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest px-1">Angle Step</label>
+                                <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Angle Step</label>
                                 <ScrubbableNumberInput
                                   value={effectiveCircularStep}
                                   min={MIN_CIRCULAR_STEP}
@@ -6328,11 +6570,11 @@ export default function App() {
                           </div>
                         )}
                         
-                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-[#e8dfdb]">
-                           <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest px-1">Snap to Grid</label>
+                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-[#e4e7ec]">
+                           <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Snap to Grid</label>
                            <button
                                onClick={() => setGridConfig({...gridConfig, snapToGrid: !gridConfig.snapToGrid})}
-                               className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${gridConfig.snapToGrid ? 'bg-[#4a2622]' : 'bg-[#d4c8c5]'}`}
+                               className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${gridConfig.snapToGrid ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
                            >
                                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${gridConfig.snapToGrid ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                            </button>
@@ -6345,20 +6587,20 @@ export default function App() {
                     <div className="p-3.5 flex flex-col gap-2">
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center justify-center gap-2 py-2 bg-[#f4f1ed] hover:bg-[#ede3e1] text-[#4a2622] rounded-lg text-xs font-semibold transition-colors border border-[#d4c8c5]"
+                        className="flex items-center justify-center gap-2 py-2 bg-[#f2f4f7] hover:bg-[#eaecf0] text-[#344054] rounded-lg text-xs font-semibold transition-colors border border-[#d0d5dd]"
                       >
                         <ImageIcon size={14} />
                         Upload Image
                       </button>
 
                       {activeImage && (
-                        <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-[#e8dfdb]">
+                        <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-[#e4e7ec]">
                           <div className="flex items-center justify-between px-1 mb-1">
-                            <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest">Image Transform</label>
+                            <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Image Transform</label>
                             <div className="flex items-center gap-1">
                                <button
                                  onClick={() => updateActiveImage({ locked: !activeImage.locked })}
-                                 className={`p-1 rounded transition-colors ${activeImage.locked ? 'bg-[#ede3e1] text-[#4a2622]' : 'text-[#8c746f] hover:text-[#4a2622] hover:bg-[#ede3e1]'}`}
+                                 className={`p-1 rounded transition-colors ${activeImage.locked ? 'bg-[#eaecf0] text-[#344054]' : 'text-[#667085] hover:text-[#344054] hover:bg-[#eaecf0]'}`}
                                  title={activeImage.locked ? "Unlock Image" : "Lock Image"}
                                >
                                  {activeImage.locked ? <Lock size={12} /> : <Unlock size={12} />}
@@ -6407,11 +6649,11 @@ export default function App() {
 
                   {panel.id === 'stroke' && (
                     <div className="p-3.5 flex flex-col gap-3">
-                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e8dfdb]">
-                        <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest">Enable Stroke</label>
+                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e4e7ec]">
+                        <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Enable Stroke</label>
                         <button
                           onClick={() => applyPathStyle({ strokeEnabled: !strokeToggleActive })}
-                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${strokeToggleActive ? 'bg-[#4a2622]' : 'bg-[#d4c8c5]'}`}
+                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${strokeToggleActive ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
                           title={strokeToggleActive ? 'Disable Stroke' : 'Enable Stroke'}
                         >
                           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${strokeToggleActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
@@ -6419,7 +6661,7 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-[1fr_88px] gap-2">
-                        <div className="h-8 flex items-center gap-2 bg-[#f4f1ed] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d4c8c5] transition-all">
+                        <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
                           <input
                             type="color"
                             value={strokePanelStyle.strokeColor}
@@ -6428,7 +6670,7 @@ export default function App() {
                               setStrokeColorInput(next.replace('#', ''));
                               applyPathStyle({ strokeColor: next, strokeEnabled: true });
                             }}
-                            className="h-5 w-5 p-0 border border-[#d4c8c5] rounded cursor-pointer bg-transparent"
+                            className="h-5 w-5 p-0 border border-[#d0d5dd] rounded cursor-pointer bg-transparent"
                             title="Stroke Color"
                           />
                           <input
@@ -6443,12 +6685,12 @@ export default function App() {
                                 e.currentTarget.blur();
                               }
                             }}
-                            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#4a2622] font-mono uppercase"
+                            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#344054] font-mono uppercase"
                             placeholder="4A2622"
                             maxLength={6}
                           />
                         </div>
-                        <div className="h-8 flex items-center gap-1 bg-[#f4f1ed] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d4c8c5] transition-all">
+                        <div className="h-8 flex items-center gap-1 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
                           <input
                             type="text"
                             value={strokeWidthInput}
@@ -6461,10 +6703,10 @@ export default function App() {
                                 e.currentTarget.blur();
                               }
                             }}
-                            className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-[#4a2622] font-mono"
+                            className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-[#344054] font-mono"
                             placeholder="1.5"
                           />
-                          <span className="text-xs text-[#8c746f] font-mono select-none">px</span>
+                          <span className="text-xs text-[#667085] font-mono select-none">px</span>
                         </div>
                       </div>
 
@@ -6472,7 +6714,7 @@ export default function App() {
                         <select
                           value={strokePanelStyle.strokeAlign}
                           onChange={(e) => applyPathStyle({ strokeAlign: e.target.value })}
-                          className="h-8 bg-[#f4f1ed] rounded-md border border-transparent px-2 text-xs text-[#4a2622] focus:outline-none focus:ring-1 focus:ring-[#d4c8c5]"
+                          className="h-8 bg-[#f2f4f7] rounded-md border border-transparent px-2 text-xs text-[#344054] focus:outline-none focus:ring-1 focus:ring-[#d0d5dd]"
                         >
                           <option value="center">Center</option>
                           <option value="inside">Inside</option>
@@ -6484,55 +6726,55 @@ export default function App() {
 
                   {panel.id === 'guides' && (
                     <div className="p-3.5 flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e8dfdb]">
-                        <label className="text-[10px] font-bold text-[#8c746f] uppercase tracking-widest">Show Guides</label>
+                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e4e7ec]">
+                        <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Show Guides</label>
                         <button
                           onClick={toggleGuidesVisibility}
-                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${showGuides ? 'bg-[#4a2622]' : 'bg-[#d4c8c5]'}`}
+                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${showGuides ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
                           title={showGuides ? "Hide Guides" : "Show Guides"}
                         >
                           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showGuides ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
                       {!showBackgroundAids && (
-                        <p className="px-1 text-[10px] font-medium text-[#a18d88]">
+                        <p className="px-1 text-[10px] font-medium text-[#98a2b3]">
                           Background aids are globally hidden in the menu.
                         </p>
                       )}
                       <div className="flex flex-col gap-2.5">
                         <div className="flex items-center justify-between px-1">
                           <label className="text-xs font-semibold text-[#7dd3fc]">Cap Height</label>
-                          <div className="flex items-center bg-[#f4f1ed] rounded-md focus-within:ring-1 focus-within:ring-[#d4c8c5] w-16 transition-all">
+                          <div className="flex items-center bg-[#f2f4f7] rounded-md focus-within:ring-1 focus-within:ring-[#d0d5dd] w-16 transition-all">
                             <input 
                               type="number" 
                               value={guides.capHeight} 
                               onChange={(e) => setGuides({...guides, capHeight: e.target.value === '' ? '' : Number(e.target.value)})} 
                               onBlur={(e) => e.target.value === '' && setGuides({...guides, capHeight: 0})}
-                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#4a2622] font-mono" 
+                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#344054] font-mono" 
                             />
                           </div>
                         </div>
                         <div className="flex items-center justify-between px-1">
                           <label className="text-xs font-semibold text-[#818cf8]">X-Height</label>
-                          <div className="flex items-center bg-[#f4f1ed] rounded-md focus-within:ring-1 focus-within:ring-[#d4c8c5] w-16 transition-all">
+                          <div className="flex items-center bg-[#f2f4f7] rounded-md focus-within:ring-1 focus-within:ring-[#d0d5dd] w-16 transition-all">
                             <input 
                               type="number" 
                               value={guides.xHeight} 
                               onChange={(e) => setGuides({...guides, xHeight: e.target.value === '' ? '' : Number(e.target.value)})} 
                               onBlur={(e) => e.target.value === '' && setGuides({...guides, xHeight: 0})}
-                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#4a2622] font-mono" 
+                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#344054] font-mono" 
                             />
                           </div>
                         </div>
                         <div className="flex items-center justify-between px-1">
                           <label className="text-xs font-semibold text-[#c084fc]">Descender</label>
-                          <div className="flex items-center bg-[#f4f1ed] rounded-md focus-within:ring-1 focus-within:ring-[#d4c8c5] w-16 transition-all">
+                          <div className="flex items-center bg-[#f2f4f7] rounded-md focus-within:ring-1 focus-within:ring-[#d0d5dd] w-16 transition-all">
                             <input 
                               type="number" 
                               value={guides.descender} 
                               onChange={(e) => setGuides({...guides, descender: e.target.value === '' ? '' : Number(e.target.value)})} 
                               onBlur={(e) => e.target.value === '' && setGuides({...guides, descender: 0})}
-                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#4a2622] font-mono" 
+                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#344054] font-mono" 
                             />
                           </div>
                         </div>
@@ -6548,7 +6790,7 @@ export default function App() {
                           return (
                             <div className="relative" key={layer.id}>
                                 {dragDropTarget?.id === layer.id && dragDropTarget.position === 'top' && (
-                                   <div className="absolute top-[-2px] left-0 right-0 h-[2px] bg-[#4a2622] z-10 rounded-full" />
+                                   <div className="absolute top-[-2px] left-0 right-0 h-[2px] bg-[#344054] z-10 rounded-full" />
                                 )}
                                 <div 
                                     draggable={!isMobile && editingLayerId !== layer.id}
@@ -6558,8 +6800,8 @@ export default function App() {
                                     onDragEnd={handleLayerDragEnd}
                                     className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
                                       isSelected 
-                                        ? 'bg-[#ede3e1] border-[#d4c8c5] shadow-sm text-[#4a2622]' 
-                                        : 'bg-[#fdfcfa] border-transparent hover:bg-[#fcfaf8] hover:border-[#e8dfdb] text-[#8c746f]'
+                                        ? 'bg-[#eaecf0] border-[#d0d5dd] shadow-sm text-[#344054]' 
+                                        : 'bg-[#f8fafc] border-transparent hover:bg-[#f5f8fc] hover:border-[#e4e7ec] text-[#667085]'
                                     } ${draggedLayerId === layer.id ? 'opacity-50' : ''}`}
                                     onClick={(e) => handleLayerSelect(e, layer)}
                                 >
@@ -6580,7 +6822,7 @@ export default function App() {
                                           onClick={(e) => e.stopPropagation()}
                                           onPointerDown={(e) => e.stopPropagation()}
                                           onMouseDown={(e) => e.stopPropagation()}
-                                          className="text-xs font-semibold text-[#4a2622] bg-white border border-[#4a2622] rounded px-1 outline-none w-24 py-0.5 select-text cursor-text ml-1"
+                                          className="text-xs font-semibold text-[#344054] bg-white border border-[#344054] rounded px-1 outline-none w-24 py-0.5 select-text cursor-text ml-1"
                                         />
                                       ) : (
                                         <span 
@@ -6596,21 +6838,21 @@ export default function App() {
                                     <div className="flex items-center gap-0.5 shrink-0 ml-2">
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }}
-                                        className={`p-1.5 rounded-md hover:bg-[#e8dfdb]/50 transition-colors ${layer.visible ? 'opacity-100' : 'opacity-40'}`}
+                                        className={`p-1.5 rounded-md hover:bg-[#e4e7ec]/50 transition-colors ${layer.visible ? 'opacity-100' : 'opacity-40'}`}
                                         title={layer.visible ? "Hide Layer" : "Show Layer"}
                                       >
                                         {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
                                       </button>
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer.id); }}
-                                        className={`p-1.5 rounded-md hover:bg-[#e8dfdb]/50 transition-colors ${layer.locked ? 'opacity-100' : 'opacity-40'}`}
+                                        className={`p-1.5 rounded-md hover:bg-[#e4e7ec]/50 transition-colors ${layer.locked ? 'opacity-100' : 'opacity-40'}`}
                                         title={layer.locked ? "Unlock Layer" : "Lock Layer"}
                                       >
                                         {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
                                       </button>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
-                                        className="p-1.5 rounded-md hover:bg-[#f3d9d6] text-[#b25045] transition-colors"
+                                        className="p-1.5 rounded-md hover:bg-[#fee4e2] text-[#b42318] transition-colors"
                                         title="Delete Layer"
                                       >
                                         <Trash2 size={14} />
@@ -6618,7 +6860,7 @@ export default function App() {
                                     </div>
                                 </div>
                                 {dragDropTarget?.id === layer.id && dragDropTarget.position === 'bottom' && (
-                                   <div className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-[#4a2622] z-10 rounded-full" />
+                                   <div className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-[#344054] z-10 rounded-full" />
                                 )}
                             </div>
                           )
@@ -6629,13 +6871,13 @@ export default function App() {
 
                   {panel.id === 'export' && (
                     <div className="p-3.5 flex flex-col gap-3">
-                      <div className="grid grid-cols-2 gap-2 bg-[#f4f1ed] p-1.5 rounded-lg">
+                      <div className="grid grid-cols-2 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
                         <button
                           onClick={() => setMobileExportScope('selection')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
                             mobileExportScope === 'selection'
-                              ? 'bg-white shadow-sm text-[#4a2622]'
-                              : 'text-[#8c746f] hover:text-[#4a2622]'
+                              ? 'bg-white shadow-sm text-[#344054]'
+                              : 'text-[#667085] hover:text-[#344054]'
                           }`}
                         >
                           Selection
@@ -6644,23 +6886,23 @@ export default function App() {
                           onClick={() => setMobileExportScope('canvas')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
                             mobileExportScope === 'canvas'
-                              ? 'bg-white shadow-sm text-[#4a2622]'
-                              : 'text-[#8c746f] hover:text-[#4a2622]'
+                              ? 'bg-white shadow-sm text-[#344054]'
+                              : 'text-[#667085] hover:text-[#344054]'
                           }`}
                         >
                           Canvas
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 bg-[#f4f1ed] p-1.5 rounded-lg">
+                      <div className="grid grid-cols-3 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
                         {['png', 'jpg', 'svg'].map(format => (
                           <button
                             key={format}
                             onClick={() => setMobileExportFormat(format)}
                             className={`py-1.5 text-xs font-semibold uppercase rounded-md transition-all ${
                               mobileExportFormat === format
-                                ? 'bg-white shadow-sm text-[#4a2622]'
-                                : 'text-[#8c746f] hover:text-[#4a2622]'
+                                ? 'bg-white shadow-sm text-[#344054]'
+                                : 'text-[#667085] hover:text-[#344054]'
                             }`}
                           >
                             {format}
@@ -6669,7 +6911,7 @@ export default function App() {
                       </div>
 
                       {mobileExportScope === 'selection' && !canExportSelection && (
-                        <p className="text-[10px] text-[#a18d88] px-1">
+                        <p className="text-[10px] text-[#98a2b3] px-1">
                           Select one or more objects to export selection.
                         </p>
                       )}
@@ -6680,8 +6922,8 @@ export default function App() {
                         disabled={isExporting || (mobileExportScope === 'selection' && !canExportSelection)}
                         className={`h-9 rounded-lg border text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${
                           isExporting || (mobileExportScope === 'selection' && !canExportSelection)
-                            ? 'bg-[#efe8e4] border-[#e1d7d3] text-[#a08f8b] cursor-not-allowed'
-                            : 'bg-[#f4f1ed] border-[#d4c8c5] text-[#4a2622] hover:bg-[#ede3e1]'
+                            ? 'bg-[#ecf1f7] border-[#d7dee8] text-[#98a2b3] cursor-not-allowed'
+                            : 'bg-[#f2f4f7] border-[#d0d5dd] text-[#344054] hover:bg-[#eaecf0]'
                         }`}
                       >
                         <Download size={14} />
@@ -6698,7 +6940,7 @@ export default function App() {
 
       {/* Bottom Toolbar (Desktop Tools) */}
       {!isMobile && (
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#fdfcfa] p-2 rounded-2xl shadow-lg border border-[#e8dfdb]">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#f8fafc] p-2 rounded-2xl shadow-lg border border-[#e4e7ec]">
         
         {/* Drawing Tools Section */}
         <div className="flex gap-1">
@@ -6723,8 +6965,8 @@ export default function App() {
               onClick={() => { changeMode('shape'); setShowShapeMenu(false); }}
               className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
                 mode === 'shape' 
-                  ? 'bg-[#ede3e1] text-[#4a2622]' 
-                  : 'text-[#8c746f] hover:bg-[#f4f1ed] hover:text-[#4a2622]'
+                  ? 'bg-[#eaecf0] text-[#344054]' 
+                  : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
               }`}
               title="Shape Tool (R/O)"
             >
@@ -6738,8 +6980,8 @@ export default function App() {
               onClick={() => setShowShapeMenu(!showShapeMenu)}
               className={`w-6 h-11 rounded-xl transition-all duration-200 flex items-center justify-center ${
                  showShapeMenu
-                  ? 'bg-[#ede3e1] text-[#4a2622]' 
-                  : 'text-[#8c746f] hover:bg-[#f4f1ed] hover:text-[#4a2622]'
+                  ? 'bg-[#eaecf0] text-[#344054]' 
+                  : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
               }`}
               title="Shape Options"
             >
@@ -6748,7 +6990,7 @@ export default function App() {
             
             {/* Shape Dropdown Menu */}
             {showShapeMenu && (
-               <div className="absolute bottom-[calc(100%+8px)] left-0 w-36 bg-[#fdfcfa] p-1.5 rounded-2xl shadow-xl border border-[#e8dfdb] flex flex-col gap-0.5 z-20">
+               <div className="absolute bottom-[calc(100%+8px)] left-0 w-36 bg-[#f8fafc] p-1.5 rounded-2xl shadow-xl border border-[#e4e7ec] flex flex-col gap-0.5 z-20">
                    <ShapeMenuItem type="rectangle" icon={<Square size={16}/>} label="Rectangle" hotkey="R" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="ellipse" icon={<Circle size={16}/>} label="Ellipse" hotkey="O" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="polygon" icon={<Triangle size={16}/>} label="Polygon" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
@@ -6760,7 +7002,7 @@ export default function App() {
         </div>
 
         {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e8dfdb] mx-1"></div>
+        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
 
         {/* Manipulation Tools Section */}
         <div className="flex gap-1">
@@ -6781,7 +7023,7 @@ export default function App() {
         </div>
 
         {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e8dfdb] mx-1"></div>
+        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
 
         {/* Configuration Panels Section */}
         <div className="flex gap-1">
@@ -6828,7 +7070,7 @@ export default function App() {
         </div>
 
         {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e8dfdb] mx-1"></div>
+        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
 
         {/* View Toggles Section */}
         <div className="flex gap-1">
@@ -6867,13 +7109,13 @@ export default function App() {
         </div>
 
         {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e8dfdb] mx-1"></div>
+        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
 
         {/* Global Actions Section */}
         <div className="flex gap-1">
           <button 
             onClick={correctPathDirections}
-            className="p-3 text-[#8c746f] hover:text-[#4a2622] hover:bg-[#f4f1ed] rounded-xl transition-all"
+            className="p-3 text-[#667085] hover:text-[#344054] hover:bg-[#f2f4f7] rounded-xl transition-all"
             title={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}
           >
             <RefreshCw size={20} />
@@ -6881,7 +7123,7 @@ export default function App() {
           
           <button 
             onClick={clearCanvas}
-            className="p-3 text-[#8c746f] hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+            className="p-3 text-[#667085] hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
             title="Clear Canvas"
           >
             <Trash2 size={20} />
@@ -6901,27 +7143,27 @@ function ToolButton({ active, onClick, icon, label, hotkey }) {
       onClick={onClick}
       className={`relative group p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
         active 
-          ? 'bg-[#ede3e1] text-[#4a2622]' 
-          : 'text-[#8c746f] hover:text-[#4a2622] hover:bg-[#f4f1ed]'
+          ? 'bg-[#eaecf0] text-[#344054]' 
+          : 'text-[#667085] hover:text-[#344054] hover:bg-[#f2f4f7]'
       }`}
       title={hotkey ? `${label} (${hotkey})` : label}
     >
       {icon}
       
       {/* Tooltip */}
-      <div className="absolute -top-10 scale-0 group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all origin-bottom bg-[#4a2622] text-[#f4f1ed] text-xs font-medium px-2 py-1 rounded shadow-lg flex items-center gap-2 pointer-events-none whitespace-nowrap z-50">
+      <div className="absolute -top-10 scale-0 group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all origin-bottom bg-[#344054] text-[#f2f4f7] text-xs font-medium px-2 py-1 rounded shadow-lg flex items-center gap-2 pointer-events-none whitespace-nowrap z-50">
         <span>{label}</span>
-        {hotkey && <span className="text-[#a89b99] font-mono text-[10px] bg-[#3d1d1a] px-1 rounded">{hotkey}</span>}
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#4a2622] rotate-45"></div>
+        {hotkey && <span className="text-[#98a2b3] font-mono text-[10px] bg-[#1f2937] px-1 rounded">{hotkey}</span>}
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#344054] rotate-45"></div>
       </div>
     </button>
   );
 }
 
 function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg', variant = 'solid' }) {
-  const activeStyle = 'bg-[#ede3e1] border-[#d4c8c5] text-[#4a2622]';
-  const solidIdleStyle = 'bg-[#f8f6f3] border-[#ede5e2] text-[#7c6a66] active:bg-[#efe4df]';
-  const toolbarIdleStyle = 'bg-transparent border-transparent text-[#7c6a66] active:bg-[#efe4df] active:text-[#4a2622] active:border-[#d4c8c5]';
+  const activeStyle = 'bg-[#eaecf0] border-[#d0d5dd] text-[#344054]';
+  const solidIdleStyle = 'bg-[#f5f7fb] border-[#e6eaf0] text-[#667085] active:bg-[#eaecf0]';
+  const toolbarIdleStyle = 'bg-transparent border-transparent text-[#667085] active:bg-[#eaecf0] active:text-[#344054] active:border-[#d0d5dd]';
   const idleStyle = variant === 'toolbar' ? toolbarIdleStyle : solidIdleStyle;
   const handlePointerRelease = (event) => {
     if (event?.currentTarget && typeof event.currentTarget.blur === 'function') {
@@ -6953,14 +7195,14 @@ function ShapeMenuItem({ type, icon, label, hotkey, current, onClick }) {
       <button 
         onClick={() => onClick(type)}
         className={`flex items-center justify-between w-full p-2 text-xs font-medium rounded-lg transition-colors ${
-            active ? 'bg-[#ede3e1] text-[#4a2622]' : 'text-[#8c746f] hover:bg-[#f4f1ed] hover:text-[#4a2622]'
+            active ? 'bg-[#eaecf0] text-[#344054]' : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
         }`}
       >
           <div className="flex items-center gap-2">
             {icon}
             <span>{label}</span>
           </div>
-          {hotkey && <span className="text-[10px] font-mono text-[#a89b99]">{hotkey}</span>}
+          {hotkey && <span className="text-[10px] font-mono text-[#98a2b3]">{hotkey}</span>}
       </button>
   )
 }
