@@ -34,7 +34,6 @@ import {
   Type
 } from 'lucide-react';
 
-import { THEME } from './theme';
 import {
   DEFAULT_STROKE_WIDTH,
   DEFAULT_STROKE_COLOR,
@@ -95,6 +94,7 @@ import { useObjects } from './hooks/useObjects';
 import { useSelection } from './hooks/useSelection';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { useLayers } from './hooks/useLayers';
+import { useExport } from './hooks/useExport';
 import { usePointerInteraction } from './hooks/usePointerInteraction';
 import { EditorProvider } from './state/EditorContext';
 import DesktopToolbar from './components/Toolbar/DesktopToolbar';
@@ -123,9 +123,6 @@ export default function App() {
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
   const [mobileContextMenu, setMobileContextMenu] = useState(null);
-  const [mobileExportScope, setMobileExportScope] = useState('selection');
-  const [mobileExportFormat, setMobileExportFormat] = useState('png');
-  const [isExporting, setIsExporting] = useState(false);
   const [strokeWidthInput, setStrokeWidthInput] = useState(String(DEFAULT_STROKE_WIDTH));
   const [strokeColorInput, setStrokeColorInput] = useState(DEFAULT_STROKE_COLOR.replace('#', ''));
   const mobileToolbarShellRef = useRef(null);
@@ -1642,176 +1639,12 @@ export default function App() {
     });
   };
 
-  const collectExportItems = useCallback((scope) => {
-    const visibleLayerIdSet = new Set(layers.filter(layer => layer.visible).map(layer => layer.id));
-
-    if (scope === 'selection') {
-      const selectedPathIndexSet = new Set(selectedPoints.map(point => point.pathIndex));
-      const scopedPaths = [...selectedPathIndexSet]
-        .map(index => paths[index])
-        .filter(path => path && visibleLayerIdSet.has(path.layerId));
-      const selectedImageIdSet = new Set(selectedImageIds);
-      const scopedImages = images.filter(img => selectedImageIdSet.has(img.id) && visibleLayerIdSet.has(img.layerId));
-      return { exportPaths: scopedPaths, exportImages: scopedImages };
-    }
-
-    return {
-      exportPaths: paths.filter(path => visibleLayerIdSet.has(path.layerId)),
-      exportImages: images.filter(img => visibleLayerIdSet.has(img.layerId))
-    };
-  }, [layers, selectedPoints, selectedImageIds, paths, images]);
-
-  const buildExportSvgBundle = useCallback((scope) => {
-    const { exportPaths, exportImages } = collectExportItems(scope);
-    if (exportPaths.length === 0 && exportImages.length === 0) return null;
-
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    exportPaths.forEach(path => {
-      path.points.forEach(point => {
-        minX = Math.min(minX, point.x);
-        minY = Math.min(minY, point.y);
-        maxX = Math.max(maxX, point.x);
-        maxY = Math.max(maxY, point.y);
-        if (point.hIn) {
-          minX = Math.min(minX, point.hIn.x);
-          minY = Math.min(minY, point.hIn.y);
-          maxX = Math.max(maxX, point.hIn.x);
-          maxY = Math.max(maxY, point.hIn.y);
-        }
-        if (point.hOut) {
-          minX = Math.min(minX, point.hOut.x);
-          minY = Math.min(minY, point.hOut.y);
-          maxX = Math.max(maxX, point.hOut.x);
-          maxY = Math.max(maxY, point.hOut.y);
-        }
-      });
-    });
-
-    exportImages.forEach(img => {
-      const halfW = (img.width * img.scale) / 2;
-      const halfH = (img.height * img.scale) / 2;
-      const rad = (img.rotation || 0) * Math.PI / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      [
-        { x: -halfW, y: -halfH },
-        { x: halfW, y: -halfH },
-        { x: halfW, y: halfH },
-        { x: -halfW, y: halfH }
-      ].forEach(corner => {
-        const worldX = img.x + (corner.x * cos - corner.y * sin);
-        const worldY = img.y + (corner.x * sin + corner.y * cos);
-        minX = Math.min(minX, worldX);
-        minY = Math.min(minY, worldY);
-        maxX = Math.max(maxX, worldX);
-        maxY = Math.max(maxY, worldY);
-      });
-    });
-
-    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
-      return null;
-    }
-
-    const padding = 12;
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-    const width = Math.max(1, Math.ceil(maxX - minX));
-    const height = Math.max(1, Math.ceil(maxY - minY));
-
-    const imageMarkup = exportImages.map(img => {
-      const renderWidth = img.width * img.scale;
-      const renderHeight = img.height * img.scale;
-      const x = img.x - renderWidth / 2;
-      const y = img.y - renderHeight / 2;
-      const opacity = Number.isFinite(img.opacity) ? Math.max(0, Math.min(1, img.opacity)) : 1;
-      const rotation = Number.isFinite(img.rotation) ? img.rotation : 0;
-      return `<image href="${escapeXml(img.url)}" x="${x}" y="${y}" width="${renderWidth}" height="${renderHeight}" opacity="${opacity}" transform="rotate(${rotation} ${img.x} ${img.y})" />`;
-    }).join('');
-
-    const pathMarkup = exportPaths.map(path => {
-      const d = pointsToPath(path.points, path.isClosed);
-      const fill = path.fillEnabled ? THEME.main : 'none';
-      const strokeColor = normalizeStrokeColor(path.strokeColor, DEFAULT_STROKE_COLOR);
-      const stroke = path.strokeEnabled === false ? 'none' : strokeColor;
-      const strokeWidthValue = stroke === 'none' ? 0 : normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH);
-      return `<path d="${escapeXml(d)}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
-    }).join('');
-
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${imageMarkup}${pathMarkup}</g></svg>`;
-    return { svg, width, height };
-  }, [collectExportItems]);
-
-  const downloadBlob = useCallback((blob, filename) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }, []);
-
-  const handleExport = useCallback(async () => {
-    if (isExporting) return;
-    const scope = mobileExportScope;
-    const format = mobileExportFormat;
-    const bundle = buildExportSvgBundle(scope);
-    if (!bundle) return;
-
-    setIsExporting(true);
-    try {
-      const baseName = scope === 'selection' ? 'selection' : 'canvas';
-      if (format === 'svg') {
-        downloadBlob(new Blob([bundle.svg], { type: 'image/svg+xml;charset=utf-8' }), `${baseName}.svg`);
-        return;
-      }
-
-      const svgBlob = new Blob([bundle.svg], { type: 'image/svg+xml;charset=utf-8' });
-      const svgUrl = URL.createObjectURL(svgBlob);
-      try {
-        const svgImage = await new Promise((resolve, reject) => {
-          const img = new window.Image();
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = svgUrl;
-        });
-
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(bundle.width));
-        canvas.height = Math.max(1, Math.round(bundle.height));
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        if (format === 'jpg') {
-          ctx.fillStyle = THEME.bg;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        ctx.drawImage(svgImage, 0, 0, canvas.width, canvas.height);
-        const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
-        const dataUrl = canvas.toDataURL(mime, format === 'jpg' ? 0.92 : undefined);
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `${baseName}.${format === 'jpg' ? 'jpg' : 'png'}`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      } finally {
-        URL.revokeObjectURL(svgUrl);
-      }
-    } finally {
-      setIsExporting(false);
-    }
-  }, [isExporting, mobileExportScope, mobileExportFormat, buildExportSvgBundle, downloadBlob]);
+  const {
+    exportScope: mobileExportScope, setExportScope: setMobileExportScope,
+    exportFormat: mobileExportFormat, setExportFormat: setMobileExportFormat,
+    isExporting,
+    handleExport
+  } = useExport({ layers, paths, images, selectedPoints, selectedImageIds });
 
   useEffect(() => {
     const canvas = svgRef.current;

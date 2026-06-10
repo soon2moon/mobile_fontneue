@@ -33,6 +33,7 @@ must stay empty.
 | `phase3.mjs` | wheel zoom anchoring, async image placement, image undo/redo |
 | `phase4.mjs` | layer hide/show/lock/delete + undo, layer session round-trip |
 | `phase5-desktop.mjs` | pen (close + curve), pencil, shift-rect, marquee+drag, undo chain |
+| `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.
 
