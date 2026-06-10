@@ -96,6 +96,8 @@ import { useSelection } from './hooks/useSelection';
 import { useSessionPersistence } from './hooks/useSessionPersistence';
 import { useLayers } from './hooks/useLayers';
 import { usePointerInteraction } from './hooks/usePointerInteraction';
+import { EditorProvider } from './state/EditorContext';
+import DesktopToolbar from './components/Toolbar/DesktopToolbar';
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -2331,7 +2333,29 @@ export default function App() {
   };
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
+  const editor = {
+    applyPathStyle,
+    changeMode,
+    clearCanvas,
+    correctPathDirections,
+    fillToggleActive,
+    hasSelectedPaths,
+    insertTextFromPrompt,
+    mode,
+    openPanels,
+    selectedPoints,
+    setShapeType,
+    setShowNodes,
+    setShowShapeMenu,
+    shapeMenuContainerRef,
+    shapeType,
+    showNodes,
+    showShapeMenu,
+    togglePanel
+  };
+
   return (
+    <EditorProvider value={editor}>
     <div className="w-screen h-screen bg-[#f2f4f7] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
       
       {/* Global Style overrides to hide default number input spinners for cleaner UI */}
@@ -3789,186 +3813,9 @@ export default function App() {
       </div>
 
       {/* Bottom Toolbar (Desktop Tools) */}
-      {!isMobile && (
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#f8fafc] p-2 rounded-2xl shadow-lg border border-[#e4e7ec]">
-        
-        {/* Drawing Tools Section */}
-        <div className="flex gap-1">
-          <ToolButton 
-            active={mode === 'draw'} 
-            onClick={() => changeMode('draw')} 
-            icon={<PenTool size={20} />} 
-            label="Path Tool" 
-            hotkey="P"
-          />
-          <ToolButton 
-            active={mode === 'pencil'} 
-            onClick={() => changeMode('pencil')} 
-            icon={<Pencil size={20} />} 
-            label="Pencil Tool" 
-            hotkey="F"
-          />
-
-          {/* Contextual Shape Menu */}
-          <div className="relative flex items-center gap-0.5 group" ref={shapeMenuContainerRef}>
-            <button
-              onClick={() => { changeMode('shape'); setShowShapeMenu(false); }}
-              className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
-                mode === 'shape' 
-                  ? 'bg-[#eaecf0] text-[#344054]' 
-                  : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-              }`}
-              title="Shape Tool (R/O)"
-            >
-              {shapeType === 'rectangle' && <Square size={20} />}
-              {shapeType === 'ellipse' && <Circle size={20} />}
-              {shapeType === 'polygon' && <Triangle size={20} />}
-              {shapeType === 'star' && <Star size={20} />}
-              {shapeType === 'line' && <Minus size={20} />}
-            </button>
-            <button
-              onClick={() => setShowShapeMenu(!showShapeMenu)}
-              className={`w-6 h-11 rounded-xl transition-all duration-200 flex items-center justify-center ${
-                 showShapeMenu
-                  ? 'bg-[#eaecf0] text-[#344054]' 
-                  : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-              }`}
-              title="Shape Options"
-            >
-              <ChevronUp size={14} />
-            </button>
-            
-            {/* Shape Dropdown Menu */}
-            {showShapeMenu && (
-               <div className="absolute bottom-[calc(100%+8px)] left-0 w-36 bg-[#f8fafc] p-1.5 rounded-2xl shadow-xl border border-[#e4e7ec] flex flex-col gap-0.5 z-20">
-                   <ShapeMenuItem type="rectangle" icon={<Square size={16}/>} label="Rectangle" hotkey="R" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
-                   <ShapeMenuItem type="ellipse" icon={<Circle size={16}/>} label="Ellipse" hotkey="O" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
-                   <ShapeMenuItem type="polygon" icon={<Triangle size={16}/>} label="Polygon" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
-                   <ShapeMenuItem type="star" icon={<Star size={16}/>} label="Star" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
-                   <ShapeMenuItem type="line" icon={<Minus size={16}/>} label="Line" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
-               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
-
-        {/* Manipulation Tools Section */}
-        <div className="flex gap-1">
-          <ToolButton 
-            active={mode === 'edit'} 
-            onClick={() => changeMode('edit')} 
-            icon={<MousePointer2 size={20} />} 
-            label="Node Editor" 
-            hotkey="V"
-          />
-          <ToolButton 
-            active={mode === 'pan'} 
-            onClick={() => changeMode('pan')} 
-            icon={<Hand size={20} />} 
-            label="Pan Canvas" 
-            hotkey="Space"
-          />
-        </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
-
-        {/* Configuration Panels Section */}
-        <div className="flex gap-1">
-          <ToolButton 
-            active={openPanels.image} 
-            onClick={() => togglePanel('image')} 
-            icon={<ImageIcon size={20} />} 
-            label="Image Settings" 
-            hotkey="U"
-          />
-          <ToolButton
-            active={false}
-            onClick={insertTextFromPrompt}
-            icon={<Type size={20} />}
-            label="Add Text"
-          />
-          <ToolButton 
-            active={openPanels.grid} 
-            onClick={() => togglePanel('grid')} 
-            icon={<Grid size={20} />} 
-            label="Background Config" 
-            hotkey="B"
-          />
-          <ToolButton
-            active={openPanels.layers}
-            onClick={() => togglePanel('layers')} 
-            icon={<Layers size={20} />} 
-            label="Layers Panel" 
-            hotkey="L"
-          />
-          <ToolButton 
-            active={openPanels.export} 
-            onClick={() => togglePanel('export')} 
-            icon={<Download size={20} />} 
-            label="Export"
-          />
-        </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
-
-        {/* View Toggles Section */}
-        <div className="flex gap-1">
-          <ToolButton 
-            active={showNodes && mode !== 'pencil'} 
-            onClick={() => { 
-                if (mode === 'pencil') {
-                  changeMode('edit');
-                  setShowNodes(true);
-                } else {
-                  setShowNodes(!showNodes);
-                }
-            }} 
-            icon={<CircleDot size={20} />} 
-            label="Show Nodes" 
-            hotkey="N"
-          />
-          <ToolButton
-            active={fillToggleActive}
-            onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
-            icon={<Droplet size={20} />}
-            label={hasSelectedPaths ? "Toggle Fill (Selection)" : "Toggle Fill (Default)"}
-          />
-          <ToolButton
-            active={openPanels.stroke}
-            onClick={() => togglePanel('stroke')}
-            icon={<Minus size={20} />}
-            label={hasSelectedPaths ? "Stroke Settings (Selection)" : "Stroke Settings (Default)"}
-          />
-        </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-8 bg-[#e4e7ec] mx-1"></div>
-
-        {/* Global Actions Section */}
-        <div className="flex gap-1">
-          <button 
-            onClick={correctPathDirections}
-            className="p-3 text-[#667085] hover:text-[#344054] hover:bg-[#f2f4f7] rounded-xl transition-all"
-            title={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}
-          >
-            <RefreshCw size={20} />
-          </button>
-          
-          <button 
-            onClick={clearCanvas}
-            className="p-3 text-[#667085] hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-            title="Clear Canvas"
-          >
-            <Trash2 size={20} />
-          </button>
-        </div>
-      </div>
-      )}
+      {!isMobile && <DesktopToolbar />}
 
     </div>
+    </EditorProvider>
   );
 }
