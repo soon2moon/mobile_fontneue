@@ -549,25 +549,7 @@ export default function App() {
   });
 
   // --- LAYER MANAGEMENT ---
-  const {
-    editingLayerId,
-    editingLayerName, setEditingLayerName,
-    dragDropTarget,
-    draggedLayerId,
-    selectedLayerIds,
-    toggleLayerVisibility,
-    toggleLayerLock,
-    deleteLayer,
-    startEditingLayer,
-    saveLayerName,
-    handleLayerNameKeyDown,
-    handleLayerDragStart,
-    handleLayerDragOver,
-    handleLayerDrop,
-    handleLayerDragEnd,
-    handleLayerSelect,
-    moveSelectedLayerQuick
-  } = useLayers({
+  const layersApi = useLayers({
     layers, setLayers,
     paths, setPaths,
     images, setImages,
@@ -580,6 +562,7 @@ export default function App() {
     mode, changeMode,
     isMobile
   });
+  const { editingLayerId, selectedLayerIds } = layersApi;
 
 
   const {
@@ -709,6 +692,7 @@ export default function App() {
 
   const editor = {
     ...uiShell,
+    ...layersApi,
     ...pathStyles,
     ...objectActions,
     activeEditGroupId,
@@ -721,15 +705,10 @@ export default function App() {
     currentPath,
     currentPathInfo,
     cutCurrentSelection,
-    deleteLayer,
-    dragDropTarget,
-    draggedLayerId,
     drawHover,
     drawingShape,
     duplicateCurrentSelection,
     dynamicCursor,
-    editingLayerId,
-    editingLayerName,
     effectiveCircularStep,
     effectiveGridSize,
     fileInputRef,
@@ -739,12 +718,6 @@ export default function App() {
     gridConfig,
     handleCanvasContextMenu,
     handleExport,
-    handleLayerDragEnd,
-    handleLayerDragOver,
-    handleLayerDragStart,
-    handleLayerDrop,
-    handleLayerNameKeyDown,
-    handleLayerSelect,
     handleMobileContextPaste,
     handleMobileRedo,
     handleMobileUndo,
@@ -769,7 +742,6 @@ export default function App() {
     mobileExportFormat,
     mobileExportScope,
     mode,
-    moveSelectedLayerQuick,
     pan,
     pathCountByLayerId,
     pathStyleDefaults,
@@ -777,16 +749,13 @@ export default function App() {
     pathsByLayerId,
     pointAction,
     resetZoomToHundred,
-    saveLayerName,
     selBBox,
     selectMobileShape,
     selectedImageIds,
-    selectedLayerIds,
     selectedLayersInStackOrder,
     selectedPoints,
     selectionBox,
     setActiveLayerId,
-    setEditingLayerName,
     setGridConfig,
     setHoveredHandle,
     setMobileExportFormat,
@@ -800,10 +769,7 @@ export default function App() {
     showBackgroundAids,
     showNodes,
     showShapeMenu,
-    startEditingLayer,
     svgRef,
-    toggleLayerLock,
-    toggleLayerVisibility,
     toggleMobileShapePanel,
     updateActiveImage,
     zoom
