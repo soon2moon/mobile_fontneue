@@ -88,24 +88,28 @@ import ToolButton from './ui/ToolButton';
 import MobileToolButton from './ui/MobileToolButton';
 import ShapeMenuItem from './ui/ShapeMenuItem';
 import { PANELS_CONFIG, CLOSED_PANELS } from './config/panels';
+import { useViewportSize } from './hooks/useViewportSize';
+import { useViewport } from './hooks/useViewport';
+import { useHistory } from './hooks/useHistory';
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
   // Canvas State
-  const [pan, setPan] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  const [zoom, setZoom] = useState(1);
-  const [isPanning, setIsPanning] = useState(false);
-  const panRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  const zoomRef = useRef(1);
-  const [viewportSize, setViewportSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight
-  });
-  const isMobile = viewportSize.width <= 900;
+  const svgRef = useRef(null);
+  const { viewportSize, isMobile, mobileBottomInset } = useViewportSize();
+  const {
+    pan, setPan,
+    zoom, setZoom,
+    isPanning, setIsPanning,
+    panRef, zoomRef,
+    getCanvasCoords,
+    zoomAtScreenPoint,
+    stepZoom,
+    handleWheel
+  } = useViewport(svgRef);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
-  const [mobileBottomInset, setMobileBottomInset] = useState(0);
   const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
   const [mobileContextMenu, setMobileContextMenu] = useState(null);
   const [mobileExportScope, setMobileExportScope] = useState('selection');
@@ -184,8 +188,23 @@ export default function App() {
   const [bgHoverAction, setBgHoverAction] = useState(null);
 
   // History State (Undo/Redo)
-  const [pastPaths, setPastPaths] = useState([]);
-  const [futurePaths, setFuturePaths] = useState([]);
+  const { pastPaths, futurePaths, commitHistory, handleUndo, handleRedo } = useHistory({
+    mode,
+    paths, setPaths,
+    currentPath, setCurrentPath,
+    images, setImages,
+    layers, setLayers,
+    setIsDrawingCurve,
+    setDrawHover,
+    setHoveredStartPoint,
+    setGhostPoint,
+    setSelectedPoints,
+    setActivePathEditId,
+    setActiveHandle,
+    setSelectionBox,
+    setPointAction,
+    setDrawingShape
+  });
   const dragStartPathsRef = useRef([]);
   const dragStartImagesRef = useRef([]);
   const hasDraggedRef = useRef(false);
@@ -218,7 +237,6 @@ export default function App() {
   });
   const copiedContentRef = useRef(null);
 
-  const svgRef = useRef(null);
   const fileInputRef = useRef(null);
   const lastPointerDownRef = useRef({ time: 0, x: 0, y: 0, canvasX: 0, canvasY: 0, refPoint: null }); 
   const lastClickedPathIdRef = useRef(null);
@@ -333,21 +351,6 @@ export default function App() {
     return true;
   }, [clearPendingTouchDrawAction]);
 
-  const getCanvasCoords = useCallback((clientX, clientY) => {
-    return {
-      x: (clientX - pan.x) / zoom,
-      y: (clientY - pan.y) / zoom
-    };
-  }, [pan, zoom]);
-
-  useEffect(() => {
-    panRef.current = pan;
-  }, [pan]);
-
-  useEffect(() => {
-    zoomRef.current = zoom;
-  }, [zoom]);
-
   useEffect(() => {
     try {
       let rawSession = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -433,46 +436,6 @@ export default function App() {
     showBackgroundAids,
     activeLayerId
   ]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setViewportSize({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const updateMobileBottomInset = () => {
-      const layoutHeight = document.documentElement?.clientHeight || window.innerHeight;
-      if (!window.visualViewport) {
-        const fallbackInset = Math.max(0, window.innerHeight - layoutHeight);
-        setMobileBottomInset(Math.round(fallbackInset));
-        return;
-      }
-      const viewport = window.visualViewport;
-      const visualBottom = viewport.height + viewport.offsetTop;
-      const viewportInset = Math.max(0, layoutHeight - visualBottom);
-      const windowInset = Math.max(0, window.innerHeight - visualBottom);
-      setMobileBottomInset(Math.round(Math.max(viewportInset, windowInset)));
-    };
-
-    updateMobileBottomInset();
-    window.addEventListener('resize', updateMobileBottomInset);
-    window.addEventListener('orientationchange', updateMobileBottomInset);
-    window.visualViewport?.addEventListener('resize', updateMobileBottomInset);
-    window.visualViewport?.addEventListener('scroll', updateMobileBottomInset);
-
-    return () => {
-      window.removeEventListener('resize', updateMobileBottomInset);
-      window.removeEventListener('orientationchange', updateMobileBottomInset);
-      window.visualViewport?.removeEventListener('resize', updateMobileBottomInset);
-      window.visualViewport?.removeEventListener('scroll', updateMobileBottomInset);
-    };
-  }, []);
 
   useEffect(() => {
     if (!isMobile) {
@@ -782,80 +745,6 @@ export default function App() {
     }
     return null;
   }, [images, layers]);
-
-  // --- HISTORY HELPERS ---
-  const commitHistory = useCallback((stateToSave) => {
-    setPastPaths(prev => [...prev, cloneState(stateToSave.paths, stateToSave.currentPath, stateToSave.images, stateToSave.layers)]);
-    setFuturePaths([]);
-  }, []);
-
-  const handleUndo = useCallback(() => {
-    if (mode === 'draw' && currentPath.length > 0) {
-      setCurrentPath(prev => prev.slice(0, -1));
-      if (currentPath.length <= 1) {
-          setIsDrawingCurve(false);
-          setDrawHover(null);
-          setHoveredStartPoint(false);
-          setGhostPoint(null);
-      }
-      return;
-    }
-    if (mode === 'pencil' && currentPath.length > 0) {
-      setCurrentPath([]);
-      return;
-    }
-
-    if (pastPaths.length === 0) return;
-    
-    const previous = pastPaths[pastPaths.length - 1];
-    const newPast = pastPaths.slice(0, -1);
-    
-    setFuturePaths(prev => [cloneState(paths, currentPath, images, layers), ...prev]);
-    setPaths(previous.paths);
-    setCurrentPath(previous.currentPath);
-    setImages(previous.images || []);
-    setLayers(previous.layers || []);
-    setPastPaths(newPast);
-    
-    setIsDrawingCurve(false);
-    setDrawHover(null);
-    setHoveredStartPoint(false);
-    setGhostPoint(null);
-
-    setSelectedPoints([]);
-    setActivePathEditId(null);
-    setActiveHandle(null);
-    setSelectionBox(null);
-    setPointAction(null);
-    setDrawingShape(null);
-  }, [pastPaths, futurePaths, paths, currentPath, images, layers, mode]);
-
-  const handleRedo = useCallback(() => {
-    if ((mode === 'draw' || mode === 'pencil') && currentPath.length > 0) return; 
-    if (futurePaths.length === 0) return;
-    
-    const next = futurePaths[0];
-    const newFuture = futurePaths.slice(1);
-    
-    setPastPaths(prev => [...prev, cloneState(paths, currentPath, images, layers)]);
-    setPaths(next.paths);
-    setCurrentPath(next.currentPath);
-    setImages(next.images || []);
-    setLayers(next.layers || []);
-    setFuturePaths(newFuture);
-
-    setIsDrawingCurve(false);
-    setDrawHover(null);
-    setHoveredStartPoint(false);
-    setGhostPoint(null);
-
-    setSelectedPoints([]);
-    setActivePathEditId(null);
-    setActiveHandle(null);
-    setSelectionBox(null);
-    setPointAction(null);
-    setDrawingShape(null);
-  }, [pastPaths, futurePaths, paths, currentPath, images, layers, mode]);
 
   // --- DELETE HELPER ---
   const deleteSelectedItems = useCallback(() => {
@@ -3315,62 +3204,7 @@ export default function App() {
     setIsDraggingPoints(false);
   }, [isMobile, getCanvasCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection, viewportSize.width, viewportSize.height]);
 
-  const zoomAtScreenPoint = useCallback((scaleMultiplier, screenX, screenY) => {
-    const currentZoom = zoomRef.current;
-    const currentPan = panRef.current;
-    const newZoom = Math.min(Math.max(MIN_ZOOM, currentZoom * scaleMultiplier), MAX_ZOOM);
-    if (newZoom === currentZoom) return;
-
-    const worldX = (screenX - currentPan.x) / currentZoom;
-    const worldY = (screenY - currentPan.y) / currentZoom;
-    const nextPan = {
-      x: screenX - worldX * newZoom,
-      y: screenY - worldY * newZoom
-    };
-
-    panRef.current = nextPan;
-    zoomRef.current = newZoom;
-    setPan(nextPan);
-    setZoom(newZoom);
-  }, []);
-
-  const stepZoom = useCallback((direction) => {
-    const scaleMultiplier = direction > 0 ? 1.2 : 1 / 1.2;
-    zoomAtScreenPoint(
-      scaleMultiplier,
-      window.innerWidth / 2,
-      window.innerHeight / 2
-    );
-  }, [zoomAtScreenPoint]);
-
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    const zoomSensitivity = 0.001;
-    const delta = -e.deltaY * zoomSensitivity;
-    const currentZoom = zoomRef.current;
-    const currentPan = panRef.current;
-    const newZoom = Math.min(Math.max(MIN_ZOOM, currentZoom * (1 + delta)), MAX_ZOOM);
-    if (newZoom === currentZoom) return;
-    if (!svgRef.current) return;
-    
-    const rect = svgRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const worldX = (mouseX - currentPan.x) / currentZoom;
-    const worldY = (mouseY - currentPan.y) / currentZoom;
-    const nextPan = {
-      x: mouseX - worldX * newZoom,
-      y: mouseY - worldY * newZoom
-    };
-
-    panRef.current = nextPan;
-    zoomRef.current = newZoom;
-    setPan(nextPan);
-    setZoom(newZoom);
-  }, []);
-
-  // --- ACTIONS --- 
+  // --- ACTIONS ---
   const activatePathEditSession = (nextPaths, pathId) => {
     const pathIndex = nextPaths.findIndex(p => p.id === pathId);
     if (pathIndex === -1) return;
