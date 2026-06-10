@@ -34,461 +34,52 @@ import {
   Type
 } from 'lucide-react';
 
-// --- THEME ---
-const THEME = {
-  main: "#344054",
-  nodeFill: "#e4e7ec",
-  bg: "#f2f4f7",
-  handle: "#667085"
-};
-
-const DEFAULT_STROKE_WIDTH = 1.5;
-const DEFAULT_STROKE_COLOR = THEME.main;
-const DEFAULT_STROKE_ALIGN = 'center';
-
-// --- UTILS ---
-const SNAP_RADIUS = 10;
-const GRID_SIZE = 50;
-const MIN_GRID_SIZE = 5;
-const MAX_GRID_SIZE = 200;
-const MIN_CIRCULAR_STEP = 1;
-const MAX_CIRCULAR_STEP = 180;
-const DEFAULT_CIRCULAR_STEP = 30;
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 256; // 25600%
-const PIXEL_GRID_MIN_ZOOM = 8; // 800%
-const SESSION_STORAGE_KEY = 'vector-editor-session-v1';
-const LEGACY_SESSION_STORAGE_KEY = 'typolab-session-v1';
-const CLIPBOARD_PAYLOAD_TYPE = 'vector-editor-clipboard';
-
-const distToSegmentSquared = (p, v, w) => {
-  const l2 = (w.x - v.x)**2 + (w.y - v.y)**2;
-  if (l2 === 0) return (p.x - v.x)**2 + (p.y - v.y)**2;
-  let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
-  t = Math.max(0, Math.min(1, t));
-  return (p.x - (v.x + t * (w.x - v.x)))**2 + (p.y - (v.y + t * (w.y - v.y)))**2;
-};
-const distToSegment = (p, v, w) => Math.sqrt(distToSegmentSquared(p, v, w));
-
-const getBezierPoint = (p0, p1, p2, p3, t) => {
-  const u = 1 - t;
-  const tt = t * t;
-  const uu = u * u;
-  const uuu = uu * u;
-  const ttt = tt * t;
-  return {
-    x: uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
-    y: uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y
-  };
-};
-
-const distToBezier = (point, p0, p1, p2, p3) => {
-  let minDist = Infinity;
-  let bestT = 0;
-  let prevPoint = p0;
-  const steps = 20; 
-  for (let i = 1; i <= steps; i++) {
-    const tCurr = i / steps;
-    const currPoint = getBezierPoint(p0, p1, p2, p3, tCurr);
-    
-    const l2 = (currPoint.x - prevPoint.x)**2 + (currPoint.y - prevPoint.y)**2;
-    let tSeg = 0;
-    if (l2 !== 0) {
-      tSeg = ((point.x - prevPoint.x) * (currPoint.x - prevPoint.x) + (point.y - prevPoint.y) * (currPoint.y - prevPoint.y)) / l2;
-      tSeg = Math.max(0, Math.min(1, tSeg));
-    }
-    const projX = prevPoint.x + tSeg * (currPoint.x - prevPoint.x);
-    const projY = prevPoint.y + tSeg * (currPoint.y - prevPoint.y);
-    const d = Math.sqrt((point.x - projX)**2 + (point.y - projY)**2);
-
-    if (d < minDist) {
-      minDist = d;
-      bestT = (i - 1) / steps + tSeg * (1 / steps);
-    }
-    prevPoint = currPoint;
-  }
-  return { dist: minDist, t: bestT };
-};
-
-const splitBezier = (p0, p1, p2, p3, t) => {
-  const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-  const isStraight = Math.hypot(p1.x - p0.x, p1.y - p0.y) < 0.1 && Math.hypot(p3.x - p2.x, p3.y - p2.y) < 0.1;
-  
-  if (isStraight) {
-    const b = lerp(p0, p3, t);
-    return {
-      left: { hOut: p0 },
-      right: { hIn: p3 },
-      newPoint: { x: b.x, y: b.y, hIn: { ...b }, hOut: { ...b } }
-    };
-  }
-
-  const q0 = lerp(p0, p1, t);
-  const q1 = lerp(p1, p2, t);
-  const q2 = lerp(p2, p3, t);
-  const r0 = lerp(q0, q1, t);
-  const r1 = lerp(q1, q2, t);
-  const b = lerp(r0, r1, t);
-  
-  return {
-    left: { hOut: q0 },
-    right: { hIn: q2 },
-    newPoint: { x: b.x, y: b.y, hIn: r0, hOut: r1 }
-  };
-};
-
-const reflectPointAcrossPerpBisector = (p, p1, p2) => {
-  const m = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  const dotDD = dx * dx + dy * dy;
-  if (dotDD === 0) return { ...p };
-  const vx = p.x - m.x;
-  const vy = p.y - m.y;
-  const dotVD = vx * dx + vy * dy;
-  return {
-    x: p.x - 2 * (dotVD / dotDD) * dx,
-    y: p.y - 2 * (dotVD / dotDD) * dy
-  };
-};
-
-const pointsToPath = (points, isClosed) => {
-  if (!points || points.length === 0) return '';
-  if (points.length === 1) {
-    const point = points[0];
-    // Render a short segment so single-point paths stay visible outside edit mode.
-    return `M ${point.x} ${point.y} L ${point.x + 1.5} ${point.y}`;
-  }
-  let d = `M ${points[0].x} ${points[0].y}`;
-  
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const cp1 = prev.hOut || { x: prev.x, y: prev.y };
-    const cp2 = curr.hIn || { x: curr.x, y: curr.y };
-    d += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${curr.x} ${curr.y}`;
-  }
-  
-  if (isClosed && points.length > 2) {
-    const prev = points[points.length - 1];
-    const curr = points[0];
-    const cp1 = prev.hOut || { x: prev.x, y: prev.y };
-    const cp2 = curr.hIn || { x: curr.x, y: curr.y };
-    d += ` C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${curr.x} ${curr.y} Z`;
-  }
-  return d;
-};
-
-const isCorner = (p) => {
-  const dIn = p.hIn ? Math.hypot(p.hIn.x - p.x, p.hIn.y - p.y) : 0;
-  const dOut = p.hOut ? Math.hypot(p.hOut.x - p.x, p.hOut.y - p.y) : 0;
-  return dIn < 0.1 && dOut < 0.1;
-};
-
-const applyShiftSnap = (currentCoords, refPoint, shiftKey) => {
-  if (!shiftKey || !refPoint) return currentCoords;
-  const dx = currentCoords.x - refPoint.x;
-  const dy = currentCoords.y - refPoint.y;
-  const angle = Math.atan2(dy, dx);
-  const snappedAngle = Math.round(angle / (Math.PI / 12)) * (Math.PI / 12);
-  const dist = Math.hypot(dx, dy);
-  return {
-    x: refPoint.x + Math.cos(snappedAngle) * dist,
-    y: refPoint.y + Math.sin(snappedAngle) * dist
-  };
-};
-
-const applyGridSnap = (point, config) => {
-  if (!config.snapToGrid) return point;
-  if (config.type === 'none') return point;
-  const s = Math.max(MIN_GRID_SIZE, Number(config.size) || GRID_SIZE);
-  
-  if (config.type === 'dots' || (config.type === 'lines' && config.edges === 4)) {
-    return {
-      x: Math.round(point.x / s) * s,
-      y: Math.round(point.y / s) * s
-    };
-  } else if (config.type === 'lines' && config.edges === 3) {
-    const w = s;
-    const h = s * Math.sqrt(3);
-    const j = Math.round(point.y / (h / 2));
-    const offsetX = (Math.abs(j) % 2 === 1) ? w / 2 : 0;
-    const i = Math.round((point.x - offsetX) / w);
-    return {
-      x: i * w + offsetX,
-      y: j * (h / 2)
-    };
-  } else if (config.type === 'lines' && config.edges === 6) {
-     const w = s * Math.sqrt(3);
-     return {
-       x: Math.round(point.x / (w/2)) * (w/2),
-       y: Math.round(point.y / (s/2)) * (s/2)
-     };
-  } else if (config.type === 'circular') {
-    const r = Math.hypot(point.x, point.y);
-    const angle = Math.atan2(point.y, point.x);
-    const snapR = Math.round(r / s) * s;
-    const circularStepDeg = Math.max(
-      MIN_CIRCULAR_STEP,
-      Math.min(MAX_CIRCULAR_STEP, Number(config.circularStep) || DEFAULT_CIRCULAR_STEP)
-    );
-    const circularStepRad = circularStepDeg * (Math.PI / 180);
-    const snapAngle = Math.round(angle / circularStepRad) * circularStepRad;
-    return {
-      x: snapR * Math.cos(snapAngle),
-      y: snapR * Math.sin(snapAngle)
-    };
-  } else if (config.type === 'circles') {
-    const cx = Math.floor(point.x / s) * s + s / 2;
-    const cy = Math.floor(point.y / s) * s + s / 2;
-    return { x: cx, y: cy };
-  }
-  return point;
-};
-
-const clonePoint = (pt) => ({
-  ...pt,
-  hIn: pt.hIn ? { ...pt.hIn } : undefined,
-  hOut: pt.hOut ? { ...pt.hOut } : undefined
-});
-
-const reversePathPoints = (pointsArray) => (
-  [...pointsArray].reverse().map(pt => ({
-    ...pt,
-    hIn: pt.hOut ? { ...pt.hOut } : undefined,
-    hOut: pt.hIn ? { ...pt.hIn } : undefined
-  }))
-);
-
-const simplifyPolylinePoints = (pointsArray, tolerance = 0) => {
-  if (!Array.isArray(pointsArray) || pointsArray.length <= 2) {
-    return pointsArray.map(clonePoint);
-  }
-
-  const tol = Math.max(0, Number(tolerance) || 0);
-  if (tol <= 0.0001) {
-    return pointsArray.map(clonePoint);
-  }
-
-  const keep = new Array(pointsArray.length).fill(false);
-  keep[0] = true;
-  keep[pointsArray.length - 1] = true;
-
-  const pointSegmentDistance = (point, a, b) => {
-    const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
-    if (l2 === 0) return Math.hypot(point.x - a.x, point.y - a.y);
-    let t = ((point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y)) / l2;
-    t = Math.max(0, Math.min(1, t));
-    const projX = a.x + t * (b.x - a.x);
-    const projY = a.y + t * (b.y - a.y);
-    return Math.hypot(point.x - projX, point.y - projY);
-  };
-
-  const simplifyRange = (startIdx, endIdx) => {
-    if (endIdx <= startIdx + 1) return;
-    let maxDist = 0;
-    let index = -1;
-    const a = pointsArray[startIdx];
-    const b = pointsArray[endIdx];
-    for (let i = startIdx + 1; i < endIdx; i++) {
-      const dist = pointSegmentDistance(pointsArray[i], a, b);
-      if (dist > maxDist) {
-        maxDist = dist;
-        index = i;
-      }
-    }
-    if (index !== -1 && maxDist > tol) {
-      keep[index] = true;
-      simplifyRange(startIdx, index);
-      simplifyRange(index, endIdx);
-    }
-  };
-
-  simplifyRange(0, pointsArray.length - 1);
-
-  const simplified = [];
-  for (let i = 0; i < pointsArray.length; i++) {
-    if (!keep[i]) continue;
-    const p = pointsArray[i];
-    simplified.push({
-      x: p.x,
-      y: p.y,
-      hIn: { x: p.x, y: p.y },
-      hOut: { x: p.x, y: p.y }
-    });
-  }
-
-  if (simplified.length < 2) {
-    return [clonePoint(pointsArray[0]), clonePoint(pointsArray[pointsArray.length - 1])];
-  }
-  return simplified;
-};
-
-const clonePaths = (pathsArray) => {
-  return pathsArray.map(p => ({
-    ...p,
-    points: p.points.map(clonePoint)
-  }));
-};
-
-const cloneState = (pathsArray, currentPathArray, imagesArray, layersArray) => ({
-  paths: clonePaths(pathsArray),
-  currentPath: currentPathArray.map(clonePoint),
-  images: imagesArray ? imagesArray.map(img => ({ ...img })) : [],
-  layers: layersArray ? layersArray.map(l => ({ ...l })) : []
-});
-
-const escapeXml = (value) => String(value)
-  .replace(/&/g, '&amp;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&apos;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;');
-
-const normalizeStrokeWidth = (value, fallback = DEFAULT_STROKE_WIDTH) => {
-  const parsed = Number.parseFloat(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(0, parsed);
-};
-
-const normalizeStrokeColor = (value, fallback = DEFAULT_STROKE_COLOR) => {
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim();
-  if (!trimmed) return fallback;
-  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-  return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toLowerCase() : fallback;
-};
-
-const normalizeStrokeAlign = (value, fallback = DEFAULT_STROKE_ALIGN) => {
-  if (value === 'inside' || value === 'outside' || value === 'center') return value;
-  return fallback;
-};
-
-const getPathStrokeStyle = (path, defaults) => ({
-  strokeEnabled: path?.strokeEnabled !== false,
-  strokeWidth: normalizeStrokeWidth(path?.strokeWidth, defaults.strokeWidth),
-  strokeColor: normalizeStrokeColor(path?.strokeColor, defaults.strokeColor),
-  strokeAlign: normalizeStrokeAlign(path?.strokeAlign, defaults.strokeAlign)
-});
-
-const toSafeSvgId = (value) => String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
-const generateEditGroupId = () => `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const resolvePathEditGroupId = (path) => (
-  path?.editGroupId ?? (path?.id != null ? `path-${path.id}` : null)
-);
-
-// --- SHAPE GENERATION HELPER ---
-const generateShapePath = (startX, startY, endX, endY, type, shiftKey) => {
-  let minX = Math.min(startX, endX);
-  let minY = Math.min(startY, endY);
-  let maxX = Math.max(startX, endX);
-  let maxY = Math.max(startY, endY);
-  
-  if (shiftKey && type !== 'line') {
-      const size = Math.max(maxX - minX, maxY - minY);
-      maxX = startX < endX ? startX + size : startX;
-      minX = startX < endX ? startX : startX - size;
-      maxY = startY < endY ? startY + size : startY;
-      minY = startY < endY ? startY : startY - size;
-  }
-
-  const w = maxX - minX;
-  const h = maxY - minY;
-  const cx = minX + w / 2;
-  const cy = minY + h / 2;
-
-  if (type === 'rectangle') {
-      return {
-          isClosed: true,
-          points: [
-              { x: minX, y: minY, hIn: {x: minX, y: minY}, hOut: {x: minX, y: minY} },
-              { x: maxX, y: minY, hIn: {x: maxX, y: minY}, hOut: {x: maxX, y: minY} },
-              { x: maxX, y: maxY, hIn: {x: maxX, y: maxY}, hOut: {x: maxX, y: maxY} },
-              { x: minX, y: maxY, hIn: {x: minX, y: maxY}, hOut: {x: minX, y: maxY} }
-          ]
-      };
-  }
-  if (type === 'ellipse') {
-      const rx = w / 2;
-      const ry = h / 2;
-      const kappa = 0.5522847498;
-      const kx = rx * kappa;
-      const ky = ry * kappa;
-      return {
-          isClosed: true,
-          points: [
-              { x: cx, y: minY, hIn: {x: cx - kx, y: minY}, hOut: {x: cx + kx, y: minY} },
-              { x: maxX, y: cy, hIn: {x: maxX, y: cy - ky}, hOut: {x: maxX, y: cy + ky} },
-              { x: cx, y: maxY, hIn: {x: cx + kx, y: maxY}, hOut: {x: cx - kx, y: maxY} },
-              { x: minX, y: cy, hIn: {x: minX, y: cy + ky}, hOut: {x: minX, y: cy - ky} }
-          ]
-      };
-  }
-  if (type === 'line') {
-      let p2x = endX;
-      let p2y = endY;
-      if (shiftKey) {
-          const angle = Math.atan2(endY - startY, endX - startX);
-          const snappedAngle = Math.round(angle / (Math.PI / 12)) * (Math.PI / 12);
-          const dist = Math.hypot(endX - startX, endY - startY);
-          p2x = startX + Math.cos(snappedAngle) * dist;
-          p2y = startY + Math.sin(snappedAngle) * dist;
-      }
-      return {
-          isClosed: false,
-          points: [
-              { x: startX, y: startY, hIn: {x: startX, y: startY}, hOut: {x: startX, y: startY} },
-              { x: p2x, y: p2y, hIn: {x: p2x, y: p2y}, hOut: {x: p2x, y: p2y} }
-          ]
-      };
-  }
-  if (type === 'polygon') {
-      return {
-          isClosed: true,
-          points: [
-              { x: cx, y: minY, hIn: {x: cx, y: minY}, hOut: {x: cx, y: minY} },
-              { x: maxX, y: maxY, hIn: {x: maxX, y: maxY}, hOut: {x: maxX, y: maxY} },
-              { x: minX, y: maxY, hIn: {x: minX, y: maxY}, hOut: {x: minX, y: maxY} }
-          ]
-      };
-  }
-  if (type === 'star') {
-      const points = [];
-      const outerRadius = Math.min(w, h) / 2;
-      const innerRadius = outerRadius * 0.382;
-      for (let i = 0; i < 10; i++) {
-          const radius = i % 2 === 0 ? outerRadius : innerRadius;
-          const angle = (i * Math.PI) / 5 - Math.PI / 2;
-          const px = cx + Math.cos(angle) * radius;
-          const py = cy + Math.sin(angle) * radius;
-          points.push({ x: px, y: py, hIn: {x: px, y: py}, hOut: {x: px, y: py} });
-      }
-      return { isClosed: true, points };
-  }
-  return { isClosed: false, points: [] };
-};
-
-// --- LAYER HELPER ---
-const generateLayerId = () => `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-const createLayer = (type, existingCount) => {
-   let name = "Vector";
-   if (type === 'image') name = "Image";
-   else if (type === 'text') name = "Text";
-   else if (type === 'rectangle') name = "Rectangle";
-   else if (type === 'ellipse') name = "Ellipse";
-   else if (type === 'polygon') name = "Polygon";
-   else if (type === 'star') name = "Star";
-   else if (type === 'line') name = "Line";
-
-   return {
-       id: generateLayerId(),
-       name: `${name} ${existingCount + 1}`,
-       visible: true,
-       locked: false,
-       itemType: type || 'vector'
-   };
-};
+import { THEME } from './theme';
+import {
+  DEFAULT_STROKE_WIDTH,
+  DEFAULT_STROKE_COLOR,
+  DEFAULT_STROKE_ALIGN,
+  SNAP_RADIUS,
+  GRID_SIZE,
+  MIN_GRID_SIZE,
+  MAX_GRID_SIZE,
+  MIN_CIRCULAR_STEP,
+  MAX_CIRCULAR_STEP,
+  DEFAULT_CIRCULAR_STEP,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  PIXEL_GRID_MIN_ZOOM,
+  SESSION_STORAGE_KEY,
+  LEGACY_SESSION_STORAGE_KEY,
+  CLIPBOARD_PAYLOAD_TYPE
+} from './constants';
+import {
+  getBezierPoint,
+  distToBezier,
+  splitBezier,
+  reflectPointAcrossPerpBisector,
+  applyShiftSnap
+} from './lib/geometry';
+import { applyGridSnap } from './lib/snap';
+import {
+  pointsToPath,
+  isCorner,
+  clonePoint,
+  reversePathPoints,
+  simplifyPolylinePoints,
+  clonePaths,
+  cloneState,
+  getPathStrokeStyle,
+  resolvePathEditGroupId
+} from './lib/paths';
+import {
+  normalizeStrokeWidth,
+  normalizeStrokeColor,
+  normalizeStrokeAlign
+} from './lib/stroke';
+import { escapeXml, toSafeSvgId, generateEditGroupId } from './lib/svg';
+import { generateShapePath } from './lib/shapes';
+import { createLayer } from './lib/layers';
 
 const LayerIcon = ({ type }) => {
     switch(type) {
