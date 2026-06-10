@@ -58,6 +58,15 @@ import {
   reflectPointAcrossPerpBisector,
   applyShiftSnap
 } from './lib/geometry';
+import {
+  computeHitRadii,
+  getBgHit as getBgHitAtCoords,
+  findTopImageAtCoords as findTopImageAt,
+  findTopPathAtCoords as findTopPathAt
+} from './lib/hitTest';
+import { computeSelectionBBox } from './lib/selectionBounds';
+import { computeDynamicCursor } from './lib/cursor';
+import { correctPathDirectionsTransform } from './lib/pathDirection';
 import { applyGridSnap } from './lib/snap';
 import {
   pointsToPath,
@@ -76,7 +85,7 @@ import {
   normalizeStrokeAlign
 } from './lib/stroke';
 import { generateShapePath } from './lib/shapes';
-import { createLayer } from './lib/layers';
+import { createLayer, groupContentByLayer, getLayerPreviewBounds } from './lib/layers';
 
 import LayerIcon from './ui/LayerIcon';
 import ConfigInput from './ui/inputs/ConfigInput';
@@ -398,31 +407,19 @@ export default function App() {
     clearMobileLongPress();
   }, [clearMobileLongPress]);
 
-  const shortestDeltaDeg = (current, previous) => {
-    let delta = current - previous;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    return delta;
-  };
-
-  const normalizeAngleDeg = (angle) => {
-    let normalized = ((angle + 180) % 360 + 360) % 360 - 180;
-    if (Object.is(normalized, -0)) normalized = 0;
-    return normalized;
-  };
-
   // Hit radii are shared by the pointer handlers (hit testing) and the
   // canvas render (handle/anchor visuals), so they live here.
-  const touchHitScale = isMobile ? 1.65 : 1;
-  const scaleHandleHitRadius = (8 * touchHitScale) / zoom;
-  const rotateHandleHitRadius = (24 * touchHitScale) / zoom;
-  const handleHitRadius = (8 * touchHitScale) / zoom;
-  const pointHitRadius = (10 * touchHitScale) / zoom;
-  const segmentHitRadius = (10 * touchHitScale) / zoom;
-  const snapHitRadius = (SNAP_RADIUS * touchHitScale) / zoom;
-  const closePathHitRadius = (SNAP_RADIUS * (isMobile ? 2.4 : 1.2)) / zoom;
-  const pencilSamplingDistance = (isMobile ? 12 : 8) / zoom;
-  const touchDragThresholdPx = isMobile ? 10 : 0;
+  const {
+    scaleHandleHitRadius,
+    rotateHandleHitRadius,
+    handleHitRadius,
+    pointHitRadius,
+    segmentHitRadius,
+    snapHitRadius,
+    closePathHitRadius,
+    pencilSamplingDistance,
+    touchDragThresholdPx
+  } = computeHitRadii(isMobile, zoom);
 
   const togglePanel = (panelId) => {
     if (isMobile) {
@@ -521,129 +518,26 @@ export default function App() {
     return resolvePathEditGroupId(path) === activeEditGroupId;
   }, [activeEditGroupId]);
 
-  // --- COMPUTE SELECTION BOUNDS ---
-  let selBBox = null;
-  const hasMixedSelection = selectedPoints.length > 0 && selectedImageIds.length > 0;
-  if (mode === 'edit' && !activePathEditId && (selectedPoints.length > 1 || hasMixedSelection)) {
-    // Keep bounding box totally fixed if we are actively scaling or rotating points/images
-    if (pointAction && pointAction.bbox) {
-      selBBox = pointAction.bbox;
-    } else {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const selBBox = computeSelectionBBox({
+    mode,
+    activePathEditId,
+    selectedPoints,
+    selectedImageIds,
+    pointAction,
+    paths,
+    images,
+    layers,
+    zoom,
+    isPathVisible
+  });
 
-      selectedPoints.forEach(sp => {
-        const path = paths[sp.pathIndex];
-        if (!path || !isPathVisible(path)) return;
-        const pt = path.points[sp.pointIndex];
-        if (pt) {
-          minX = Math.min(minX, pt.x); minY = Math.min(minY, pt.y);
-          maxX = Math.max(maxX, pt.x); maxY = Math.max(maxY, pt.y);
-          if (pt.hIn) {
-            minX = Math.min(minX, pt.hIn.x); minY = Math.min(minY, pt.hIn.y);
-            maxX = Math.max(maxX, pt.hIn.x); maxY = Math.max(maxY, pt.hIn.y);
-          }
-          if (pt.hOut) {
-            minX = Math.min(minX, pt.hOut.x); minY = Math.min(minY, pt.hOut.y);
-            maxX = Math.max(maxX, pt.hOut.x); maxY = Math.max(maxY, pt.hOut.y);
-          }
-        }
-      });
+  const getBgHit = useCallback((testCoords) => (
+    getBgHitAtCoords(testCoords, { images, layers, selectedImageIds, scaleHandleHitRadius, rotateHandleHitRadius })
+  ), [images, selectedImageIds, layers, scaleHandleHitRadius, rotateHandleHitRadius]);
 
-      if (hasMixedSelection) {
-        selectedImageIds.forEach(imgId => {
-          const img = images.find(i => i.id === imgId);
-          if (!img) return;
-          const layer = layers.find(l => l.id === img.layerId);
-          if (!layer || !layer.visible) return;
-
-          const halfW = (img.width * img.scale) / 2;
-          const halfH = (img.height * img.scale) / 2;
-          const rad = img.rotation * Math.PI / 180;
-          const cos = Math.cos(rad);
-          const sin = Math.sin(rad);
-
-          const corners = [
-            { x: -halfW, y: -halfH },
-            { x: halfW, y: -halfH },
-            { x: halfW, y: halfH },
-            { x: -halfW, y: halfH }
-          ];
-
-          corners.forEach(corner => {
-            const worldX = img.x + (corner.x * cos - corner.y * sin);
-            const worldY = img.y + (corner.x * sin + corner.y * cos);
-            minX = Math.min(minX, worldX); minY = Math.min(minY, worldY);
-            maxX = Math.max(maxX, worldX); maxY = Math.max(maxY, worldY);
-          });
-        });
-      }
-
-      if (minX !== Infinity) {
-        const pad = 10 / zoom;
-        selBBox = { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
-      }
-    }
-  }
-
-  // --- BG HIT TEST ---
-  const getBgHit = useCallback((testCoords) => {
-    for (let i = images.length - 1; i >= 0; i--) {
-      const img = images[i];
-      const layer = layers.find(l => l.id === img.layerId);
-      if (!layer || !layer.visible || layer.locked) continue;
-      if (img.locked) continue;
-
-      const dx = testCoords.x - img.x;
-      const dy = testCoords.y - img.y;
-      const angleRad = -img.rotation * Math.PI / 180;
-      
-      const lx = dx * Math.cos(angleRad) - dy * Math.sin(angleRad);
-      const ly = dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
-
-      const sw2 = (img.width * img.scale) / 2;
-      const sh2 = (img.height * img.scale) / 2;
-
-      if (selectedImageIds.length === 1 && selectedImageIds[0] === img.id) {
-        const corners = [
-          { id: 'nw', x: -sw2, y: -sh2, angle: 225 },
-          { id: 'ne', x: sw2, y: -sh2, angle: 315 },
-          { id: 'se', x: sw2, y: sh2, angle: 45 },
-          { id: 'sw', x: -sw2, y: sh2, angle: 135 }
-        ];
-        for (const c of corners) {
-          const dist = Math.hypot(lx - c.x, ly - c.y);
-          if (dist <= scaleHandleHitRadius) return { action: `scale-${c.id}`, cursorAngle: c.angle, imageId: img.id };
-          if (dist <= rotateHandleHitRadius) return { action: `rotate-${c.id}`, cursorAngle: null, imageId: img.id };
-        }
-      }
-
-      if (Math.abs(lx) <= sw2 && Math.abs(ly) <= sh2) {
-        return { action: 'move', cursorAngle: null, imageId: img.id };
-      }
-    }
-    return null;
-  }, [images, selectedImageIds, layers, scaleHandleHitRadius, rotateHandleHitRadius]);
-
-  const findTopImageAtCoords = useCallback((testCoords) => {
-    for (let i = images.length - 1; i >= 0; i--) {
-      const img = images[i];
-      const layer = layers.find(l => l.id === img.layerId);
-      if (!layer || !layer.visible || layer.locked || img.locked) continue;
-
-      const dx = testCoords.x - img.x;
-      const dy = testCoords.y - img.y;
-      const angleRad = -img.rotation * Math.PI / 180;
-      const lx = dx * Math.cos(angleRad) - dy * Math.sin(angleRad);
-      const ly = dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
-
-      const sw2 = (img.width * img.scale) / 2;
-      const sh2 = (img.height * img.scale) / 2;
-      if (Math.abs(lx) <= sw2 && Math.abs(ly) <= sh2) {
-        return img;
-      }
-    }
-    return null;
-  }, [images, layers]);
+  const findTopImageAtCoords = useCallback((testCoords) => (
+    findTopImageAt(testCoords, { images, layers })
+  ), [images, layers]);
 
   // --- DELETE HELPER ---
   const deleteSelectedItems = useCallback(() => {
@@ -727,74 +621,9 @@ export default function App() {
     return path.points.map((_, pointIndex) => ({ pathIndex, pointIndex }));
   }, [paths]);
 
-  const findTopPathAtCoords = useCallback((testCoords) => {
-    let bestPath = null;
-    let bestIndex = -1;
-    let bestDist = Infinity;
-
-    const isPointInsidePath = (path) => {
-      if (!path.isClosed || path.points.length < 3) return false;
-      const poly = [];
-      for (let j = 0; j < path.points.length; j++) {
-        const p0 = path.points[j];
-        const p3 = path.points[(j + 1) % path.points.length];
-        const p1 = p0.hOut || p0;
-        const p2 = p3.hIn || p3;
-        for (let step = 0; step < 16; step++) {
-          poly.push(getBezierPoint(p0, p1, p2, p3, step / 16));
-        }
-      }
-      let inside = false;
-      for (let k = 0, l = poly.length - 1; k < poly.length; l = k++) {
-        const xk = poly[k].x;
-        const yk = poly[k].y;
-        const xl = poly[l].x;
-        const yl = poly[l].y;
-        const intersects = ((yk > testCoords.y) !== (yl > testCoords.y))
-          && (testCoords.x < (xl - xk) * (testCoords.y - yk) / (yl - yk) + xk);
-        if (intersects) inside = !inside;
-      }
-      return inside;
-    };
-
-    for (let i = paths.length - 1; i >= 0; i--) {
-      const path = paths[i];
-      if (!isPathVisible(path) || isPathLocked(path)) continue;
-
-      if (path.points.length === 1) {
-        const dist = Math.hypot(path.points[0].x - testCoords.x, path.points[0].y - testCoords.y);
-        if (dist < pointHitRadius && dist < bestDist) {
-          bestDist = dist;
-          bestPath = path;
-          bestIndex = i;
-        }
-        continue;
-      }
-
-      let localBest = Infinity;
-      const segCount = path.isClosed ? path.points.length : path.points.length - 1;
-      for (let j = 1; j <= segCount; j++) {
-        const currIndex = path.isClosed ? (j % path.points.length) : j;
-        const prevIndex = currIndex === 0 ? path.points.length - 1 : currIndex - 1;
-        const prevP = path.points[prevIndex];
-        const currP = path.points[currIndex];
-        const hit = distToBezier(testCoords, prevP, prevP.hOut || prevP, currP.hIn || currP, currP);
-        localBest = Math.min(localBest, hit.dist);
-      }
-
-      const filledHit = path.fillEnabled && isPointInsidePath(path);
-      if (filledHit || localBest < segmentHitRadius) {
-        if (localBest < bestDist || bestPath == null) {
-          bestPath = path;
-          bestIndex = i;
-          bestDist = localBest;
-        }
-      }
-    }
-
-    if (!bestPath) return null;
-    return { path: bestPath, pathIndex: bestIndex };
-  }, [paths, isPathVisible, isPathLocked, pointHitRadius, segmentHitRadius]);
+  const findTopPathAtCoords = useCallback((testCoords) => (
+    findTopPathAt(testCoords, { paths, isPathVisible, isPathLocked, pointHitRadius, segmentHitRadius })
+  ), [paths, isPathVisible, isPathLocked, pointHitRadius, segmentHitRadius]);
 
   // --- EVENT HANDLERS ---
 
@@ -975,7 +804,6 @@ export default function App() {
     mobileContextMenu,
     mobileLongPressRef,
     mode,
-    normalizeAngleDeg,
     panRef,
     pathStyleDefaults,
     paths,
@@ -1017,7 +845,6 @@ export default function App() {
     setSnapState,
     setZoom,
     shapeType,
-    shortestDeltaDeg,
     showNodes,
     showShapeMenu,
     snapState,
@@ -1171,104 +998,7 @@ export default function App() {
 
   const correctPathDirections = () => {
     commitHistory({ paths, currentPath, images, layers });
-    setPaths(prev => {
-      const newPaths = prev.map(p => ({ ...p, points: [...p.points] }));
-      
-      const selectedPathIndices = new Set(selectedPoints.map(sp => sp.pathIndex));
-      const processAll = selectedPathIndices.size === 0;
-
-      if (!processAll) {
-        selectedPathIndices.forEach(idx => {
-          const path = newPaths[idx];
-          if (path) {
-            const revPts = [...path.points].reverse();
-            path.points = revPts.map(p => ({
-              ...p,
-              hIn: p.hOut ? { ...p.hOut } : undefined,
-              hOut: p.hIn ? { ...p.hIn } : undefined
-            }));
-          }
-        });
-        return newPaths;
-      }
-
-      const allClosedPaths = newPaths.map((p, i) => ({
-        path: p,
-        index: i,
-        isClosed: p.isClosed
-      })).filter(item => item.isClosed && isPathVisible(item.path) && !isPathLocked(item.path));
-
-      const pathData = allClosedPaths.map(item => {
-        const poly = [];
-        const pts = item.path.points;
-        for (let i = 0; i < pts.length; i++) {
-          const p0 = pts[i];
-          const p3 = pts[(i + 1) % pts.length];
-          const p1 = p0.hOut || p0;
-          const p2 = p3.hIn || p3;
-          for (let step = 0; step < 20; step++) {
-            poly.push(getBezierPoint(p0, p1, p2, p3, step / 20));
-          }
-        }
-        
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        let area = 0;
-        for (let i = 0; i < poly.length; i++) {
-          const p = poly[i];
-          minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
-          maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
-          
-          const j = (i + 1) % poly.length;
-          area += (poly[i].x * poly[j].y) - (poly[j].x * poly[i].y);
-        }
-        area = area / 2;
-
-        return { ...item, poly, bbox: { minX, minY, maxX, maxY }, area };
-      });
-
-      pathData.forEach((pd, i) => {
-        let depth = 0;
-        pathData.forEach((otherPd, j) => {
-          if (i === j) return;
-          const intersectsBBox = !(pd.bbox.maxX < otherPd.bbox.minX || 
-                                   pd.bbox.minX > otherPd.bbox.maxX || 
-                                   pd.bbox.maxY < otherPd.bbox.minY || 
-                                   pd.bbox.minY > otherPd.bbox.maxY);
-          
-          if (intersectsBBox) {
-            const point = pd.poly[0];
-            const poly = otherPd.poly;
-            let inside = false;
-            for (let k = 0, l = poly.length - 1; k < poly.length; l = k++) {
-              const xk = poly[k].x, yk = poly[k].y;
-              const xl = poly[l].x, yl = poly[l].y;
-              const intersect = ((yk > point.y) !== (yl > point.y))
-                  && (point.x < (xl - xk) * (point.y - yk) / (yl - yk) + xk);
-              if (intersect) inside = !inside;
-            }
-            if (inside) depth++;
-          }
-        });
-        pd.depth = depth;
-      });
-
-      pathData.forEach(pd => {
-        const parity = pd.depth % 2;
-        const isCW = pd.area > 0;
-        const targetCW = parity === 0; 
-        
-        if (isCW !== targetCW) {
-          const revPts = [...pd.path.points].reverse();
-          newPaths[pd.index].points = revPts.map(p => ({
-            ...p,
-            hIn: p.hOut ? { ...p.hOut } : undefined,
-            hOut: p.hIn ? { ...p.hIn } : undefined
-          }));
-        }
-      });
-
-      return newPaths;
-    });
+    setPaths(prev => correctPathDirectionsTransform(prev, selectedPoints, isPathVisible, isPathLocked));
   };
 
   const {
@@ -1330,45 +1060,16 @@ export default function App() {
       };
   const livePathStrokeRenderWidth = livePathStroke.strokeWidth / zoom;
 
-  let dynamicCursor = 'cursor-default';
-  if (mode === 'pan' || isPanning) dynamicCursor = 'cursor-grab active:cursor-grabbing';
-  else if (mode === 'draw') dynamicCursor = 'cursor-pen';
-  else if (mode === 'pencil') dynamicCursor = 'cursor-pencil';
-  else if (mode === 'shape') dynamicCursor = 'cursor-crosshair';
-  else if (mode === 'edit') {
-    const activeImgId = bgAction ? selectedImageIds[0] : (bgHoverAction ? bgHoverAction.imageId : null);
-    const activeImg = images.find(i => i.id === activeImgId);
-    
-    let act = null;
-    let ang = 0;
-    let baseRot = 0;
-
-    if (pointAction) {
-        act = pointAction.action;
-        ang = pointAction.cursorAngle;
-    } else if (bgAction) {
-        act = bgAction;
-        ang = bgInitialState?.cursorAngle;
-        baseRot = activeImg ? activeImg.rotation : 0;
-    } else if (bgHoverAction) {
-        act = bgHoverAction.action;
-        ang = bgHoverAction.cursorAngle;
-        if (bgHoverAction.type !== 'point' && activeImg) {
-             baseRot = activeImg.rotation;
-        }
-    }
-    
-    if (act) {
-      if (act === 'move' || act === 'move-points') dynamicCursor = 'cursor-default';
-      else if (act.startsWith('rotate')) dynamicCursor = 'cursor-rotate';
-      else if (act.startsWith('scale')) {
-        let visualAngle = (ang + baseRot) % 180;
-        if (visualAngle < 0) visualAngle += 180;
-        if (visualAngle > 22.5 && visualAngle <= 112.5) dynamicCursor = 'cursor-nwse';
-        else dynamicCursor = 'cursor-nesw';
-      }
-    }
-  }
+  const dynamicCursor = computeDynamicCursor({
+    mode,
+    isPanning,
+    pointAction,
+    bgAction,
+    bgInitialState,
+    bgHoverAction,
+    images,
+    selectedImageIds
+  });
   
   // --- DYNAMIC PATTERN GENERATION ---
   const effectiveGridSize = Math.max(MIN_GRID_SIZE, Number(gridConfig.size) || GRID_SIZE);
@@ -1458,86 +1159,7 @@ export default function App() {
 
   const selectedLayersInStackOrder = layers.filter(layer => selectedLayerIds.has(layer.id));
   const layerIndexById = new Map(layers.map((layer, index) => [layer.id, index]));
-  const pathsByLayerId = {};
-  paths.forEach(path => {
-    if (!pathsByLayerId[path.layerId]) pathsByLayerId[path.layerId] = [];
-    pathsByLayerId[path.layerId].push(path);
-  });
-  const imagesByLayerId = {};
-  images.forEach(image => {
-    if (!imagesByLayerId[image.layerId]) imagesByLayerId[image.layerId] = [];
-    imagesByLayerId[image.layerId].push(image);
-  });
-  const getLayerPreviewBounds = (layerPaths, layerImages) => {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    layerPaths.forEach(path => {
-      (path.points || []).forEach(point => {
-        minX = Math.min(minX, point.x);
-        minY = Math.min(minY, point.y);
-        maxX = Math.max(maxX, point.x);
-        maxY = Math.max(maxY, point.y);
-        if (point.hIn) {
-          minX = Math.min(minX, point.hIn.x);
-          minY = Math.min(minY, point.hIn.y);
-          maxX = Math.max(maxX, point.hIn.x);
-          maxY = Math.max(maxY, point.hIn.y);
-        }
-        if (point.hOut) {
-          minX = Math.min(minX, point.hOut.x);
-          minY = Math.min(minY, point.hOut.y);
-          maxX = Math.max(maxX, point.hOut.x);
-          maxY = Math.max(maxY, point.hOut.y);
-        }
-      });
-    });
-
-    layerImages.forEach(img => {
-      const scale = Number.isFinite(img.scale) ? img.scale : 1;
-      const halfW = (img.width * scale) / 2;
-      const halfH = (img.height * scale) / 2;
-      const rad = (img.rotation || 0) * Math.PI / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      [
-        { x: -halfW, y: -halfH },
-        { x: halfW, y: -halfH },
-        { x: halfW, y: halfH },
-        { x: -halfW, y: halfH }
-      ].forEach(corner => {
-        const worldX = img.x + (corner.x * cos - corner.y * sin);
-        const worldY = img.y + (corner.x * sin + corner.y * cos);
-        minX = Math.min(minX, worldX);
-        minY = Math.min(minY, worldY);
-        maxX = Math.max(maxX, worldX);
-        maxY = Math.max(maxY, worldY);
-      });
-    });
-
-    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
-      return null;
-    }
-
-    const padding = 8;
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-    const width = Math.max(1, maxX - minX);
-    const height = Math.max(1, maxY - minY);
-    return { minX, minY, width, height };
-  };
-  const pathCountByLayerId = {};
-  paths.forEach(path => {
-    pathCountByLayerId[path.layerId] = (pathCountByLayerId[path.layerId] || 0) + 1;
-  });
-  const imageCountByLayerId = {};
-  images.forEach(image => {
-    imageCountByLayerId[image.layerId] = (imageCountByLayerId[image.layerId] || 0) + 1;
-  });
+  const { pathsByLayerId, imagesByLayerId, pathCountByLayerId, imageCountByLayerId } = groupContentByLayer(paths, images);
   const compositeFillPathD = paths
     .filter(path => path.isClosed && path.fillEnabled && visibleLayerIds.has(path.layerId))
     .map(path => pointsToPath(path.points, path.isClosed))

@@ -101,3 +101,16 @@ export const applyShiftSnap = (currentCoords, refPoint, shiftKey) => {
     y: refPoint.y + Math.sin(snappedAngle) * dist
   };
 };
+
+export const shortestDeltaDeg = (current, previous) => {
+  let delta = current - previous;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return delta;
+};
+
+export const normalizeAngleDeg = (angle) => {
+  let normalized = ((angle + 180) % 360 + 360) % 360 - 180;
+  if (Object.is(normalized, -0)) normalized = 0;
+  return normalized;
+};

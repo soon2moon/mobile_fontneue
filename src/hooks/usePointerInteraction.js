@@ -12,7 +12,9 @@ import {
   distToBezier,
   splitBezier,
   reflectPointAcrossPerpBisector,
-  applyShiftSnap
+  applyShiftSnap,
+  shortestDeltaDeg,
+  normalizeAngleDeg
 } from '../lib/geometry';
 import { applyGridSnap } from '../lib/snap';
 import {
@@ -86,7 +88,6 @@ activeEditGroupId,
     mobileContextMenu,
     mobileLongPressRef,
     mode,
-    normalizeAngleDeg,
     panRef,
     pathStyleDefaults,
     paths,
@@ -128,7 +129,6 @@ activeEditGroupId,
     setSnapState,
     setZoom,
     shapeType,
-    shortestDeltaDeg,
     showNodes,
     showShapeMenu,
     snapState,
