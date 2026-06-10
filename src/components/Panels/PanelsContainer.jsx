@@ -12,7 +12,8 @@ import {
   Droplet,
   ChevronUp,
   Download,
-  Ruler
+  Ruler,
+  Image as ImageIcon
 } from 'lucide-react';
 import LayerIcon from '../../ui/LayerIcon';
 import ConfigInput from '../../ui/inputs/ConfigInput';
