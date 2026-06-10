@@ -21,10 +21,10 @@ class ErrorBoundary extends React.Component {
     if (this.state.error) {
       const message = this.state.error?.message || String(this.state.error);
       return (
-        <div style={{ minHeight: '100vh', padding: 16, fontFamily: 'ui-sans-serif, system-ui, sans-serif', background: '#f4f1ed', color: '#4a2622' }}>
+        <div style={{ minHeight: '100vh', padding: 16, fontFamily: 'ui-sans-serif, system-ui, sans-serif', background: '#f2f4f7', color: '#344054' }}>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Mobile Vector Editor failed to render</h1>
           <p style={{ marginTop: 8, fontSize: 13 }}>A runtime error occurred. Check browser console for details.</p>
-          <pre style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#fff', border: '1px solid #d4c8c5', overflowX: 'auto', fontSize: 12 }}>
+          <pre style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#fff', border: '1px solid #d0d5dd', overflowX: 'auto', fontSize: 12 }}>
             {message}
           </pre>
         </div>
