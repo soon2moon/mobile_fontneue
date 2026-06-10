@@ -139,3 +139,39 @@ export const getPathStrokeStyle = (path, defaults) => ({
 export const resolvePathEditGroupId = (path) => (
   path?.editGroupId ?? (path?.id != null ? `path-${path.id}` : null)
 );
+
+// Grow a point selection so that every path sharing an edit group with a
+// selected path is fully selected (whole-object semantics outside focus mode).
+export const expandPathSelectionToGroups = (paths, selectionPointsInput = []) => {
+  if (!Array.isArray(selectionPointsInput) || selectionPointsInput.length === 0) return [];
+  const selectedPathIndexSet = new Set(
+    selectionPointsInput
+      .map(sp => sp.pathIndex)
+      .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < paths.length)
+  );
+  if (selectedPathIndexSet.size === 0) return [];
+
+  const selectedGroupIds = new Set();
+  selectedPathIndexSet.forEach((pathIndex) => {
+    const path = paths[pathIndex];
+    if (!path) return;
+    const groupId = resolvePathEditGroupId(path);
+    if (groupId != null) {
+      selectedGroupIds.add(groupId);
+    }
+  });
+  if (selectedGroupIds.size === 0) {
+    return [...selectionPointsInput];
+  }
+
+  const expandedSelection = [];
+  paths.forEach((path, pathIndex) => {
+    const groupId = resolvePathEditGroupId(path);
+    if (!selectedGroupIds.has(groupId)) return;
+    path.points.forEach((_, pointIndex) => {
+      expandedSelection.push({ pathIndex, pointIndex });
+    });
+  });
+
+  return expandedSelection;
+};
