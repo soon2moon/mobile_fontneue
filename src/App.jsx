@@ -39,8 +39,7 @@ const THEME = {
   main: "#344054",
   nodeFill: "#e4e7ec",
   bg: "#f2f4f7",
-  handle: "#667085",
-  guide: "#d0d5dd"
+  handle: "#667085"
 };
 
 const DEFAULT_STROKE_WIDTH = 1.5;
@@ -58,7 +57,9 @@ const DEFAULT_CIRCULAR_STEP = 30;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 256; // 25600%
 const PIXEL_GRID_MIN_ZOOM = 8; // 800%
-const SESSION_STORAGE_KEY = 'typolab-session-v1';
+const SESSION_STORAGE_KEY = 'vector-editor-session-v1';
+const LEGACY_SESSION_STORAGE_KEY = 'typolab-session-v1';
+const CLIPBOARD_PAYLOAD_TYPE = 'vector-editor-clipboard';
 
 const distToSegmentSquared = (p, v, w) => {
   const l2 = (w.x - v.x)**2 + (w.y - v.y)**2;
@@ -686,10 +687,9 @@ const PANELS_CONFIG = [
   { id: 'image', title: 'Image Settings' },
   { id: 'stroke', title: 'Stroke' },
   { id: 'grid', title: 'Background Config' },
-  { id: 'guides', title: 'Guides Config' },
   { id: 'export', title: 'Export' }
 ];
-const CLOSED_PANELS = { grid: false, image: false, guides: false, layers: false, export: false, stroke: false };
+const CLOSED_PANELS = { grid: false, image: false, layers: false, export: false, stroke: false };
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -748,13 +748,6 @@ export default function App() {
     circularStep: DEFAULT_CIRCULAR_STEP
   });
 
-  // Guides State
-  const [guides, setGuides] = useState({
-    capHeight: 300,
-    xHeight: 200,
-    descender: 100
-  });
-  const [showGuides, setShowGuides] = useState(false);
   const [showBackgroundAids, setShowBackgroundAids] = useState(true);
 
   // Layers & Objects State
@@ -959,7 +952,14 @@ export default function App() {
 
   useEffect(() => {
     try {
-      const rawSession = localStorage.getItem(SESSION_STORAGE_KEY);
+      let rawSession = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (!rawSession) {
+        // One-time migration from the legacy (font-tool era) session key.
+        rawSession = localStorage.getItem(LEGACY_SESSION_STORAGE_KEY);
+        if (rawSession) {
+          localStorage.removeItem(LEGACY_SESSION_STORAGE_KEY);
+        }
+      }
       if (!rawSession) {
         setSessionLoaded(true);
         return;
@@ -989,12 +989,6 @@ export default function App() {
       if (parsedSession.gridConfig && typeof parsedSession.gridConfig === 'object') {
         setGridConfig(prev => ({ ...prev, ...parsedSession.gridConfig }));
       }
-      if (parsedSession.guides && typeof parsedSession.guides === 'object') {
-        setGuides(prev => ({ ...prev, ...parsedSession.guides }));
-      }
-      if (typeof parsedSession.showGuides === 'boolean') {
-        setShowGuides(parsedSession.showGuides);
-      }
       if (typeof parsedSession.showBackgroundAids === 'boolean') {
         setShowBackgroundAids(parsedSession.showBackgroundAids);
       }
@@ -1021,8 +1015,6 @@ export default function App() {
       currentPathInfo: currentPathInfo ? { ...currentPathInfo } : null,
       pathStyleDefaults: { ...pathStyleDefaults },
       gridConfig: { ...gridConfig },
-      guides: { ...guides },
-      showGuides,
       showBackgroundAids,
       activeLayerId
     };
@@ -1040,8 +1032,6 @@ export default function App() {
     currentPathInfo,
     pathStyleDefaults,
     gridConfig,
-    guides,
-    showGuides,
     showBackgroundAids,
     activeLayerId
   ]);
@@ -1671,7 +1661,7 @@ export default function App() {
 
     if (clipboardPaths.length === 0 && clipboardImages.length === 0) return null;
     return {
-      type: 'typolab-paths',
+      type: CLIPBOARD_PAYLOAD_TYPE,
       paths: clipboardPaths,
       images: clipboardImages
     };
@@ -1753,7 +1743,7 @@ export default function App() {
   }, [activePathEditId, selectedPoints, selectedImageIds, expandPathSelectionToGroups, buildClipboardPayload, writeClipboardPayload, paths, deleteSelectedItems, removeObjectsByIds]);
 
   const insertClipboardPayload = useCallback((parsedPayload) => {
-    if (!parsedPayload || parsedPayload.type !== 'typolab-paths') return false;
+    if (!parsedPayload || parsedPayload.type !== CLIPBOARD_PAYLOAD_TYPE) return false;
     const sourcePaths = Array.isArray(parsedPayload.paths) ? parsedPayload.paths : [];
     const sourceImages = Array.isArray(parsedPayload.images) ? parsedPayload.images : [];
     if (sourcePaths.length === 0 && sourceImages.length === 0) return false;
@@ -4945,10 +4935,6 @@ export default function App() {
         togglePanel('image');
         return;
       }
-      if (e.key.toLowerCase() === 'g') {
-        togglePanel('guides');
-        return;
-      }
       if (e.key === 'Escape') {
         if (mode === 'draw' || mode === 'pencil') {
           if (currentPath.length > 0) {
@@ -5098,7 +5084,6 @@ export default function App() {
   const showPixelGrid = zoom >= PIXEL_GRID_MIN_ZOOM;
   const showBackgroundGridPattern = showBackgroundAids && gridConfig.type !== 'none' && gridConfig.type !== 'circular';
   const showCircularGrid = showBackgroundAids && gridConfig.type === 'circular';
-  const showTypographicGuides = showBackgroundAids && showGuides;
   const showPixelGridOverlay = showBackgroundAids && showPixelGrid;
 
   if (gridConfig.type === 'dots') {
@@ -5368,15 +5353,6 @@ export default function App() {
     if (Math.abs(currentZoom - 1) < 0.0001) return;
     zoomAtScreenPoint(1 / currentZoom, viewportSize.width / 2, viewportSize.height / 2);
   };
-  const toggleGuidesVisibility = () => {
-    setShowGuides(prev => {
-      const next = !prev;
-      if (next) {
-        setShowBackgroundAids(true);
-      }
-      return next;
-    });
-  };
   const anyMobileOverlayOpen = mobileToolsOpen || mobileShapePanelOpen || mobilePanelsOpen || anyPanelOpen;
   const mobileControlGapPx = 8;
   const mobileToolbarRowHeightPx = 48;
@@ -5523,23 +5499,6 @@ export default function App() {
                  const angle = (i * effectiveCircularStep * Math.PI) / 180;
                  return <line key={`rad-${i}`} x1={-5000 * Math.cos(angle)} y1={-5000 * Math.sin(angle)} x2={5000 * Math.cos(angle)} y2={5000 * Math.sin(angle)} stroke="#d0d5dd" strokeWidth={1/zoom} />
               })}
-            </g>
-          )}
-
-          {/* Typographic Guides */}
-          {showTypographicGuides && (
-            <g className="opacity-60 pointer-events-none">
-              <line x1="-10000" y1={-guides.capHeight} x2="10000" y2={-guides.capHeight} stroke="#7dd3fc" strokeWidth={1/zoom} strokeDasharray={`${4/zoom},${4/zoom}`} />
-              <text x="10" y={-guides.capHeight - 5/zoom} fontSize={12/zoom} fill="#7dd3fc" className="uppercase tracking-widest font-mono">Cap Height</text>
-              
-              <line x1="-10000" y1={-guides.xHeight} x2="10000" y2={-guides.xHeight} stroke="#818cf8" strokeWidth={1/zoom} strokeDasharray={`${4/zoom},${4/zoom}`} />
-              <text x="10" y={-guides.xHeight - 5/zoom} fontSize={12/zoom} fill="#818cf8" className="uppercase tracking-widest font-mono">X-Height</text>
-              
-              <line x1="-10000" y1={0} x2="10000" y2={0} stroke="#f43f5e" strokeWidth={1/zoom} />
-              <text x="10" y={0 - 5/zoom} fontSize={12/zoom} fill="#f43f5e" className="uppercase tracking-widest font-mono">Baseline</text>
-
-              <line x1="-10000" y1={guides.descender} x2="10000" y2={guides.descender} stroke="#c084fc" strokeWidth={1/zoom} strokeDasharray={`${4/zoom},${4/zoom}`} />
-              <text x="10" y={guides.descender - 5/zoom} fontSize={12/zoom} fill="#c084fc" className="uppercase tracking-widest font-mono">Descender</text>
             </g>
           )}
 
@@ -6359,14 +6318,6 @@ export default function App() {
                     label="Grid"
                   />
                   <MobileToolButton
-                    active={openPanels.guides}
-                    onClick={() => {
-                      openMobilePanel('guides');
-                    }}
-                    icon={<Ruler size={14} />}
-                    label="Guides"
-                  />
-                  <MobileToolButton
                     active={openPanels.layers}
                     onClick={() => {
                       openMobilePanel('layers');
@@ -6724,64 +6675,6 @@ export default function App() {
                     </div>
                   )}
 
-                  {panel.id === 'guides' && (
-                    <div className="p-3.5 flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e4e7ec]">
-                        <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Show Guides</label>
-                        <button
-                          onClick={toggleGuidesVisibility}
-                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${showGuides ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
-                          title={showGuides ? "Hide Guides" : "Show Guides"}
-                        >
-                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showGuides ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
-                      {!showBackgroundAids && (
-                        <p className="px-1 text-[10px] font-medium text-[#98a2b3]">
-                          Background aids are globally hidden in the menu.
-                        </p>
-                      )}
-                      <div className="flex flex-col gap-2.5">
-                        <div className="flex items-center justify-between px-1">
-                          <label className="text-xs font-semibold text-[#7dd3fc]">Cap Height</label>
-                          <div className="flex items-center bg-[#f2f4f7] rounded-md focus-within:ring-1 focus-within:ring-[#d0d5dd] w-16 transition-all">
-                            <input 
-                              type="number" 
-                              value={guides.capHeight} 
-                              onChange={(e) => setGuides({...guides, capHeight: e.target.value === '' ? '' : Number(e.target.value)})} 
-                              onBlur={(e) => e.target.value === '' && setGuides({...guides, capHeight: 0})}
-                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#344054] font-mono" 
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between px-1">
-                          <label className="text-xs font-semibold text-[#818cf8]">X-Height</label>
-                          <div className="flex items-center bg-[#f2f4f7] rounded-md focus-within:ring-1 focus-within:ring-[#d0d5dd] w-16 transition-all">
-                            <input 
-                              type="number" 
-                              value={guides.xHeight} 
-                              onChange={(e) => setGuides({...guides, xHeight: e.target.value === '' ? '' : Number(e.target.value)})} 
-                              onBlur={(e) => e.target.value === '' && setGuides({...guides, xHeight: 0})}
-                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#344054] font-mono" 
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between px-1">
-                          <label className="text-xs font-semibold text-[#c084fc]">Descender</label>
-                          <div className="flex items-center bg-[#f2f4f7] rounded-md focus-within:ring-1 focus-within:ring-[#d0d5dd] w-16 transition-all">
-                            <input 
-                              type="number" 
-                              value={guides.descender} 
-                              onChange={(e) => setGuides({...guides, descender: e.target.value === '' ? '' : Number(e.target.value)})} 
-                              onBlur={(e) => e.target.value === '' && setGuides({...guides, descender: 0})}
-                              className="w-full text-xs text-left bg-transparent border-none outline-none py-1.5 px-2 text-[#344054] font-mono" 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {panel.id === 'layers' && (
                     <div className={`p-3 flex flex-col gap-2 min-h-0 flex-1 ${isMobile ? 'max-h-[36vh]' : 'max-h-[60vh]'}`}>
                       <div className="flex-1 overflow-y-auto flex flex-col gap-1 pr-1" style={{ touchAction: 'pan-y' }}>
@@ -7047,15 +6940,8 @@ export default function App() {
             label="Background Config" 
             hotkey="B"
           />
-          <ToolButton 
-            active={openPanels.guides} 
-            onClick={() => togglePanel('guides')} 
-            icon={<Ruler size={20} />} 
-            label="Guides Config" 
-            hotkey="G"
-          />
-          <ToolButton 
-            active={openPanels.layers} 
+          <ToolButton
+            active={openPanels.layers}
             onClick={() => togglePanel('layers')} 
             icon={<Layers size={20} />} 
             label="Layers Panel" 
@@ -7089,12 +6975,6 @@ export default function App() {
             hotkey="N"
           />
           <ToolButton
-            active={showGuides}
-            onClick={toggleGuidesVisibility}
-            icon={showGuides ? <Eye size={20} /> : <EyeOff size={20} />}
-            label={showGuides ? "Hide Guides" : "Show Guides"}
-          />
-          <ToolButton 
             active={fillToggleActive}
             onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
             icon={<Droplet size={20} />}
