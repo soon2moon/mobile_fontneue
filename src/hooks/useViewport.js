@@ -81,6 +81,15 @@ export function useViewport(svgRef) {
     setZoom(newZoom);
   }, [svgRef]);
 
+  // Non-passive so preventDefault can stop browser page-zoom on the canvas.
+  useEffect(() => {
+    const canvas = svgRef.current;
+    if (canvas) {
+      canvas.addEventListener('wheel', handleWheel, { passive: false });
+      return () => canvas.removeEventListener('wheel', handleWheel);
+    }
+  }, [handleWheel]);
+
   return {
     pan, setPan,
     zoom, setZoom,
@@ -88,7 +97,6 @@ export function useViewport(svgRef) {
     panRef, zoomRef,
     getCanvasCoords,
     zoomAtScreenPoint,
-    stepZoom,
-    handleWheel
+    stepZoom
   };
 }
