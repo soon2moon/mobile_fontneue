@@ -12,6 +12,7 @@ export function useImageImport({
   layers, setLayers,
   paths, currentPath,
   images, setImages,
+  texts,
   commitHistory,
   setSelectedImageIds, setSelectedPoints,
   setOpenPanels, setExpandedPanel,
@@ -32,7 +33,7 @@ export function useImageImport({
     const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = () => {
-      commitHistory({ paths, currentPath, images, layers });
+      commitHistory({ paths, currentPath, images, layers, texts });
       const count = layers.filter(l => l.itemType === layerType).length;
       const newLayer = createLayer(layerType, count);
       setLayers(prev => [newLayer, ...prev]);
@@ -70,7 +71,7 @@ export function useImageImport({
     };
     img.src = url;
     return true;
-  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers, viewportSize.width, viewportSize.height]);
+  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, layers, viewportSize.width, viewportSize.height]);
 
   const insertTextFromPrompt = useCallback(() => {
     if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;

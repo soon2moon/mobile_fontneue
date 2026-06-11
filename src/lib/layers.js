@@ -21,7 +21,7 @@ export const createLayer = (type, existingCount) => {
 };
 
 // Group document content by owning layer, with counts, for the layer panels.
-export const groupContentByLayer = (paths, images) => {
+export const groupContentByLayer = (paths, images, texts = []) => {
   const pathsByLayerId = {};
   paths.forEach(path => {
     if (!pathsByLayerId[path.layerId]) pathsByLayerId[path.layerId] = [];
@@ -32,6 +32,11 @@ export const groupContentByLayer = (paths, images) => {
     if (!imagesByLayerId[image.layerId]) imagesByLayerId[image.layerId] = [];
     imagesByLayerId[image.layerId].push(image);
   });
+  const textsByLayerId = {};
+  texts.forEach(text => {
+    if (!textsByLayerId[text.layerId]) textsByLayerId[text.layerId] = [];
+    textsByLayerId[text.layerId].push(text);
+  });
   const pathCountByLayerId = {};
   paths.forEach(path => {
     pathCountByLayerId[path.layerId] = (pathCountByLayerId[path.layerId] || 0) + 1;
@@ -40,7 +45,11 @@ export const groupContentByLayer = (paths, images) => {
   images.forEach(image => {
     imageCountByLayerId[image.layerId] = (imageCountByLayerId[image.layerId] || 0) + 1;
   });
-  return { pathsByLayerId, imagesByLayerId, pathCountByLayerId, imageCountByLayerId };
+  const textCountByLayerId = {};
+  texts.forEach(text => {
+    textCountByLayerId[text.layerId] = (textCountByLayerId[text.layerId] || 0) + 1;
+  });
+  return { pathsByLayerId, imagesByLayerId, textsByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId };
 };
 
 // Padded world-space bounds of a layer's content, for thumbnail previews.

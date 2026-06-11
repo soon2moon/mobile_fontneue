@@ -4,9 +4,9 @@ import { pointsToPath } from './paths';
 import { normalizeStrokeWidth, normalizeStrokeColor } from './stroke';
 import { escapeXml } from './svg';
 
-// Resolve which paths/images an export covers: the current selection or the
-// whole canvas — hidden layers are excluded either way.
-export function collectExportItems(scope, { layers, paths, images, selectedPoints, selectedImageIds }) {
+// Resolve which paths/images/texts an export covers: the current selection or
+// the whole canvas — hidden layers are excluded either way.
+export function collectExportItems(scope, { layers, paths, images, texts = [], selectedPoints, selectedImageIds, selectedTextIds = [] }) {
   const visibleLayerIdSet = new Set(layers.filter(layer => layer.visible).map(layer => layer.id));
 
   if (scope === 'selection') {
@@ -16,12 +16,15 @@ export function collectExportItems(scope, { layers, paths, images, selectedPoint
       .filter(path => path && visibleLayerIdSet.has(path.layerId));
     const selectedImageIdSet = new Set(selectedImageIds);
     const scopedImages = images.filter(img => selectedImageIdSet.has(img.id) && visibleLayerIdSet.has(img.layerId));
-    return { exportPaths: scopedPaths, exportImages: scopedImages };
+    const selectedTextIdSet = new Set(selectedTextIds);
+    const scopedTexts = texts.filter(text => selectedTextIdSet.has(text.id) && visibleLayerIdSet.has(text.layerId));
+    return { exportPaths: scopedPaths, exportImages: scopedImages, exportTexts: scopedTexts };
   }
 
   return {
     exportPaths: paths.filter(path => visibleLayerIdSet.has(path.layerId)),
-    exportImages: images.filter(img => visibleLayerIdSet.has(img.layerId))
+    exportImages: images.filter(img => visibleLayerIdSet.has(img.layerId)),
+    exportTexts: texts.filter(text => visibleLayerIdSet.has(text.layerId))
   };
 }
 

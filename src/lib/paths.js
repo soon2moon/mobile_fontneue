@@ -122,11 +122,12 @@ export const clonePaths = (pathsArray) => {
   }));
 };
 
-export const cloneState = (pathsArray, currentPathArray, imagesArray, layersArray) => ({
+export const cloneState = (pathsArray, currentPathArray, imagesArray, layersArray, textsArray) => ({
   paths: clonePaths(pathsArray),
   currentPath: currentPathArray.map(clonePoint),
   images: imagesArray ? imagesArray.map(img => ({ ...img })) : [],
-  layers: layersArray ? layersArray.map(l => ({ ...l })) : []
+  layers: layersArray ? layersArray.map(l => ({ ...l })) : [],
+  texts: textsArray ? textsArray.map(t => ({ ...t })) : []
 });
 
 export const getPathStrokeStyle = (path, defaults) => ({

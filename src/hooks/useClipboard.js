@@ -9,19 +9,22 @@ import { clonePoint, resolvePathEditGroupId, expandPathSelectionToGroups } from 
 import { normalizeStrokeWidth, normalizeStrokeColor, normalizeStrokeAlign } from '../lib/stroke';
 import { generateEditGroupId } from '../lib/svg';
 import { createLayer } from '../lib/layers';
+import { normalizeTextObject } from '../lib/objectModel';
 
-// Copy/cut/paste/duplicate for paths + images. Payloads live in an in-memory
-// ref (primary) and round-trip through the system clipboard as JSON text;
-// pasting external image data goes through insertImageFromFile. Outside path
-// focus mode, copies expand to whole edit groups.
+// Copy/cut/paste/duplicate for paths + images + texts. Payloads live in an
+// in-memory ref (primary) and round-trip through the system clipboard as JSON
+// text; pasting external image data goes through insertImageFromFile. Outside
+// path focus mode, copies expand to whole edit groups.
 export function useClipboard({
   paths, setPaths,
   images, setImages,
+  texts, setTexts,
   layers, setLayers,
   currentPath,
   commitHistory,
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
+  selectedTextIds, setSelectedTextIds,
   activePathEditId, setActivePathEditId,
   activeLayerId, setActiveLayerId,
   lockedLayerIds,
@@ -36,7 +39,7 @@ export function useClipboard({
 }) {
   const copiedContentRef = useRef(null);
 
-  const buildClipboardPayload = useCallback((selectionPoints = selectedPoints, selectionImages = selectedImageIds) => {
+  const buildClipboardPayload = useCallback((selectionPoints = selectedPoints, selectionImages = selectedImageIds, selectionTexts = selectedTextIds) => {
     const pathIndices = [...new Set(selectionPoints.map(sp => sp.pathIndex))]
       .filter(idx => idx >= 0 && idx < paths.length);
     const clipboardPaths = pathIndices.map(idx => {
@@ -50,14 +53,19 @@ export function useClipboard({
     const clipboardImages = images
       .filter(img => imageIdSet.has(img.id))
       .map(img => ({ ...img }));
+    const textIdSet = new Set(selectionTexts);
+    const clipboardTexts = texts
+      .filter(text => textIdSet.has(text.id))
+      .map(text => ({ ...text }));
 
-    if (clipboardPaths.length === 0 && clipboardImages.length === 0) return null;
+    if (clipboardPaths.length === 0 && clipboardImages.length === 0 && clipboardTexts.length === 0) return null;
     return {
       type: CLIPBOARD_PAYLOAD_TYPE,
       paths: clipboardPaths,
-      images: clipboardImages
+      images: clipboardImages,
+      texts: clipboardTexts
     };
-  }, [selectedPoints, selectedImageIds, paths, images]);
+  }, [selectedPoints, selectedImageIds, selectedTextIds, paths, images, texts]);
 
   const writeClipboardPayload = useCallback((payload) => {
     if (!payload) return false;
@@ -65,24 +73,29 @@ export function useClipboard({
     return true;
   }, []);
 
-  const removeObjectsByIds = useCallback((pathIds = [], imageIds = []) => {
+  const removeObjectsByIds = useCallback((pathIds = [], imageIds = [], textIds = []) => {
     const pathIdSet = new Set(pathIds);
     const imageIdSet = new Set(imageIds);
-    if (pathIdSet.size === 0 && imageIdSet.size === 0) return false;
+    const textIdSet = new Set(textIds);
+    if (pathIdSet.size === 0 && imageIdSet.size === 0 && textIdSet.size === 0) return false;
 
-    commitHistory({ paths, currentPath, images, layers });
+    commitHistory({ paths, currentPath, images, layers, texts });
     const nextPaths = paths.filter(path => !pathIdSet.has(path.id));
     const nextImages = images.filter(img => !imageIdSet.has(img.id));
+    const nextTexts = texts.filter(text => !textIdSet.has(text.id));
     const usedLayerIds = new Set([
       ...nextPaths.map(path => path.layerId),
-      ...nextImages.map(img => img.layerId)
+      ...nextImages.map(img => img.layerId),
+      ...nextTexts.map(text => text.layerId)
     ]);
 
     setPaths(nextPaths);
     setImages(nextImages);
+    setTexts(nextTexts);
     setLayers(prevLayers => prevLayers.filter(layer => usedLayerIds.has(layer.id)));
     setSelectedPoints([]);
     setSelectedImageIds([]);
+    setSelectedTextIds([]);
     setActivePathEditId(null);
     setActiveHandle(null);
     setSelectionBox(null);
@@ -95,7 +108,7 @@ export function useClipboard({
       setActiveLayerId(nextLayer ? nextLayer.id : null);
     }
     return true;
-  }, [paths, images, layers, currentPath, commitHistory, activeLayerId]);
+  }, [paths, images, texts, layers, currentPath, commitHistory, activeLayerId]);
 
   const copyCurrentSelection = useCallback(() => {
     const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(paths, selectedPoints);
@@ -130,22 +143,26 @@ export function useClipboard({
       return true;
     }
 
-    removeObjectsByIds(fullySelectedPathIds, selectedImageIds);
+    removeObjectsByIds(fullySelectedPathIds, selectedImageIds, selectedTextIds);
     return true;
-  }, [activePathEditId, selectedPoints, selectedImageIds, paths, buildClipboardPayload, writeClipboardPayload, deleteSelectedItems, removeObjectsByIds]);
+  }, [activePathEditId, selectedPoints, selectedImageIds, selectedTextIds, paths, buildClipboardPayload, writeClipboardPayload, deleteSelectedItems, removeObjectsByIds]);
 
   const insertClipboardPayload = useCallback((parsedPayload) => {
     if (!parsedPayload || parsedPayload.type !== CLIPBOARD_PAYLOAD_TYPE) return false;
     const sourcePaths = Array.isArray(parsedPayload.paths) ? parsedPayload.paths : [];
     const sourceImages = Array.isArray(parsedPayload.images) ? parsedPayload.images : [];
-    if (sourcePaths.length === 0 && sourceImages.length === 0) return false;
+    const sourceTexts = Array.isArray(parsedPayload.texts)
+      ? parsedPayload.texts.map(normalizeTextObject).filter(Boolean)
+      : [];
+    if (sourcePaths.length === 0 && sourceImages.length === 0 && sourceTexts.length === 0) return false;
     if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;
 
-    commitHistory({ paths, currentPath, images, layers });
+    commitHistory({ paths, currentPath, images, layers, texts });
 
     const newLayers = [];
     const newPaths = [];
     const newImages = [];
+    const newTexts = [];
     const groupIdMap = new Map();
 
     sourcePaths.forEach(path => {
@@ -185,12 +202,26 @@ export function useClipboard({
       });
     });
 
+    sourceTexts.forEach(text => {
+      const count = layers.filter(layer => layer.itemType === 'text').length
+        + newLayers.filter(layer => layer.itemType === 'text').length;
+      const layer = createLayer('text', count);
+      newLayers.push(layer);
+      newTexts.push({
+        ...text,
+        id: crypto.randomUUID(),
+        layerId: layer.id
+      });
+    });
+
     const nextLayers = [...newLayers, ...layers];
     const nextPaths = [...paths, ...newPaths];
     const nextImages = [...images, ...newImages];
+    const nextTexts = [...texts, ...newTexts];
     setLayers(nextLayers);
     setPaths(nextPaths);
     setImages(nextImages);
+    setTexts(nextTexts);
     if (newLayers.length > 0) {
       setActiveLayerId(newLayers[0].id);
     }
@@ -204,6 +235,7 @@ export function useClipboard({
     });
     setSelectedPoints(selectedPathPoints);
     setSelectedImageIds(newImages.map(img => img.id));
+    setSelectedTextIds(newTexts.map(text => text.id));
     setActivePathEditId(null);
     setActiveHandle(null);
     setSelectionBox(null);
@@ -211,7 +243,7 @@ export function useClipboard({
     setBgAction(null);
     setBgInitialState(null);
     return true;
-  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, layers]);
+  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, layers]);
 
   const duplicateCurrentSelection = useCallback(() => {
     const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(paths, selectedPoints);

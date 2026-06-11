@@ -12,6 +12,7 @@ export function useKeyboardShortcuts({
   changeMode,
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
+  selectedTextIds, setSelectedTextIds,
   currentPath, setCurrentPath,
   pastPaths, futurePaths,
   paths, images, layers,
@@ -48,7 +49,7 @@ export function useKeyboardShortcuts({
 
       // Copy
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && mode === 'edit') {
-        if (selectedPoints.length > 0 || selectedImageIds.length > 0) {
+        if (selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0) {
           e.preventDefault();
           copyCurrentSelection();
         }
@@ -57,7 +58,7 @@ export function useKeyboardShortcuts({
 
       // Cut
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && mode === 'edit') {
-        if (selectedPoints.length > 0 || selectedImageIds.length > 0) {
+        if (selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0) {
           e.preventDefault();
           cutCurrentSelection();
         }
@@ -157,6 +158,7 @@ export function useKeyboardShortcuts({
           setActiveHandle(null);
           setSelectionBox(null);
           setSelectedImageIds([]);
+          setSelectedTextIds([]);
           setPointAction(null);
         }
         return;
@@ -164,7 +166,7 @@ export function useKeyboardShortcuts({
 
       if ((e.key === 'Backspace' || e.key === 'Delete')) {
         if (editingLayerId) return;
-        if (selectedPoints.length > 0 || selectedImageIds.length > 0) {
+        if (selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0) {
           e.preventDefault();
           deleteSelectedItems();
         }
@@ -204,5 +206,5 @@ export function useKeyboardShortcuts({
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [mode, selectedPoints, selectedImageIds, currentPath, pastPaths, futurePaths, paths, images, layers, handleUndo, handleRedo, commitHistory, deleteSelectedItems, copyCurrentSelection, cutCurrentSelection, editingLayerId, activePathEditId]);
+  }, [mode, selectedPoints, selectedImageIds, selectedTextIds, currentPath, pastPaths, futurePaths, paths, images, layers, handleUndo, handleRedo, commitHistory, deleteSelectedItems, copyCurrentSelection, cutCurrentSelection, editingLayerId, activePathEditId]);
 }

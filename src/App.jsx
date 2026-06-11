@@ -108,6 +108,7 @@ export default function App() {
   const {
     paths, setPaths,
     images, setImages,
+    texts, setTexts,
     currentPath, setCurrentPath,
     currentPathInfo, setCurrentPathInfo
   } = useObjects();
@@ -118,6 +119,7 @@ export default function App() {
   const {
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
+    selectedTextIds, setSelectedTextIds,
     activePathEditId, setActivePathEditId
   } = useSelection();
   const [activeHandle, setActiveHandle] = useState(null);
@@ -139,6 +141,7 @@ export default function App() {
     paths, setPaths,
     currentPath, setCurrentPath,
     images, setImages,
+    texts, setTexts,
     layers, setLayers,
     setIsDrawingCurve,
     setDrawHover,
@@ -156,6 +159,7 @@ export default function App() {
     layers, setLayers,
     paths, setPaths,
     images, setImages,
+    texts, setTexts,
     currentPath, setCurrentPath,
     currentPathInfo, setCurrentPathInfo,
     pathStyleDefaults, setPathStyleDefaults,
@@ -293,10 +297,12 @@ export default function App() {
     currentPath, setCurrentPath,
     currentPathInfo, setCurrentPathInfo,
     images, setImages,
+    texts, setTexts,
     layers, setLayers,
     commitHistory,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
+    selectedTextIds, setSelectedTextIds,
     activeLayerId, setActiveLayerId,
     setActivePathEditId,
     setActiveHandle,
@@ -455,6 +461,7 @@ export default function App() {
     showShapeMenu,
     snapState,
     svgRef,
+    texts,
     viewportSize,
     zoom,
     zoomRef
@@ -499,6 +506,7 @@ export default function App() {
       setActiveHandle(null);
       setSelectionBox(null);
       setSelectedImageIds([]);
+      setSelectedTextIds([]);
       setBgAction(null);
       setPointAction(null);
     }
@@ -515,6 +523,7 @@ export default function App() {
     layers, setLayers,
     paths, currentPath,
     images, setImages,
+    texts,
     commitHistory,
     setSelectedImageIds, setSelectedPoints,
     setOpenPanels, setExpandedPanel,
@@ -530,11 +539,13 @@ export default function App() {
   } = useClipboard({
     paths, setPaths,
     images, setImages,
+    texts, setTexts,
     layers, setLayers,
     currentPath,
     commitHistory,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
+    selectedTextIds, setSelectedTextIds,
     activePathEditId, setActivePathEditId,
     activeLayerId, setActiveLayerId,
     lockedLayerIds,
@@ -553,10 +564,12 @@ export default function App() {
     layers, setLayers,
     paths, setPaths,
     images, setImages,
+    texts, setTexts,
     currentPath,
     commitHistory,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
+    selectedTextIds, setSelectedTextIds,
     activeLayerId, setActiveLayerId,
     setActivePathEditId,
     mode, changeMode,
@@ -570,13 +583,14 @@ export default function App() {
     exportFormat: mobileExportFormat, setExportFormat: setMobileExportFormat,
     isExporting,
     handleExport
-  } = useExport({ layers, paths, images, selectedPoints, selectedImageIds });
+  } = useExport({ layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds });
 
   useKeyboardShortcuts({
     mode, setMode,
     changeMode,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
+    selectedTextIds, setSelectedTextIds,
     currentPath, setCurrentPath,
     pastPaths, futurePaths,
     paths, images, layers,
@@ -611,6 +625,7 @@ export default function App() {
     currentPath,
     currentPathInfo,
     images,
+    texts,
     layers,
     selectedPoints,
     commitHistory,
@@ -642,12 +657,17 @@ export default function App() {
     if (!activeImage) return;
     setImages(prev => prev.map(img => img.id === activeImage.id ? { ...img, ...updates } : img));
   };
+  const activeText = texts.find(text => selectedTextIds.includes(text.id));
+  const updateActiveText = (updates) => {
+    if (!activeText) return;
+    setTexts(prev => prev.map(text => text.id === activeText.id ? { ...text, ...updates } : text));
+  };
 
-  const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0;
+  const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0;
   const canExportSelection = hasActiveSelection;
   const selectedLayersInStackOrder = layers.filter(layer => selectedLayerIds.has(layer.id));
   const layerIndexById = new Map(layers.map((layer, index) => [layer.id, index]));
-  const { pathsByLayerId, imagesByLayerId, pathCountByLayerId, imageCountByLayerId } = groupContentByLayer(paths, images);
+  const { pathsByLayerId, imagesByLayerId, textsByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId } = groupContentByLayer(paths, images, texts);
   const compositeFillPathD = paths
     .filter(path => path.isClosed && path.fillEnabled && visibleLayerIds.has(path.layerId))
     .map(path => pointsToPath(path.points, path.isClosed))
@@ -698,6 +718,7 @@ export default function App() {
     activeEditGroupId,
     activeImage,
     activeLayerId,
+    activeText,
     canExportSelection,
     changeMode,
     compositeFillPathD,
@@ -754,6 +775,7 @@ export default function App() {
     selectedImageIds,
     selectedLayersInStackOrder,
     selectedPoints,
+    selectedTextIds,
     selectionBox,
     setActiveLayerId,
     setGridConfig,
@@ -770,8 +792,12 @@ export default function App() {
     showNodes,
     showShapeMenu,
     svgRef,
+    textCountByLayerId,
+    texts,
+    textsByLayerId,
     toggleMobileShapePanel,
     updateActiveImage,
+    updateActiveText,
     zoom
   };
 

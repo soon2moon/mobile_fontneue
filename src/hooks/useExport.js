@@ -8,14 +8,14 @@ import {
 
 // Export pipeline state: scope (selection/canvas) + format choice, and the
 // download action (SVG directly, PNG/JPG via offscreen rasterization).
-export function useExport({ layers, paths, images, selectedPoints, selectedImageIds }) {
+export function useExport({ layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds }) {
   const [exportScope, setExportScope] = useState('selection');
   const [exportFormat, setExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = useCallback(async () => {
     if (isExporting) return;
-    const items = collectExportItems(exportScope, { layers, paths, images, selectedPoints, selectedImageIds });
+    const items = collectExportItems(exportScope, { layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds });
     const bundle = buildExportSvgBundle(items);
     if (!bundle) return;
 
@@ -30,7 +30,7 @@ export function useExport({ layers, paths, images, selectedPoints, selectedImage
     } finally {
       setIsExporting(false);
     }
-  }, [isExporting, exportScope, exportFormat, layers, paths, images, selectedPoints, selectedImageIds]);
+  }, [isExporting, exportScope, exportFormat, layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds]);
 
   return {
     exportScope, setExportScope,

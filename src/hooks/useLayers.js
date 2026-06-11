@@ -7,10 +7,12 @@ export function useLayers({
   layers, setLayers,
   paths, setPaths,
   images, setImages,
+  texts, setTexts,
   currentPath,
   commitHistory,
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
+  selectedTextIds, setSelectedTextIds,
   activeLayerId, setActiveLayerId,
   setActivePathEditId,
   mode, changeMode,
@@ -29,6 +31,12 @@ export function useLayers({
           if (img) selectedLayerIds.add(img.layerId);
       });
   }
+  if (selectedTextIds.length > 0) {
+      selectedTextIds.forEach(id => {
+          const text = texts.find(t => t.id === id);
+          if (text) selectedLayerIds.add(text.layerId);
+      });
+  }
   selectedPoints.forEach(sp => {
       const path = paths[sp.pathIndex];
       if (path) selectedLayerIds.add(path.layerId);
@@ -39,6 +47,10 @@ export function useLayers({
     selectedImageIds.forEach(imgId => {
       const img = images.find(i => i.id === imgId);
       if (img) selectedIds.add(img.layerId);
+    });
+    selectedTextIds.forEach(textId => {
+      const text = texts.find(t => t.id === textId);
+      if (text) selectedIds.add(text.layerId);
     });
     selectedPoints.forEach(sp => {
       const p = paths[sp.pathIndex];
@@ -62,6 +74,10 @@ export function useLayers({
         const img = images.find(i => i.id === imgId);
         return img && !targetIdSet.has(img.layerId);
       }));
+      setSelectedTextIds(prev => prev.filter(textId => {
+        const text = texts.find(t => t.id === textId);
+        return text && !targetIdSet.has(text.layerId);
+      }));
     }
   };
 
@@ -70,6 +86,10 @@ export function useLayers({
     selectedImageIds.forEach(imgId => {
       const img = images.find(i => i.id === imgId);
       if (img) selectedIds.add(img.layerId);
+    });
+    selectedTextIds.forEach(textId => {
+      const text = texts.find(t => t.id === textId);
+      if (text) selectedIds.add(text.layerId);
     });
     selectedPoints.forEach(sp => {
       const p = paths[sp.pathIndex];
@@ -94,21 +114,27 @@ export function useLayers({
           const img = images.find(i => i.id === imgId);
           return img && !targetIdSet.has(img.layerId);
       }));
+      setSelectedTextIds(prev => prev.filter(textId => {
+          const text = texts.find(t => t.id === textId);
+          return text && !targetIdSet.has(text.layerId);
+      }));
     }
   };
 
   const deleteLayer = (layerId) => {
     const pathIdsInLayer = new Set(paths.filter(path => path.layerId === layerId).map(path => path.id));
     const imageIdsInLayer = new Set(images.filter(image => image.layerId === layerId).map(image => image.id));
+    const textIdsInLayer = new Set(texts.filter(text => text.layerId === layerId).map(text => text.id));
 
-    if (pathIdsInLayer.size === 0 && imageIdsInLayer.size === 0) {
+    if (pathIdsInLayer.size === 0 && imageIdsInLayer.size === 0 && textIdsInLayer.size === 0) {
       setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
       return;
     }
 
-    commitHistory({ paths, currentPath, images, layers });
+    commitHistory({ paths, currentPath, images, layers, texts });
     setPaths(prevPaths => prevPaths.filter(path => path.layerId !== layerId));
     setImages(prevImages => prevImages.filter(image => image.layerId !== layerId));
+    setTexts(prevTexts => prevTexts.filter(text => text.layerId !== layerId));
     setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
 
     setSelectedPoints(prev => prev.filter(sp => {
@@ -116,6 +142,7 @@ export function useLayers({
       return path && path.layerId !== layerId && !pathIdsInLayer.has(path.id);
     }));
     setSelectedImageIds(prev => prev.filter(id => !imageIdsInLayer.has(id)));
+    setSelectedTextIds(prev => prev.filter(id => !textIdsInLayer.has(id)));
 
     if (activeLayerId === layerId) {
       const fallbackLayer = layers.find(layer => layer.id !== layerId);
@@ -223,24 +250,29 @@ export function useLayers({
           setActiveLayerId(layer.id);
       }
 
+      // Content-based selection: pick up whatever the layer actually holds
+      // (also keeps legacy rasterized-text layers — images on itemType
+      // 'text' layers — selectable).
       const newSelPoints = [];
       const newSelImages = [];
+      const newSelTexts = [];
       newSelectedLayerIds.forEach(lId => {
           const layerObj = layers.find(l => l.id === lId);
           if (!layerObj || layerObj.locked || !layerObj.visible) return;
 
-          if (layerObj.itemType === 'image') {
-              const img = images.find(i => i.layerId === lId);
-              if (img) newSelImages.push(img.id);
-          } else {
-              paths.forEach((p, pIdx) => {
-                  if (p.layerId === lId) {
-                      p.points.forEach((_, ptIdx) => {
-                          newSelPoints.push({ pathIndex: pIdx, pointIndex: ptIdx });
-                      });
-                  }
-              });
-          }
+          images.forEach(img => {
+              if (img.layerId === lId) newSelImages.push(img.id);
+          });
+          texts.forEach(text => {
+              if (text.layerId === lId) newSelTexts.push(text.id);
+          });
+          paths.forEach((p, pIdx) => {
+              if (p.layerId === lId) {
+                  p.points.forEach((_, ptIdx) => {
+                      newSelPoints.push({ pathIndex: pIdx, pointIndex: ptIdx });
+                  });
+              }
+          });
       });
 
       if (mode !== 'edit') {
@@ -250,6 +282,7 @@ export function useLayers({
       setActivePathEditId(null);
       setSelectedPoints(newSelPoints);
       setSelectedImageIds(newSelImages);
+      setSelectedTextIds(newSelTexts);
   };
 
   const moveSelectedLayerQuick = (layerId, direction) => {
@@ -259,7 +292,7 @@ export function useLayers({
     const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (nextIndex < 0 || nextIndex >= layers.length) return;
 
-    commitHistory({ paths, currentPath, images, layers });
+    commitHistory({ paths, currentPath, images, layers, texts });
     setLayers(prevLayers => {
       const fromIndex = prevLayers.findIndex(layer => layer.id === layerId);
       if (fromIndex === -1) return prevLayers;

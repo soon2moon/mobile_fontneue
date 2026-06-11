@@ -133,6 +133,7 @@ activeEditGroupId,
     showShapeMenu,
     snapState,
     svgRef,
+    texts,
     viewportSize,
     zoom,
     zoomRef
@@ -140,6 +141,7 @@ activeEditGroupId,
 
   const dragStartPathsRef = useRef([]);
   const dragStartImagesRef = useRef([]);
+  const dragStartTextsRef = useRef([]);
   const hasDraggedRef = useRef(false);
   const pointRotateRef = useRef({ lastAngle: 0, accumulated: 0 });
   const bgRotateRef = useRef({ lastAngle: 0, accumulated: 0 });
@@ -294,11 +296,12 @@ activeEditGroupId,
     if (mode === 'edit') {
       dragStartPathsRef.current = clonePaths(paths);
       dragStartImagesRef.current = images.map(img => ({...img}));
+      dragStartTextsRef.current = texts.map(text => ({...text}));
       hasDraggedRef.current = false;
     }
 
     if (mode === 'pencil') {
-      commitHistory({ paths, currentPath, images, layers });
+      commitHistory({ paths, currentPath, images, layers, texts });
       const newPoint = { 
         x: coords.x, y: coords.y, 
         hIn: { x: coords.x, y: coords.y }, 
@@ -356,7 +359,7 @@ activeEditGroupId,
         }
 
         const resumePath = endpointSnapInfo ? paths[endpointSnapInfo.pathIndex] : null;
-        commitHistory({ paths, currentPath, images, layers });
+        commitHistory({ paths, currentPath, images, layers, texts });
 
         if (resumePath && !resumePath.isClosed && resumePath.points.length > 0) {
           const shouldReverseForResume = resumePath.points.length > 1 && endpointSnapInfo.pointIndex === 0;
@@ -434,7 +437,7 @@ activeEditGroupId,
             && endpointPath.points.length > 0
             && endpointPath.id !== currentPathInfo?.resumePathId;
 
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
 
           if (canMergeIntoEndpointPath) {
             const endpointPathPoints = endpointPath.points.map(clonePoint);
@@ -463,7 +466,8 @@ activeEditGroupId,
             setLayers(prevLayers => {
               const usedLayerIds = new Set([
                 ...nextPaths.map(path => path.layerId),
-                ...images.map(img => img.layerId)
+                ...images.map(img => img.layerId),
+                ...texts.map(text => text.layerId)
               ]);
               const filteredLayers = prevLayers.filter(layer => usedLayerIds.has(layer.id));
               if (activeLayerId && !usedLayerIds.has(activeLayerId)) {
@@ -679,7 +683,7 @@ activeEditGroupId,
 
       if (clickedPoint) {
         if (isDoubleClick) {
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           const newPaths = clonePaths(paths);
           const path = newPaths[clickedPoint.pathIndex];
           const ptIndex = clickedPoint.pointIndex;
@@ -861,7 +865,7 @@ activeEditGroupId,
 
         const hasModifierKeys = e.shiftKey || e.altKey || e.ctrlKey || e.metaKey;
         if (!hasModifierKeys) {
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           const newPaths = clonePaths(paths);
           const path = newPaths[clickedSegment.pathIndex];
           const prevP = path.points[clickedSegment.prevIndex];
@@ -890,7 +894,7 @@ activeEditGroupId,
         }
 
         if (e.shiftKey && e.altKey && (e.ctrlKey || e.metaKey)) {
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           const newPaths = clonePaths(paths);
           const path = newPaths[clickedSegment.pathIndex];
           
@@ -914,7 +918,7 @@ activeEditGroupId,
           startDragging(newSel);
           return;
         } else if (e.shiftKey && (e.ctrlKey || e.metaKey)) {
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           const newPaths = clonePaths(paths);
           const path = newPaths[clickedSegment.pathIndex];
           const p1 = path.points[clickedSegment.prevIndex];
@@ -934,7 +938,7 @@ activeEditGroupId,
           startDragging(newSel);
           return;
         } else if (e.altKey && (e.ctrlKey || e.metaKey)) {
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           const newPaths = clonePaths(paths);
           const path = newPaths[clickedSegment.pathIndex];
           
@@ -952,7 +956,7 @@ activeEditGroupId,
           dragStartPathsRef.current = clonePaths(newPaths);
           return;
         } else if (e.altKey) {
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           const newPaths = clonePaths(paths);
           const path = newPaths[clickedSegment.pathIndex];
           const p1 = path.points[clickedSegment.prevIndex];
@@ -2094,7 +2098,7 @@ activeEditGroupId,
       if (drawingShape) {
         if (Math.hypot(drawingShape.currentX - drawingShape.startX, drawingShape.currentY - drawingShape.startY) > 2 / zoom) {
           const generated = generateShapePath(drawingShape.startX, drawingShape.startY, drawingShape.currentX, drawingShape.currentY, shapeType, drawingShape.shiftKey);
-          commitHistory({ paths, currentPath, images, layers });
+          commitHistory({ paths, currentPath, images, layers, texts });
           
           const reusableLayerId = resolveEditContextLayerId();
           const count = layers.filter(l => l.itemType === shapeType).length;
@@ -2136,7 +2140,7 @@ activeEditGroupId,
     }
     if (pointAction) {
       if (hasDraggedRef.current) {
-          commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers });
+          commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers, texts: dragStartTextsRef.current });
           hasDraggedRef.current = false;
       }
       pointRotateRef.current = { lastAngle: 0, accumulated: 0 };
@@ -2145,7 +2149,7 @@ activeEditGroupId,
     }
     if (bgAction) {
       if (hasDraggedRef.current) {
-         commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers });
+         commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers, texts: dragStartTextsRef.current });
          hasDraggedRef.current = false;
       }
       bgRotateRef.current = { lastAngle: 0, accumulated: 0 };
@@ -2217,7 +2221,7 @@ activeEditGroupId,
       clearPendingTouchDrawAction();
     } else if (mode === 'edit') {
       if (hasDraggedRef.current) {
-        commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers });
+        commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers, texts: dragStartTextsRef.current });
         hasDraggedRef.current = false;
       }
       setIsDraggingPoints(false);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SESSION_STORAGE_KEY, LEGACY_SESSION_STORAGE_KEY } from '../constants';
 import { clonePoint } from '../lib/paths';
+import { normalizeTextObject } from '../lib/objectModel';
 
 // Loads the saved session once on mount, then persists on every change.
 // The sessionLoaded gate is load-bearing: without it the save effect would
@@ -9,6 +10,7 @@ export function useSessionPersistence({
   layers, setLayers,
   paths, setPaths,
   images, setImages,
+  texts, setTexts,
   currentPath, setCurrentPath,
   currentPathInfo, setCurrentPathInfo,
   pathStyleDefaults, setPathStyleDefaults,
@@ -45,6 +47,9 @@ export function useSessionPersistence({
       if (Array.isArray(parsedSession.images)) {
         setImages(parsedSession.images.map(image => ({ ...image })));
       }
+      if (Array.isArray(parsedSession.texts)) {
+        setTexts(parsedSession.texts.map(normalizeTextObject).filter(Boolean));
+      }
       if (Array.isArray(parsedSession.currentPath)) {
         setCurrentPath(parsedSession.currentPath.map(clonePoint));
       }
@@ -79,6 +84,7 @@ export function useSessionPersistence({
         points: (path.points || []).map(clonePoint)
       })),
       images: images.map(image => ({ ...image })),
+      texts: texts.map(text => ({ ...text })),
       currentPath: currentPath.map(clonePoint),
       currentPathInfo: currentPathInfo ? { ...currentPathInfo } : null,
       pathStyleDefaults: { ...pathStyleDefaults },
@@ -96,6 +102,7 @@ export function useSessionPersistence({
     layers,
     paths,
     images,
+    texts,
     currentPath,
     currentPathInfo,
     pathStyleDefaults,

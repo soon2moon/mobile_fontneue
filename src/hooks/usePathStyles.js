@@ -21,6 +21,7 @@ export function usePathStyles({
   currentPath,
   currentPathInfo,
   images,
+  texts,
   layers,
   selectedPoints,
   commitHistory,
@@ -80,7 +81,7 @@ export function usePathStyles({
     }
 
     if (hasSelectedPaths) {
-      commitHistory({ paths, currentPath, images, layers });
+      commitHistory({ paths, currentPath, images, layers, texts });
       const selectedSet = new Set(selectedPathIndices);
       setPaths(prev => prev.map((path, idx) => (
         selectedSet.has(idx) ? { ...path, ...normalizedUpdates } : path
