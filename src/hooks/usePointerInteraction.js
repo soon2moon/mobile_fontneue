@@ -36,6 +36,8 @@ import {
 import { generateEditGroupId } from '../lib/svg';
 import { generateShapePath } from '../lib/shapes';
 import { createLayer } from '../lib/layers';
+import { MIN_FONT_SIZE } from '../lib/objectModel';
+import { getTextLocalLayout } from '../lib/textMeasure';
 
 // The pointer/gesture engine: pen, pencil, shape, select, edit, pan tools;
 // touch pinch/two-finger pan; long-press; drag thresholds; rotation.
@@ -47,6 +49,7 @@ activeEditGroupId,
     activeHandle,
     activeLayerId,
     activePathEditId,
+    beginEditingText,
     beginNewTextAt,
     beginPendingTouchDrawAction,
     bgAction,
@@ -69,6 +72,7 @@ activeEditGroupId,
     drawingShape,
     findTopImageAtCoords,
     findTopPathAtCoords,
+    findTopTextAtCoords,
     finishPath,
     getBgHit,
     getCanvasCoords,
@@ -100,6 +104,7 @@ activeEditGroupId,
     selBBox,
     selectedImageIds,
     selectedPoints,
+    selectedTextIds,
     selectionBox,
     setActiveHandle,
     setActiveLayerId,
@@ -125,10 +130,12 @@ activeEditGroupId,
     setPointAction,
     setSelectedImageIds,
     setSelectedPoints,
+    setSelectedTextIds,
     setSelectionBox,
     setShowNodes,
     setShowShapeMenu,
     setSnapState,
+    setTexts,
     setZoom,
     shapeType,
     showNodes,
@@ -159,6 +166,7 @@ activeEditGroupId,
   const pinchWasActiveRef = useRef(false);
   const lastPointerDownRef = useRef({ time: 0, x: 0, y: 0, canvasX: 0, canvasY: 0, refPoint: null });
   const lastClickedPathIdRef = useRef(null);
+  const lastClickedTextIdRef = useRef(null);
 
   const hasPassedDragThreshold = (e) => {
     const gesture = pointerGestureRef.current;
@@ -257,10 +265,11 @@ activeEditGroupId,
       && !['draw', 'pencil', 'shape', 'text'].includes(mode)
     ) {
       clearMobileLongPress();
-      const hitImage = findTopImageAtCoords(coords);
-      const hitPath = hitImage ? null : findTopPathAtCoords(coords);
-      const longPressTargetType = hitImage ? 'image' : (hitPath ? 'path' : 'canvas');
-      const longPressTargetId = hitImage ? hitImage.id : (hitPath ? hitPath.path.id : null);
+      const hitText = findTopTextAtCoords(coords);
+      const hitImage = hitText ? null : findTopImageAtCoords(coords);
+      const hitPath = hitText || hitImage ? null : findTopPathAtCoords(coords);
+      const longPressTargetType = hitText ? 'text' : (hitImage ? 'image' : (hitPath ? 'path' : 'canvas'));
+      const longPressTargetId = hitText ? hitText.id : (hitImage ? hitImage.id : (hitPath ? hitPath.path.id : null));
       const pointerId = e.pointerId ?? null;
       const timerId = setTimeout(() => {
         mobileLongPressRef.current.triggered = true;
@@ -783,17 +792,26 @@ activeEditGroupId,
       // 3. Check Background Object Handles (Scale / Rotate)
       const hitBg = isDirectPathEdit ? null : getBgHit(coords);
 
-      if (hitBg && hitBg.kind === 'image' && (hitBg.action.startsWith('scale') || hitBg.action.startsWith('rotate'))) {
+      if (hitBg && (hitBg.action.startsWith('scale') || hitBg.action.startsWith('rotate'))) {
         lastClickedPathIdRef.current = null;
+        lastClickedTextIdRef.current = null;
         setBgAction(hitBg.action);
-        setSelectedImageIds([hitBg.id]);
-        const img = images.find(i => i.id === hitBg.id);
-        if (hitBg.action.startsWith('scale')) {
-           setBgInitialState({ coords, obj: { ...img }, kind: 'image', cursorAngle: hitBg.cursorAngle });
+        const obj = hitBg.kind === 'text'
+          ? texts.find(t => t.id === hitBg.id)
+          : images.find(i => i.id === hitBg.id);
+        if (hitBg.kind === 'text') {
+          setSelectedTextIds([hitBg.id]);
+          setSelectedImageIds([]);
         } else {
-           const initAngle = Math.atan2(coords.y - img.y, coords.x - img.x) * 180 / Math.PI;
+          setSelectedImageIds([hitBg.id]);
+          setSelectedTextIds([]);
+        }
+        if (hitBg.action.startsWith('scale')) {
+           setBgInitialState({ coords, obj: { ...obj }, kind: hitBg.kind, cursorAngle: hitBg.cursorAngle });
+        } else {
+           const initAngle = Math.atan2(coords.y - obj.y, coords.x - obj.x) * 180 / Math.PI;
            bgRotateRef.current = { lastAngle: initAngle, accumulated: 0 };
-           setBgInitialState({ angle: initAngle, obj: { ...img }, kind: 'image' });
+           setBgInitialState({ angle: initAngle, obj: { ...obj }, kind: hitBg.kind });
         }
         return;
       }
@@ -843,12 +861,14 @@ activeEditGroupId,
             setActivePathEditId(clickedPath.id);
             setSelectedPoints([]);
             setSelectedImageIds([]);
+            setSelectedTextIds([]);
             setActiveLayerId(clickedPath.layerId);
             return;
           }
 
           setActivePathEditId(null);
           setSelectedImageIds([]);
+          setSelectedTextIds([]);
           if (e.shiftKey) {
             if (isPathSelected) {
               setSelectedPoints(prev => prev.filter(sp => !clickedGroupPathIndices.has(sp.pathIndex)));
@@ -899,6 +919,7 @@ activeEditGroupId,
           const insertedPointSelection = [{ pathIndex: clickedSegment.pathIndex, pointIndex: insertIdx }];
           setSelectedPoints(insertedPointSelection);
           setSelectedImageIds([]);
+          setSelectedTextIds([]);
           setActiveHandle(null);
           startDragging(insertedPointSelection);
           return;
@@ -1046,6 +1067,7 @@ activeEditGroupId,
             setActivePathEditId(path.id);
             setSelectedPoints([]);
             setSelectedImageIds([]);
+            setSelectedTextIds([]);
             setActiveLayerId(path.layerId);
             return;
           }
@@ -1145,6 +1167,7 @@ activeEditGroupId,
             setActivePathEditId(path.id);
             setSelectedPoints([]);
             setSelectedImageIds([]);
+            setSelectedTextIds([]);
             setActiveLayerId(path.layerId);
             return;
           }
@@ -1169,6 +1192,7 @@ activeEditGroupId,
           if (!alreadySelected) {
             setSelectedPoints(newSel);
             setSelectedImageIds([]);
+            setSelectedTextIds([]);
             startDragging(newSel);
           } else {
             startDragging(selectedPoints);
@@ -1203,17 +1227,43 @@ activeEditGroupId,
 
       // 4.5 Check Selection Bounding Box (Move selected object)
       // Bypass this if holding Shift or Alt to allow drawing a selection area instead
-      const canMoveSelectionByBBox = selectedImageIds.length > 0 || isWholePathSelection(selectedPoints);
+      const canMoveSelectionByBBox = selectedImageIds.length > 0 || selectedTextIds.length > 0 || isWholePathSelection(selectedPoints);
       if (!e.shiftKey && !e.altKey && canMoveSelectionByBBox && selBBox && coords.x >= selBBox.minX && coords.x <= selBBox.maxX && coords.y >= selBBox.minY && coords.y <= selBBox.maxY) {
         startDragging(selectedPoints);
         return;
       }
 
-      // 5. Check Background Object Body (Move)
-      if (hitBg && hitBg.kind === 'image' && hitBg.action === 'move') {
+      // 5. Check Background Object Body (Move); double-click on a text
+      // re-opens its editor instead.
+      if (hitBg && hitBg.action === 'move') {
+        if (hitBg.kind === 'text') {
+          const text = texts.find(t => t.id === hitBg.id);
+          if (!text) return;
+          if (isDoubleClick && lastClickedTextIdRef.current === hitBg.id) {
+            // Same focus-stealing default as the text tool: cancel it so the
+            // editor textarea keeps focus.
+            e.preventDefault();
+            lastClickedTextIdRef.current = null;
+            setSelectedTextIds([hitBg.id]);
+            setSelectedImageIds([]);
+            setSelectedPoints([]);
+            beginEditingText(text);
+            return;
+          }
+          lastClickedTextIdRef.current = hitBg.id;
+          lastClickedPathIdRef.current = null;
+          setBgAction('move');
+          setSelectedTextIds([hitBg.id]);
+          setSelectedImageIds([]);
+          setSelectedPoints([]);
+          setBgInitialState({ coords, obj: { ...text }, kind: 'text' });
+          return;
+        }
         lastClickedPathIdRef.current = null;
+        lastClickedTextIdRef.current = null;
         setBgAction('move');
         setSelectedImageIds([hitBg.id]);
+        setSelectedTextIds([]);
         const img = images.find(i => i.id === hitBg.id);
         setSelectedPoints([]);
         setBgInitialState({ coords, obj: { ...img }, kind: 'image' });
@@ -1222,6 +1272,7 @@ activeEditGroupId,
 
       if (isDoubleClick && activePathEditId && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
         lastClickedPathIdRef.current = null;
+        lastClickedTextIdRef.current = null;
         setActivePathEditId(null);
         lastFocusedPathEditIdRef.current = null;
         setSelectedPoints([]);
@@ -1232,14 +1283,17 @@ activeEditGroupId,
 
       // 6. Start Box selection
       lastClickedPathIdRef.current = null;
+      lastClickedTextIdRef.current = null;
       setSelectedImageIds([]);
-      setSelectionBox({ 
-        startX: coords.x, 
-        startY: coords.y, 
-        currentX: coords.x, 
-        currentY: coords.y, 
+      setSelectedTextIds([]);
+      setSelectionBox({
+        startX: coords.x,
+        startY: coords.y,
+        currentX: coords.x,
+        currentY: coords.y,
         initialSelection: [...selectedPoints],
-        initialSelectedImageIds: [...selectedImageIds]
+        initialSelectedImageIds: [...selectedImageIds],
+        initialSelectedTextIds: [...selectedTextIds]
       });
       if (!e.shiftKey && !e.altKey) {
         setSelectedPoints([]);
@@ -1372,6 +1426,18 @@ activeEditGroupId,
               };
             }));
           }
+
+          if (selectedTextIds.length > 0) {
+            setTexts(() => dragStartTextsRef.current.map(text => {
+              if (!selectedTextIds.includes(text.id)) return text;
+              return {
+                ...text,
+                x: opposite.x + (text.x - opposite.x) * s_new,
+                y: opposite.y + (text.y - opposite.y) * s_new,
+                fontSize: Math.max(MIN_FONT_SIZE, text.fontSize * s_new)
+              };
+            }));
+          }
       } else if (pointAction.action.startsWith('rotate-')) {
           const bbox = pointAction.bbox;
           const cx = (bbox.minX + bbox.maxX) / 2;
@@ -1425,7 +1491,62 @@ activeEditGroupId,
               };
             }));
           }
+
+          if (selectedTextIds.length > 0) {
+            setTexts(() => dragStartTextsRef.current.map(text => {
+              if (!selectedTextIds.includes(text.id)) return text;
+              const rp = rotatePt({ x: text.x, y: text.y });
+              return {
+                ...text,
+                x: rp.x,
+                y: rp.y,
+                rotation: normalizeAngleDeg(text.rotation + deltaAngle)
+              };
+            }));
+          }
       }
+      return;
+    }
+
+    if (bgAction && bgInitialState && bgInitialState.kind === 'text' && selectedTextIds.length > 0) {
+      if (!dragThresholdPassed) return;
+      hasDraggedRef.current = true;
+      setTexts(prev => prev.map(text => {
+        if (!selectedTextIds.includes(text.id)) return text;
+
+        if (bgAction === 'move') {
+          return {
+            ...text,
+            x: bgInitialState.obj.x + (coords.x - bgInitialState.coords.x),
+            y: bgInitialState.obj.y + (coords.y - bgInitialState.coords.y)
+          };
+        } else if (bgAction.startsWith('scale-')) {
+          const init = bgInitialState.obj;
+          const { halfW, halfH } = getTextLocalLayout(init);
+          const { s, newCenter } = computeCornerScale({
+            coords,
+            cornerId: bgAction.split('-')[1],
+            center: { x: init.x, y: init.y },
+            rotation: init.rotation,
+            halfW,
+            halfH,
+            minScale: MIN_FONT_SIZE / init.fontSize
+          });
+          return { ...text, fontSize: init.fontSize * s, x: newCenter.x, y: newCenter.y };
+        } else if (bgAction.startsWith('rotate-')) {
+          const init = bgInitialState.obj;
+          const currentAngle = Math.atan2(coords.y - init.y, coords.x - init.x) * 180 / Math.PI;
+          const stepDelta = shortestDeltaDeg(currentAngle, bgRotateRef.current.lastAngle);
+          bgRotateRef.current.lastAngle = currentAngle;
+          bgRotateRef.current.accumulated += stepDelta;
+          const shouldSnapRotation = e.shiftKey || e.pointerType === 'touch' || e.pointerType === 'pen';
+          const deltaAngle = shouldSnapRotation
+            ? Math.round(bgRotateRef.current.accumulated / 15) * 15
+            : bgRotateRef.current.accumulated;
+          return { ...text, rotation: normalizeAngleDeg(init.rotation + deltaAngle) };
+        }
+        return text;
+      }));
       return;
     }
 
@@ -1770,6 +1891,13 @@ activeEditGroupId,
                 return { ...img, x: img.x + dx, y: img.y + dy };
               }));
             }
+
+            if (selectedTextIds.length > 0) {
+              setTexts(() => dragStartTextsRef.current.map(text => {
+                if (!selectedTextIds.includes(text.id)) return text;
+                return { ...text, x: text.x + dx, y: text.y + dy };
+              }));
+            }
         } else {
             // Standard absolute dragging from drag start
             setPaths(() => {
@@ -1794,6 +1922,14 @@ activeEditGroupId,
                 selectedImageIds.includes(img.id)
                   ? { ...img, x: img.x + dragDx, y: img.y + dragDy }
                   : img
+              )));
+            }
+
+            if (selectedTextIds.length > 0) {
+              setTexts(() => dragStartTextsRef.current.map(text => (
+                selectedTextIds.includes(text.id)
+                  ? { ...text, x: text.x + dragDx, y: text.y + dragDy }
+                  : text
               )));
             }
         }
@@ -1858,9 +1994,11 @@ activeEditGroupId,
         
         let newSelected = [];
         let newSelectedImageIds = [];
+        let newSelectedTextIds = [];
         if (e.shiftKey || e.altKey) {
           newSelected = [...selectionBox.initialSelection];
           newSelectedImageIds = [...selectionBox.initialSelectedImageIds];
+          newSelectedTextIds = [...(selectionBox.initialSelectedTextIds || [])];
         }
         
         paths.forEach((path, i) => {
@@ -1933,15 +2071,33 @@ activeEditGroupId,
           }
         });
 
+        // Marquee intersection check for texts (unrotated AABB, like images)
+        texts.forEach(text => {
+          if (activePathEditId && showNodes) return;
+          const layer = layers.find(l => l.id === text.layerId);
+          if (!layer || !layer.visible || layer.locked || text.locked) return;
+
+          const { halfW, halfH } = getTextLocalLayout(text);
+          const intersects = !(text.x + halfW < minX || text.x - halfW > maxX || text.y + halfH < minY || text.y - halfH > maxY);
+
+          if (intersects) {
+            if (e.altKey) {
+              newSelectedTextIds = newSelectedTextIds.filter(id => id !== text.id);
+            } else {
+              if (!newSelectedTextIds.includes(text.id)) newSelectedTextIds.push(text.id);
+            }
+          }
+        });
+
         setSelectedImageIds(newSelectedImageIds);
+        setSelectedTextIds(newSelectedTextIds);
         setSelectedPoints(newSelected);
       }
     }
 
     if (mode === 'edit' && !isDraggingPoints && !activeHandle && !selectionBox && !bgAction && !pointAction) {
       let hitAction = null;
-      const rawBgHover = (activePathEditId && showNodes) ? null : getBgHit(coords);
-      const hitBg = rawBgHover && rawBgHover.kind === 'image' ? rawBgHover : null;
+      const hitBg = (activePathEditId && showNodes) ? null : getBgHit(coords);
       
       let ptHit = null;
       if (selBBox && !e.shiftKey && !e.altKey) {
@@ -2032,9 +2188,9 @@ activeEditGroupId,
       setIsPanning(false);
       return;
     }
-    if (isShortPressAction && (shortPressTargetType === 'path' || shortPressTargetType === 'image')) {
+    if (isShortPressAction && (shortPressTargetType === 'path' || shortPressTargetType === 'image' || shortPressTargetType === 'text')) {
       const selectedPathIndicesSet = new Set(selectedPoints.map(point => point.pathIndex));
-      const totalSelectedObjects = selectedPathIndicesSet.size + selectedImageIds.length;
+      const totalSelectedObjects = selectedPathIndicesSet.size + selectedImageIds.length + selectedTextIds.length;
       pointerGestureRef.current = {
         pointerId: null,
         pointerType: 'mouse',
@@ -2044,6 +2200,22 @@ activeEditGroupId,
       };
       setIsPanning(false);
 
+      if (shortPressTargetType === 'text') {
+        const keepCurrentSelection = totalSelectedObjects > 1 && selectedTextIds.includes(shortPressTargetId);
+        if (!keepCurrentSelection) {
+          setSelectedTextIds([shortPressTargetId]);
+          setSelectedImageIds([]);
+          setSelectedPoints([]);
+        }
+        setActivePathEditId(null);
+        setMobileContextMenu({
+          type: 'actions',
+          x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
+          y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+        });
+        return;
+      }
+
       if (shortPressTargetType === 'path') {
         const targetPathIndex = paths.findIndex(path => path.id === shortPressTargetId);
         if (targetPathIndex !== -1) {
@@ -2051,6 +2223,7 @@ activeEditGroupId,
           if (!keepCurrentSelection) {
             setSelectedPoints(getPathSelection(targetPathIndex));
             setSelectedImageIds([]);
+            setSelectedTextIds([]);
           }
           setActivePathEditId(null);
           setMobileContextMenu({
@@ -2067,6 +2240,7 @@ activeEditGroupId,
         if (!keepCurrentSelection) {
           setSelectedImageIds([shortPressTargetId]);
           setSelectedPoints([]);
+          setSelectedTextIds([]);
         }
         setActivePathEditId(null);
         setMobileContextMenu({

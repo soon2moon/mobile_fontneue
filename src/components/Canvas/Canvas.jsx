@@ -204,7 +204,7 @@ activeEditGroupId,
                                stroke="#3b82f6" 
                                strokeWidth={1.5/zoom}
                            />
-                           {selectedImageIds.length === 1 && [
+                           {selectedImageIds.length === 1 && selectedTextIds.length === 0 && [
                              {x: -1, y: -1}, {x: 1, y: -1}, {x: 1, y: 1}, {x: -1, y: 1}
                            ].map((c, i) => (
                                <rect
