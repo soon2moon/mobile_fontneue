@@ -33,6 +33,9 @@ must stay empty.
 | `phase3.mjs` | wheel zoom anchoring, async image placement, image undo/redo |
 | `phase4.mjs` | layer hide/show/lock/delete + undo, layer session round-trip |
 | `phase5-desktop.mjs` | pen (close + curve), pencil, shift-rect, marquee+drag, undo chain |
+| `phase5-mobile.mjs` | touch draw, pinch zoom, two-finger pan, long-press menu (390px viewport) |
+| `phase7a-text.mjs` | text tool: editor commit, session/undo/reload, dbl-click re-edit, drag/scale, export, empty-draft discard |
+| `phase7a-mobile.mjs` | mobile text: drawer arm, tap-edit, backdrop commit, contextmenu actions, duplicate |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.
