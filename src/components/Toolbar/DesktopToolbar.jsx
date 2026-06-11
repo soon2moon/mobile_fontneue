@@ -35,7 +35,6 @@ applyPathStyle,
     correctPathDirections,
     fillToggleActive,
     hasSelectedPaths,
-    insertTextFromPrompt,
     mode,
     openPanels,
     selectedPoints,
@@ -109,6 +108,14 @@ applyPathStyle,
                </div>
             )}
           </div>
+
+          <ToolButton
+            active={mode === 'text'}
+            onClick={() => changeMode('text')}
+            icon={<Type size={20} />}
+            label="Text Tool"
+            hotkey="T"
+          />
         </div>
 
         {/* Separator */}
@@ -145,13 +152,7 @@ applyPathStyle,
             hotkey="U"
           />
           <ToolButton
-            active={false}
-            onClick={insertTextFromPrompt}
-            icon={<Type size={20} />}
-            label="Add Text"
-          />
-          <ToolButton 
-            active={openPanels.grid} 
+            active={openPanels.grid}
             onClick={() => togglePanel('grid')} 
             icon={<Grid size={20} />} 
             label="Background Config" 

@@ -1,11 +1,8 @@
 import { useRef, useCallback } from 'react';
-import { DEFAULT_STROKE_COLOR } from '../constants';
-import { normalizeStrokeColor } from '../lib/stroke';
-import { escapeXml } from '../lib/svg';
 import { createLayer } from '../lib/layers';
 
-// Image (and prompt-text) insertion: file → object URL → centered, fit-scaled
-// image on a fresh layer, plus the hidden file-input plumbing.
+// Image insertion: file → object URL → centered, fit-scaled image on a fresh
+// layer, plus the hidden file-input plumbing.
 export function useImageImport({
   activeLayerId, setActiveLayerId,
   lockedLayerIds,
@@ -16,8 +13,7 @@ export function useImageImport({
   commitHistory,
   setSelectedImageIds, setSelectedPoints,
   setOpenPanels, setExpandedPanel,
-  viewportSize, panRef, zoomRef,
-  pathStyleDefaults
+  viewportSize, panRef, zoomRef
 }) {
   const fileInputRef = useRef(null);
 
@@ -73,39 +69,6 @@ export function useImageImport({
     return true;
   }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, layers, viewportSize.width, viewportSize.height]);
 
-  const insertTextFromPrompt = useCallback(() => {
-    if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;
-    const rawText = window.prompt('Enter text', 'Text');
-    if (rawText == null) return false;
-
-    const normalizedLines = rawText
-      .split(/\r?\n/)
-      .map(line => line.trimEnd())
-      .filter((line, lineIndex, lines) => line.trim().length > 0 || (lines.length === 1 && lineIndex === 0));
-    if (normalizedLines.length === 0) return false;
-
-    const fontSize = 96;
-    const lineHeight = Math.round(fontSize * 1.14);
-    const padding = 24;
-    const maxCharCount = normalizedLines.reduce((maxChars, line) => Math.max(maxChars, line.length), 1);
-    const width = Math.max(96, Math.ceil(maxCharCount * fontSize * 0.62) + padding * 2);
-    const height = Math.max(fontSize + padding * 2, normalizedLines.length * lineHeight + padding * 2);
-    const fillColor = normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR);
-    const baseline = padding + fontSize;
-    const tspans = normalizedLines.map((line, index) => (
-      `<tspan x="${padding}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line || ' ')}</tspan>`
-    )).join('');
-
-    const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><text x="${padding}" y="${baseline}" font-size="${fontSize}" font-family="Arial, sans-serif" fill="${fillColor}">${tspans}</text></svg>`;
-    const file = new File(
-      [new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' })],
-      `text-${Date.now()}.svg`,
-      { type: 'image/svg+xml' }
-    );
-
-    return insertImageFromFile(file, { layerType: 'text', opacity: 1 });
-  }, [activeLayerId, lockedLayerIds, pathStyleDefaults.strokeColor, insertImageFromFile]);
-
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -119,7 +82,6 @@ export function useImageImport({
   return {
     fileInputRef,
     insertImageFromFile,
-    insertTextFromPrompt,
     handleImageUpload
   };
 }

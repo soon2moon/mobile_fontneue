@@ -37,6 +37,7 @@ import { usePendingTouchDraw } from './hooks/usePendingTouchDraw';
 import { useUIShell } from './hooks/useUIShell';
 import { useObjectActions } from './hooks/useObjectActions';
 import { usePathStyles } from './hooks/usePathStyles';
+import { useTextEditing } from './hooks/useTextEditing';
 import { usePointerInteraction } from './hooks/usePointerInteraction';
 import { EditorProvider } from './state/EditorContext';
 import DesktopToolbar from './components/Toolbar/DesktopToolbar';
@@ -44,6 +45,7 @@ import PanelsContainer from './components/Panels/PanelsContainer';
 import QuickLayerReorder from './components/Overlays/QuickLayerReorder';
 import MobileControls from './components/Toolbar/MobileControls';
 import Canvas from './components/Canvas/Canvas';
+import TextEditorOverlay from './components/Canvas/TextEditorOverlay';
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -294,6 +296,28 @@ export default function App() {
     findTopImageAt(testCoords, { images, layers })
   ), [images, layers]);
 
+  const {
+    editingText,
+    editingTextId,
+    beginNewTextAt,
+    beginEditingText,
+    updateDraft,
+    commitTextEditing,
+    commitTextEditingRef
+  } = useTextEditing({
+    paths, currentPath,
+    images,
+    texts, setTexts,
+    layers, setLayers,
+    commitHistory,
+    activeLayerId, setActiveLayerId,
+    setMode,
+    setSelectedTextIds,
+    setSelectedPoints,
+    setSelectedImageIds,
+    setActivePathEditId
+  });
+
   const objectActions = useObjectActions({
     paths, setPaths,
     currentPath, setCurrentPath,
@@ -376,6 +400,7 @@ export default function App() {
     activeHandle,
     activeLayerId,
     activePathEditId,
+    beginNewTextAt,
     beginPendingTouchDrawAction,
     bgAction,
     bgInitialState,
@@ -473,6 +498,7 @@ export default function App() {
   const changeMode = (newMode) => {
     const targetMode = newMode;
 
+    commitTextEditingRef.current?.();
     if ((mode === 'draw' || mode === 'pencil') && targetMode !== mode && currentPath.length > 0) {
       finishPath(false, false);
     }
@@ -517,7 +543,6 @@ export default function App() {
   const {
     fileInputRef,
     insertImageFromFile,
-    insertTextFromPrompt,
     handleImageUpload
   } = useImageImport({
     activeLayerId, setActiveLayerId,
@@ -529,8 +554,7 @@ export default function App() {
     commitHistory,
     setSelectedImageIds, setSelectedPoints,
     setOpenPanels, setExpandedPanel,
-    viewportSize, panRef, zoomRef,
-    pathStyleDefaults
+    viewportSize, panRef, zoomRef
   });
 
   const {
@@ -721,14 +745,18 @@ export default function App() {
     activeImage,
     activeLayerId,
     activeText,
+    beginEditingText,
     canExportSelection,
     changeMode,
+    commitTextEditing,
     compositeFillPathD,
     copyCurrentSelection,
     currentPath,
     currentPathInfo,
     cutCurrentSelection,
     drawHover,
+    editingText,
+    editingTextId,
     drawingShape,
     duplicateCurrentSelection,
     dynamicCursor,
@@ -755,13 +783,13 @@ export default function App() {
     imageCountByLayerId,
     images,
     imagesByLayerId,
-    insertTextFromPrompt,
     isDrawingCurve,
     isExporting,
     isMobile,
     isPathInActiveEditContext,
     layerIndexById,
     layers,
+    mobileBottomInset,
     mobileExportFormat,
     mobileExportScope,
     mode,
@@ -784,6 +812,7 @@ export default function App() {
     setHoveredHandle,
     setMobileExportFormat,
     setMobileExportScope,
+    setPan,
     setShapeType,
     setShowBackgroundAids,
     setShowNodes,
@@ -800,6 +829,8 @@ export default function App() {
     toggleMobileShapePanel,
     updateActiveImage,
     updateActiveText,
+    updateDraft,
+    viewportSize,
     zoom
   };
 
@@ -809,6 +840,9 @@ export default function App() {
       
       {/* CANVAS */}
       <Canvas />
+
+      {/* In-place text editing session (textarea + commit backdrop) */}
+      <TextEditorOverlay />
 
       {/* --- UI OVERLAYS --- */}
 

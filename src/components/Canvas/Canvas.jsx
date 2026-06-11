@@ -21,6 +21,7 @@ activeEditGroupId,
     drawHover,
     drawingShape,
     dynamicCursor,
+    editingTextId,
     effectiveCircularStep,
     effectiveGridSize,
     ghostPoint,
@@ -223,9 +224,10 @@ activeEditGroupId,
                 );
               })}
 
-              {/* Layer Texts */}
+              {/* Layer Texts (the one being edited renders in the overlay instead) */}
               {texts.map(text => {
                 if (text.layerId !== layer.id) return null;
+                if (text.id === editingTextId) return null;
                 return (
                   <TextObject
                     key={text.id}

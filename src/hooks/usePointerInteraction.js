@@ -46,6 +46,7 @@ activeEditGroupId,
     activeHandle,
     activeLayerId,
     activePathEditId,
+    beginNewTextAt,
     beginPendingTouchDrawAction,
     bgAction,
     bgInitialState,
@@ -232,7 +233,7 @@ activeEditGroupId,
       return;
     }
 
-    if (['shape', 'pencil', 'draw'].includes(mode)) {
+    if (['shape', 'pencil', 'draw', 'text'].includes(mode)) {
         if (activeLayerId && lockedLayerIds.has(activeLayerId)) return;
     }
 
@@ -252,7 +253,7 @@ activeEditGroupId,
     if (
       isMobile
       && (e.pointerType === 'touch' || e.pointerType === 'pen')
-      && !['draw', 'pencil', 'shape'].includes(mode)
+      && !['draw', 'pencil', 'shape', 'text'].includes(mode)
     ) {
       clearMobileLongPress();
       const hitImage = findTopImageAtCoords(coords);
@@ -290,6 +291,15 @@ activeEditGroupId,
 
     if (mode === 'shape') {
       setDrawingShape({ startX: snappedCoords.x, startY: snappedCoords.y, currentX: snappedCoords.x, currentY: snappedCoords.y, shiftKey: e.shiftKey });
+      return;
+    }
+
+    if (mode === 'text') {
+      if (e.button === 2) return;
+      // Cancel the pointerdown's default action (focus moving to body after
+      // this handler) so it cannot blur the textarea the overlay focuses.
+      e.preventDefault();
+      beginNewTextAt(coords);
       return;
     }
 
@@ -2034,7 +2044,7 @@ activeEditGroupId,
       && longPressState.pointerId != null
       && longPressState.pointerId === (e.pointerId ?? null)
       && !longPressState.triggered
-      && !['draw', 'pencil', 'shape'].includes(mode);
+      && !['draw', 'pencil', 'shape', 'text'].includes(mode);
     clearMobileLongPress();
     if (wasLongPressAction) {
       setIsPanning(false);

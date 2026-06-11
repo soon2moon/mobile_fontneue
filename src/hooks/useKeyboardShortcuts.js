@@ -103,6 +103,10 @@ export function useKeyboardShortcuts({
         setShapeType('ellipse');
         return;
       }
+      if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey) {
+        changeMode('text');
+        return;
+      }
       if (e.code === 'Space') {
         e.preventDefault();
         if (!spacePanRef.current.active) {
@@ -145,6 +149,8 @@ export function useKeyboardShortcuts({
         } else if (mode === 'shape') {
           setDrawingShape(null);
           setShowShapeMenu(false);
+        } else if (mode === 'text') {
+          changeMode('edit');
         } else if (mode === 'edit') {
           if (activePathEditId) {
             setActivePathEditId(null);

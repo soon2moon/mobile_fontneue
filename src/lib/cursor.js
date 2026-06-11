@@ -15,6 +15,7 @@ export const computeDynamicCursor = ({
   if (mode === 'draw') return 'cursor-pen';
   if (mode === 'pencil') return 'cursor-pencil';
   if (mode === 'shape') return 'cursor-crosshair';
+  if (mode === 'text') return 'cursor-text';
   if (mode !== 'edit') return 'cursor-default';
 
   const activeImgId = bgAction ? selectedImageIds[0] : (bgHoverAction ? bgHoverAction.imageId : null);

@@ -56,7 +56,6 @@ anyMobileOverlayOpen,
     handleMobileZoomIn,
     handleMobileZoomOut,
     hasActiveSelection,
-    insertTextFromPrompt,
     mobileContextMenu,
     mobileMenuDrawerBottom,
     mobileShapePanelBottom,
@@ -274,9 +273,10 @@ anyMobileOverlayOpen,
                     label="Image"
                   />
                   <MobileToolButton
+                    active={mode === 'text'}
                     onClick={() => {
                       closeAllPanels();
-                      insertTextFromPrompt();
+                      changeMode('text');
                     }}
                     icon={<Type size={14} />}
                     label="Text"
