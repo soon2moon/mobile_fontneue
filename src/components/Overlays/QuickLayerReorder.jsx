@@ -3,6 +3,7 @@ import LayerIcon from '../../ui/LayerIcon';
 import { useEditor } from '../../state/EditorContext';
 import { THEME } from '../../theme';
 import { getPathStrokeStyle, pointsToPath } from '../../lib/paths';
+import TextObject from '../Canvas/TextObject';
 
 // Floating "Quick Layer Reorder" sheet shown while multiple layers are
 // selected and the Layers panel is closed.
@@ -22,7 +23,9 @@ activeLayerId,
     pathStyleDefaults,
     pathsByLayerId,
     selectedLayersInStackOrder,
-    setActiveLayerId
+    setActiveLayerId,
+    textCountByLayerId,
+    textsByLayerId
   } = useEditor();
 
   return (
@@ -49,11 +52,12 @@ activeLayerId,
                 const layerIndex = layerIndexById.get(layer.id) ?? -1;
                 const canMoveUp = layerIndex > 0;
                 const canMoveDown = layerIndex >= 0 && layerIndex < layers.length - 1;
-                const instanceCount = (pathCountByLayerId[layer.id] || 0) + (imageCountByLayerId[layer.id] || 0);
+                const instanceCount = (pathCountByLayerId[layer.id] || 0) + (imageCountByLayerId[layer.id] || 0) + (textCountByLayerId[layer.id] || 0);
                 const isActive = activeLayerId === layer.id;
                 const layerPaths = pathsByLayerId[layer.id] || [];
                 const layerImages = imagesByLayerId[layer.id] || [];
-                const previewBounds = getLayerPreviewBounds(layerPaths, layerImages);
+                const layerTexts = textsByLayerId[layer.id] || [];
+                const previewBounds = getLayerPreviewBounds(layerPaths, layerImages, layerTexts);
 
                 return (
                   <div
@@ -87,6 +91,9 @@ activeLayerId,
                                 opacity={Number.isFinite(img.opacity) ? Math.max(0, Math.min(1, img.opacity)) : 1}
                                 transform={`translate(${img.x}, ${img.y}) scale(${img.scale}) rotate(${img.rotation})`}
                               />
+                            ))}
+                            {layerTexts.map(text => (
+                              <TextObject key={`quick-layer-text-${text.id}`} text={text} />
                             ))}
                             {layerPaths.map((path, index) => {
                               const pathD = pointsToPath(path.points, path.isClosed);

@@ -4,6 +4,7 @@ import { PIXEL_GRID_MIN_ZOOM } from '../../constants';
 import { pointsToPath, isCorner, getPathStrokeStyle, resolvePathEditGroupId } from '../../lib/paths';
 import { toSafeSvgId } from '../../lib/svg';
 import { generateShapePath } from '../../lib/shapes';
+import TextObject from './TextObject';
 
 // The drawing surface: background grid patterns, the pan/zoom world group
 // (images, paths, nodes/handles, previews, selection chrome), and the
@@ -46,12 +47,14 @@ activeEditGroupId,
     selectedImageIds,
     selectedPoints,
     selectionBox,
+    selectedTextIds,
     setHoveredHandle,
     shapeType,
     showBackgroundAids,
     showNodes,
     strokeWidth,
     svgRef,
+    texts,
     zoom
   } = useEditor();
 
@@ -217,6 +220,20 @@ activeEditGroupId,
                        </g>
                     )}
                   </g>
+                );
+              })}
+
+              {/* Layer Texts */}
+              {texts.map(text => {
+                if (text.layerId !== layer.id) return null;
+                return (
+                  <TextObject
+                    key={text.id}
+                    text={text}
+                    zoom={zoom}
+                    showSelectionChrome={selectedTextIds.includes(text.id) && !layer.locked && !text.locked && mode === 'edit'}
+                    showHandles={selectedTextIds.length === 1 && selectedImageIds.length === 0}
+                  />
                 );
               })}
 

@@ -3,6 +3,7 @@ import { DEFAULT_STROKE_WIDTH, DEFAULT_STROKE_COLOR } from '../constants';
 import { pointsToPath } from './paths';
 import { normalizeStrokeWidth, normalizeStrokeColor } from './stroke';
 import { escapeXml } from './svg';
+import { getTextLocalLayout } from './textMeasure';
 
 // Resolve which paths/images/texts an export covers: the current selection or
 // the whole canvas — hidden layers are excluded either way.
@@ -30,8 +31,8 @@ export function collectExportItems(scope, { layers, paths, images, texts = [], s
 
 // Build a standalone SVG document tightly cropped around the given items.
 // Returns { svg, width, height } or null when there is nothing to export.
-export function buildExportSvgBundle({ exportPaths, exportImages }) {
-  if (exportPaths.length === 0 && exportImages.length === 0) return null;
+export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = [] }) {
+  if (exportPaths.length === 0 && exportImages.length === 0 && exportTexts.length === 0) return null;
 
   let minX = Infinity;
   let minY = Infinity;
@@ -80,6 +81,26 @@ export function buildExportSvgBundle({ exportPaths, exportImages }) {
     });
   });
 
+  exportTexts.forEach(text => {
+    const { halfW, halfH } = getTextLocalLayout(text);
+    const rad = (text.rotation || 0) * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    [
+      { x: -halfW, y: -halfH },
+      { x: halfW, y: -halfH },
+      { x: halfW, y: halfH },
+      { x: -halfW, y: halfH }
+    ].forEach(corner => {
+      const worldX = text.x + (corner.x * cos - corner.y * sin);
+      const worldY = text.y + (corner.x * sin + corner.y * cos);
+      minX = Math.min(minX, worldX);
+      minY = Math.min(minY, worldY);
+      maxX = Math.max(maxX, worldX);
+      maxY = Math.max(maxY, worldY);
+    });
+  });
+
   if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
     return null;
   }
@@ -102,6 +123,18 @@ export function buildExportSvgBundle({ exportPaths, exportImages }) {
     return `<image href="${escapeXml(img.url)}" x="${x}" y="${y}" width="${renderWidth}" height="${renderHeight}" opacity="${opacity}" transform="rotate(${rotation} ${img.x} ${img.y})" />`;
   }).join('');
 
+  // Same local layout as the canvas renderer, so exports stay WYSIWYG.
+  const textMarkup = exportTexts.map(text => {
+    const layout = getTextLocalLayout(text);
+    const opacity = Number.isFinite(text.opacity) ? Math.max(0, Math.min(1, text.opacity)) : 1;
+    const rotation = Number.isFinite(text.rotation) ? text.rotation : 0;
+    const fill = normalizeStrokeColor(text.fill, THEME.main);
+    const tspans = layout.lines.map(line => (
+      `<tspan x="${line.x}" y="${line.y}">${escapeXml(line.text)}</tspan>`
+    )).join('');
+    return `<text font-family="${escapeXml(text.fontFamily)}" font-size="${text.fontSize}" font-weight="${text.fontWeight}" fill="${fill}" opacity="${opacity}" xml:space="preserve" transform="translate(${text.x} ${text.y}) rotate(${rotation})">${tspans}</text>`;
+  }).join('');
+
   const pathMarkup = exportPaths.map(path => {
     const d = pointsToPath(path.points, path.isClosed);
     const fill = path.fillEnabled ? THEME.main : 'none';
@@ -111,7 +144,7 @@ export function buildExportSvgBundle({ exportPaths, exportImages }) {
     return `<path d="${escapeXml(d)}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
   }).join('');
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${imageMarkup}${pathMarkup}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${imageMarkup}${textMarkup}${pathMarkup}</g></svg>`;
   return { svg, width, height };
 }
 

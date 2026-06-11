@@ -1,4 +1,6 @@
 // --- LAYER HELPER ---
+import { getTextLocalLayout } from './textMeasure';
+
 export const generateLayerId = () => `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 export const createLayer = (type, existingCount) => {
@@ -54,7 +56,7 @@ export const groupContentByLayer = (paths, images, texts = []) => {
 
 // Padded world-space bounds of a layer's content, for thumbnail previews.
 // Returns null when the layer is empty.
-export const getLayerPreviewBounds = (layerPaths, layerImages) => {
+export const getLayerPreviewBounds = (layerPaths, layerImages, layerTexts = []) => {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -96,6 +98,26 @@ export const getLayerPreviewBounds = (layerPaths, layerImages) => {
     ].forEach(corner => {
       const worldX = img.x + (corner.x * cos - corner.y * sin);
       const worldY = img.y + (corner.x * sin + corner.y * cos);
+      minX = Math.min(minX, worldX);
+      minY = Math.min(minY, worldY);
+      maxX = Math.max(maxX, worldX);
+      maxY = Math.max(maxY, worldY);
+    });
+  });
+
+  layerTexts.forEach(text => {
+    const { halfW, halfH } = getTextLocalLayout(text);
+    const rad = (text.rotation || 0) * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    [
+      { x: -halfW, y: -halfH },
+      { x: halfW, y: -halfH },
+      { x: halfW, y: halfH },
+      { x: -halfW, y: halfH }
+    ].forEach(corner => {
+      const worldX = text.x + (corner.x * cos - corner.y * sin);
+      const worldY = text.y + (corner.x * sin + corner.y * cos);
       minX = Math.min(minX, worldX);
       minY = Math.min(minY, worldY);
       maxX = Math.max(maxX, worldX);

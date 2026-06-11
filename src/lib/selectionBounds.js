@@ -1,3 +1,5 @@
+import { getTextLocalLayout } from './textMeasure';
+
 // Bounding box (with handles) around a multi-point / mixed selection in edit
 // mode. Frozen to the action's stored bbox while a scale/rotate is in
 // progress so the box doesn't chase its own transform.
@@ -6,14 +8,16 @@ export const computeSelectionBBox = ({
   activePathEditId,
   selectedPoints,
   selectedImageIds,
+  selectedTextIds = [],
   pointAction,
   paths,
   images,
+  texts = [],
   layers,
   zoom,
   isPathVisible
 }) => {
-  const hasMixedSelection = selectedPoints.length > 0 && selectedImageIds.length > 0;
+  const hasMixedSelection = selectedPoints.length > 0 && (selectedImageIds.length > 0 || selectedTextIds.length > 0);
   if (!(mode === 'edit' && !activePathEditId && (selectedPoints.length > 1 || hasMixedSelection))) {
     return null;
   }
@@ -65,6 +69,30 @@ export const computeSelectionBBox = ({
       corners.forEach(corner => {
         const worldX = img.x + (corner.x * cos - corner.y * sin);
         const worldY = img.y + (corner.x * sin + corner.y * cos);
+        minX = Math.min(minX, worldX); minY = Math.min(minY, worldY);
+        maxX = Math.max(maxX, worldX); maxY = Math.max(maxY, worldY);
+      });
+    });
+
+    selectedTextIds.forEach(textId => {
+      const text = texts.find(t => t.id === textId);
+      if (!text) return;
+      const layer = layers.find(l => l.id === text.layerId);
+      if (!layer || !layer.visible) return;
+
+      const { halfW, halfH } = getTextLocalLayout(text);
+      const rad = text.rotation * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      [
+        { x: -halfW, y: -halfH },
+        { x: halfW, y: -halfH },
+        { x: halfW, y: halfH },
+        { x: -halfW, y: halfH }
+      ].forEach(corner => {
+        const worldX = text.x + (corner.x * cos - corner.y * sin);
+        const worldY = text.y + (corner.x * sin + corner.y * cos);
         minX = Math.min(minX, worldX); minY = Math.min(minY, worldY);
         maxX = Math.max(maxX, worldX); maxY = Math.max(maxY, worldY);
       });

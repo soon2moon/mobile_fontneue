@@ -276,9 +276,11 @@ export default function App() {
     activePathEditId,
     selectedPoints,
     selectedImageIds,
+    selectedTextIds,
     pointAction,
     paths,
     images,
+    texts,
     layers,
     zoom,
     isPathVisible
