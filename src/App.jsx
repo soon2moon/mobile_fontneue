@@ -16,6 +16,7 @@ import {
   computeHitRadii,
   getBgHit as getBgHitAtCoords,
   findTopImageAtCoords as findTopImageAt,
+  findTopTextAtCoords as findTopTextAt,
   findTopPathAtCoords as findTopPathAt
 } from './lib/hitTest';
 import { computeSelectionBBox } from './lib/selectionBounds';
@@ -289,12 +290,16 @@ export default function App() {
   });
 
   const getBgHit = useCallback((testCoords) => (
-    getBgHitAtCoords(testCoords, { images, layers, selectedImageIds, scaleHandleHitRadius, rotateHandleHitRadius })
-  ), [images, selectedImageIds, layers, scaleHandleHitRadius, rotateHandleHitRadius]);
+    getBgHitAtCoords(testCoords, { images, texts, layers, selectedImageIds, selectedTextIds, scaleHandleHitRadius, rotateHandleHitRadius })
+  ), [images, texts, selectedImageIds, selectedTextIds, layers, scaleHandleHitRadius, rotateHandleHitRadius]);
 
   const findTopImageAtCoords = useCallback((testCoords) => (
     findTopImageAt(testCoords, { images, layers })
   ), [images, layers]);
+
+  const findTopTextAtCoords = useCallback((testCoords) => (
+    findTopTextAt(testCoords, { texts, layers })
+  ), [texts, layers]);
 
   const {
     editingText,
@@ -367,23 +372,31 @@ export default function App() {
   const handleCanvasContextMenu = useCallback((e) => {
     if (!isMobile) return;
     const coords = getCanvasCoords(e.clientX, e.clientY);
-    const hitImage = findTopImageAtCoords(coords);
-    const hitPath = hitImage ? null : findTopPathAtCoords(coords);
+    const hitText = findTopTextAtCoords(coords);
+    const hitImage = hitText ? null : findTopImageAtCoords(coords);
+    const hitPath = hitText || hitImage ? null : findTopPathAtCoords(coords);
 
     e.preventDefault();
     clearMobileLongPress();
-    if (hitImage) {
+    if (hitText) {
+      setSelectedTextIds([hitText.id]);
+      setSelectedImageIds([]);
+      setSelectedPoints([]);
+      setActivePathEditId(null);
+    } else if (hitImage) {
       setSelectedImageIds([hitImage.id]);
+      setSelectedTextIds([]);
       setSelectedPoints([]);
       setActivePathEditId(null);
     } else if (hitPath) {
       setSelectedPoints(getPathSelection(hitPath.pathIndex));
       setSelectedImageIds([]);
+      setSelectedTextIds([]);
       setActivePathEditId(null);
     }
 
     setMobileContextMenu({
-      type: hitImage || hitPath ? 'actions' : 'paste',
+      type: hitText || hitImage || hitPath ? 'actions' : 'paste',
       x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
       y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
     });
@@ -393,13 +406,14 @@ export default function App() {
     setBgAction(null);
     setPointAction(null);
     setIsDraggingPoints(false);
-  }, [isMobile, getCanvasCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection, viewportSize.width, viewportSize.height]);
+  }, [isMobile, getCanvasCoords, findTopTextAtCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection, viewportSize.width, viewportSize.height]);
 
   const { handlePointerDown, handlePointerMove, handlePointerUp } = usePointerInteraction({
     activeEditGroupId,
     activeHandle,
     activeLayerId,
     activePathEditId,
+    beginEditingText,
     beginNewTextAt,
     beginPendingTouchDrawAction,
     bgAction,
@@ -422,6 +436,7 @@ export default function App() {
     drawingShape,
     findTopImageAtCoords,
     findTopPathAtCoords,
+    findTopTextAtCoords,
     finishPath,
     getBgHit,
     getCanvasCoords,
@@ -453,6 +468,7 @@ export default function App() {
     selBBox,
     selectedImageIds,
     selectedPoints,
+    selectedTextIds,
     selectionBox,
     setActiveHandle,
     setActiveLayerId,
@@ -478,10 +494,12 @@ export default function App() {
     setPointAction,
     setSelectedImageIds,
     setSelectedPoints,
+    setSelectedTextIds,
     setSelectionBox,
     setShowNodes,
     setShowShapeMenu,
     setSnapState,
+    setTexts,
     setZoom,
     shapeType,
     showNodes,
@@ -665,9 +683,7 @@ export default function App() {
     pointAction,
     bgAction,
     bgInitialState,
-    bgHoverAction,
-    images,
-    selectedImageIds
+    bgHoverAction
   });
   
   // --- DYNAMIC PATTERN GENERATION ---

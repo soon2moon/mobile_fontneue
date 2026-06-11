@@ -14,7 +14,8 @@ import {
   reflectPointAcrossPerpBisector,
   applyShiftSnap,
   shortestDeltaDeg,
-  normalizeAngleDeg
+  normalizeAngleDeg,
+  computeCornerScale
 } from '../lib/geometry';
 import { applyGridSnap } from '../lib/snap';
 import {
@@ -779,20 +780,20 @@ activeEditGroupId,
         }
       }
 
-      // 3. Check Background Image Handles (Scale / Rotate)
+      // 3. Check Background Object Handles (Scale / Rotate)
       const hitBg = isDirectPathEdit ? null : getBgHit(coords);
 
-      if (hitBg && (hitBg.action.startsWith('scale') || hitBg.action.startsWith('rotate'))) {
+      if (hitBg && hitBg.kind === 'image' && (hitBg.action.startsWith('scale') || hitBg.action.startsWith('rotate'))) {
         lastClickedPathIdRef.current = null;
         setBgAction(hitBg.action);
-        setSelectedImageIds([hitBg.imageId]);
-        const img = images.find(i => i.id === hitBg.imageId);
+        setSelectedImageIds([hitBg.id]);
+        const img = images.find(i => i.id === hitBg.id);
         if (hitBg.action.startsWith('scale')) {
-           setBgInitialState({ coords, img: { ...img }, cursorAngle: hitBg.cursorAngle });
+           setBgInitialState({ coords, obj: { ...img }, kind: 'image', cursorAngle: hitBg.cursorAngle });
         } else {
            const initAngle = Math.atan2(coords.y - img.y, coords.x - img.x) * 180 / Math.PI;
            bgRotateRef.current = { lastAngle: initAngle, accumulated: 0 };
-           setBgInitialState({ angle: initAngle, img: { ...img } });
+           setBgInitialState({ angle: initAngle, obj: { ...img }, kind: 'image' });
         }
         return;
       }
@@ -1208,14 +1209,14 @@ activeEditGroupId,
         return;
       }
 
-      // 5. Check Background Image Body (Move)
-      if (hitBg && hitBg.action === 'move') {
+      // 5. Check Background Object Body (Move)
+      if (hitBg && hitBg.kind === 'image' && hitBg.action === 'move') {
         lastClickedPathIdRef.current = null;
         setBgAction('move');
-        setSelectedImageIds([hitBg.imageId]);
-        const img = images.find(i => i.id === hitBg.imageId);
-        setSelectedPoints([]); 
-        setBgInitialState({ coords, img: { ...img } });
+        setSelectedImageIds([hitBg.id]);
+        const img = images.find(i => i.id === hitBg.id);
+        setSelectedPoints([]);
+        setBgInitialState({ coords, obj: { ...img }, kind: 'image' });
         return;
       }
 
@@ -1437,43 +1438,23 @@ activeEditGroupId,
         if (bgAction === 'move') {
           return {
             ...img,
-            x: bgInitialState.img.x + (coords.x - bgInitialState.coords.x),
-            y: bgInitialState.img.y + (coords.y - bgInitialState.coords.y)
+            x: bgInitialState.obj.x + (coords.x - bgInitialState.coords.x),
+            y: bgInitialState.obj.y + (coords.y - bgInitialState.coords.y)
           };
         } else if (bgAction.startsWith('scale-')) {
-          const cornerId = bgAction.split('-')[1];
-          const init = bgInitialState.img;
-          const lw = init.width / 2;
-          const lh = init.height / 2;
-
-          let localCorner, localOpposite;
-          if (cornerId === 'nw') { localCorner = {x: -lw, y: -lh}; localOpposite = {x: lw, y: lh}; }
-          if (cornerId === 'ne') { localCorner = {x: lw, y: -lh}; localOpposite = {x: -lw, y: lh}; }
-          if (cornerId === 'se') { localCorner = {x: lw, y: lh}; localOpposite = {x: -lw, y: -lh}; }
-          if (cornerId === 'sw') { localCorner = {x: -lw, y: lh}; localOpposite = {x: lw, y: -lh}; }
-
-          const theta = init.rotation * Math.PI / 180;
-          const rotateVec = (v, a) => ({
-              x: v.x * Math.cos(a) - v.y * Math.sin(a),
-              y: v.x * Math.sin(a) + v.y * Math.cos(a)
+          const init = bgInitialState.obj;
+          const { s, newCenter } = computeCornerScale({
+            coords,
+            cornerId: bgAction.split('-')[1],
+            center: { x: init.x, y: init.y },
+            rotation: init.rotation,
+            halfW: (init.width * init.scale) / 2,
+            halfH: (init.height * init.scale) / 2,
+            minScale: 0.01 / init.scale
           });
-
-          const fixedPtOffset = rotateVec({ x: init.scale * localOpposite.x, y: init.scale * localOpposite.y }, theta);
-          const fixedPt = { x: init.x + fixedPtOffset.x, y: init.y + fixedPtOffset.y };
-
-          const diagVec = { x: localCorner.x - localOpposite.x, y: localCorner.y - localOpposite.y };
-          const diagLen = Math.hypot(diagVec.x, diagVec.y);
-          const u = rotateVec({ x: diagVec.x / diagLen, y: diagVec.y / diagLen }, theta);
-
-          const v = { x: coords.x - fixedPt.x, y: coords.y - fixedPt.y };
-          const s_new = Math.max(0.01, (v.x * u.x + v.y * u.y) / diagLen);
-
-          const newOppositeOffset = rotateVec({ x: s_new * localOpposite.x, y: s_new * localOpposite.y }, theta);
-          const newCenter = { x: fixedPt.x - newOppositeOffset.x, y: fixedPt.y - newOppositeOffset.y };
-
-          return { ...img, scale: s_new, x: newCenter.x, y: newCenter.y };
+          return { ...img, scale: init.scale * s, x: newCenter.x, y: newCenter.y };
         } else if (bgAction.startsWith('rotate-')) {
-          const init = bgInitialState.img;
+          const init = bgInitialState.obj;
           const currentAngle = Math.atan2(coords.y - init.y, coords.x - init.x) * 180 / Math.PI;
           const stepDelta = shortestDeltaDeg(currentAngle, bgRotateRef.current.lastAngle);
           bgRotateRef.current.lastAngle = currentAngle;
@@ -1959,7 +1940,8 @@ activeEditGroupId,
 
     if (mode === 'edit' && !isDraggingPoints && !activeHandle && !selectionBox && !bgAction && !pointAction) {
       let hitAction = null;
-      const hitBg = (activePathEditId && showNodes) ? null : getBgHit(coords);
+      const rawBgHover = (activePathEditId && showNodes) ? null : getBgHit(coords);
+      const hitBg = rawBgHover && rawBgHover.kind === 'image' ? rawBgHover : null;
       
       let ptHit = null;
       if (selBBox && !e.shiftKey && !e.altKey) {

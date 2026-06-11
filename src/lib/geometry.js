@@ -114,3 +114,37 @@ export const normalizeAngleDeg = (angle) => {
   if (Object.is(normalized, -0)) normalized = 0;
   return normalized;
 };
+
+// Relative corner-scale for a rotated, center-anchored object: the corner
+// diagonally opposite `cornerId` stays fixed in world space while the pointer
+// drives the dragged corner. halfW/halfH are the object's CURRENT world
+// half-extents, so the returned factor s is relative (1 = corner unmoved);
+// callers multiply their own size field (image scale, text fontSize) by s.
+export const computeCornerScale = ({ coords, cornerId, center, rotation, halfW, halfH, minScale = 0.01 }) => {
+  let localCorner, localOpposite;
+  if (cornerId === 'nw') { localCorner = { x: -halfW, y: -halfH }; localOpposite = { x: halfW, y: halfH }; }
+  if (cornerId === 'ne') { localCorner = { x: halfW, y: -halfH }; localOpposite = { x: -halfW, y: halfH }; }
+  if (cornerId === 'se') { localCorner = { x: halfW, y: halfH }; localOpposite = { x: -halfW, y: -halfH }; }
+  if (cornerId === 'sw') { localCorner = { x: -halfW, y: halfH }; localOpposite = { x: halfW, y: -halfH }; }
+  if (!localCorner) return { s: 1, newCenter: { x: center.x, y: center.y } };
+
+  const theta = rotation * Math.PI / 180;
+  const rotateVec = (v) => ({
+    x: v.x * Math.cos(theta) - v.y * Math.sin(theta),
+    y: v.x * Math.sin(theta) + v.y * Math.cos(theta)
+  });
+
+  const fixedOffset = rotateVec(localOpposite);
+  const fixedPt = { x: center.x + fixedOffset.x, y: center.y + fixedOffset.y };
+
+  const diagVec = { x: localCorner.x - localOpposite.x, y: localCorner.y - localOpposite.y };
+  const diagLen = Math.hypot(diagVec.x, diagVec.y);
+  if (!(diagLen > 0)) return { s: 1, newCenter: { x: center.x, y: center.y } };
+  const u = rotateVec({ x: diagVec.x / diagLen, y: diagVec.y / diagLen });
+
+  const v = { x: coords.x - fixedPt.x, y: coords.y - fixedPt.y };
+  const s = Math.max(minScale, (v.x * u.x + v.y * u.y) / diagLen);
+
+  const newOppositeOffset = rotateVec({ x: s * localOpposite.x, y: s * localOpposite.y });
+  return { s, newCenter: { x: fixedPt.x - newOppositeOffset.x, y: fixedPt.y - newOppositeOffset.y } };
+};

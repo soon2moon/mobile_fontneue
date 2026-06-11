@@ -1,15 +1,14 @@
 // CSS cursor class for the canvas, derived from the active tool and any
 // in-progress or hovered transform. Scale cursors pick the diagonal that
-// matches the handle's visual angle after the object's own rotation.
+// matches the handle's visual angle after the object's own rotation; both
+// background-object kinds (image, text) carry their rotation on the hit.
 export const computeDynamicCursor = ({
   mode,
   isPanning,
   pointAction,
   bgAction,
   bgInitialState,
-  bgHoverAction,
-  images,
-  selectedImageIds
+  bgHoverAction
 }) => {
   if (mode === 'pan' || isPanning) return 'cursor-grab active:cursor-grabbing';
   if (mode === 'draw') return 'cursor-pen';
@@ -17,9 +16,6 @@ export const computeDynamicCursor = ({
   if (mode === 'shape') return 'cursor-crosshair';
   if (mode === 'text') return 'cursor-text';
   if (mode !== 'edit') return 'cursor-default';
-
-  const activeImgId = bgAction ? selectedImageIds[0] : (bgHoverAction ? bgHoverAction.imageId : null);
-  const activeImg = images.find(i => i.id === activeImgId);
 
   let act = null;
   let ang = 0;
@@ -31,12 +27,12 @@ export const computeDynamicCursor = ({
   } else if (bgAction) {
     act = bgAction;
     ang = bgInitialState?.cursorAngle;
-    baseRot = activeImg ? activeImg.rotation : 0;
+    baseRot = bgInitialState?.obj?.rotation || 0;
   } else if (bgHoverAction) {
     act = bgHoverAction.action;
     ang = bgHoverAction.cursorAngle;
-    if (bgHoverAction.type !== 'point' && activeImg) {
-      baseRot = activeImg.rotation;
+    if (bgHoverAction.type !== 'point') {
+      baseRot = bgHoverAction.rotation || 0;
     }
   }
 

@@ -1,5 +1,6 @@
 import { SNAP_RADIUS } from '../constants';
 import { getBezierPoint, distToBezier } from './geometry';
+import { getTextLocalLayout } from './textMeasure';
 
 // World-space hit radii. Scaled up on touch devices and divided by zoom so
 // the on-screen target size stays constant. Shared by the pointer handlers
@@ -20,41 +21,96 @@ export const computeHitRadii = (isMobile, zoom) => {
   };
 };
 
-// Topmost image interaction under the cursor: scale/rotate corner handles
-// (when it is the single selected image) or body move. Skips hidden/locked.
-export const getBgHit = (testCoords, { images, layers, selectedImageIds, scaleHandleHitRadius, rotateHandleHitRadius }) => {
-  for (let i = images.length - 1; i >= 0; i--) {
-    const img = images[i];
-    const layer = layers.find(l => l.id === img.layerId);
-    if (!layer || !layer.visible || layer.locked) continue;
-    if (img.locked) continue;
+// Rotated-rect adapters shared by the background hit tests. Texts are
+// appended AFTER images and the scan walks from the end, so texts hit above
+// images at the same spot.
+const collectBgObjects = (images, texts) => {
+  const objects = images.map(img => ({
+    kind: 'image',
+    id: img.id,
+    x: img.x,
+    y: img.y,
+    rotation: img.rotation || 0,
+    locked: img.locked,
+    layerId: img.layerId,
+    halfW: (img.width * img.scale) / 2,
+    halfH: (img.height * img.scale) / 2
+  }));
+  texts.forEach(text => {
+    const { halfW, halfH } = getTextLocalLayout(text);
+    objects.push({
+      kind: 'text',
+      id: text.id,
+      x: text.x,
+      y: text.y,
+      rotation: text.rotation || 0,
+      locked: text.locked,
+      layerId: text.layerId,
+      halfW,
+      halfH
+    });
+  });
+  return objects;
+};
 
-    const dx = testCoords.x - img.x;
-    const dy = testCoords.y - img.y;
-    const angleRad = -img.rotation * Math.PI / 180;
+// Topmost background object (image or text) interaction under the cursor:
+// scale/rotate corner handles (only when it is the single selected background
+// object overall) or body move. Skips hidden/locked.
+export const getBgHit = (testCoords, { images, texts = [], layers, selectedImageIds, selectedTextIds = [], scaleHandleHitRadius, rotateHandleHitRadius }) => {
+  const objects = collectBgObjects(images, texts);
+  const singleSelectedId = selectedImageIds.length + selectedTextIds.length === 1
+    ? (selectedImageIds[0] ?? selectedTextIds[0])
+    : null;
+
+  for (let i = objects.length - 1; i >= 0; i--) {
+    const obj = objects[i];
+    const layer = layers.find(l => l.id === obj.layerId);
+    if (!layer || !layer.visible || layer.locked) continue;
+    if (obj.locked) continue;
+
+    const dx = testCoords.x - obj.x;
+    const dy = testCoords.y - obj.y;
+    const angleRad = -obj.rotation * Math.PI / 180;
 
     const lx = dx * Math.cos(angleRad) - dy * Math.sin(angleRad);
     const ly = dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
 
-    const sw2 = (img.width * img.scale) / 2;
-    const sh2 = (img.height * img.scale) / 2;
-
-    if (selectedImageIds.length === 1 && selectedImageIds[0] === img.id) {
+    if (singleSelectedId === obj.id) {
       const corners = [
-        { id: 'nw', x: -sw2, y: -sh2, angle: 225 },
-        { id: 'ne', x: sw2, y: -sh2, angle: 315 },
-        { id: 'se', x: sw2, y: sh2, angle: 45 },
-        { id: 'sw', x: -sw2, y: sh2, angle: 135 }
+        { id: 'nw', x: -obj.halfW, y: -obj.halfH, angle: 225 },
+        { id: 'ne', x: obj.halfW, y: -obj.halfH, angle: 315 },
+        { id: 'se', x: obj.halfW, y: obj.halfH, angle: 45 },
+        { id: 'sw', x: -obj.halfW, y: obj.halfH, angle: 135 }
       ];
       for (const c of corners) {
         const dist = Math.hypot(lx - c.x, ly - c.y);
-        if (dist <= scaleHandleHitRadius) return { action: `scale-${c.id}`, cursorAngle: c.angle, imageId: img.id };
-        if (dist <= rotateHandleHitRadius) return { action: `rotate-${c.id}`, cursorAngle: null, imageId: img.id };
+        if (dist <= scaleHandleHitRadius) return { action: `scale-${c.id}`, cursorAngle: c.angle, kind: obj.kind, id: obj.id, rotation: obj.rotation };
+        if (dist <= rotateHandleHitRadius) return { action: `rotate-${c.id}`, cursorAngle: null, kind: obj.kind, id: obj.id, rotation: obj.rotation };
       }
     }
 
-    if (Math.abs(lx) <= sw2 && Math.abs(ly) <= sh2) {
-      return { action: 'move', cursorAngle: null, imageId: img.id };
+    if (Math.abs(lx) <= obj.halfW && Math.abs(ly) <= obj.halfH) {
+      return { action: 'move', cursorAngle: null, kind: obj.kind, id: obj.id, rotation: obj.rotation };
+    }
+  }
+  return null;
+};
+
+export const findTopTextAtCoords = (testCoords, { texts, layers }) => {
+  for (let i = texts.length - 1; i >= 0; i--) {
+    const text = texts[i];
+    const layer = layers.find(l => l.id === text.layerId);
+    if (!layer || !layer.visible || layer.locked || text.locked) continue;
+
+    const dx = testCoords.x - text.x;
+    const dy = testCoords.y - text.y;
+    const angleRad = -(text.rotation || 0) * Math.PI / 180;
+    const lx = dx * Math.cos(angleRad) - dy * Math.sin(angleRad);
+    const ly = dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
+
+    const { halfW, halfH } = getTextLocalLayout(text);
+    if (Math.abs(lx) <= halfW && Math.abs(ly) <= halfH) {
+      return text;
     }
   }
   return null;
