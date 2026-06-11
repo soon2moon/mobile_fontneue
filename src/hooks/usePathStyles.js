@@ -68,7 +68,7 @@ export function usePathStyles({
     strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN)
   };
 
-  const applyPathStyle = (updates) => {
+  const applyPathStyle = (updates, { transient = false } = {}) => {
     const normalizedUpdates = { ...updates };
     if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'strokeWidth')) {
       normalizedUpdates.strokeWidth = normalizeStrokeWidth(normalizedUpdates.strokeWidth, pathStyleDefaults.strokeWidth);
@@ -81,7 +81,9 @@ export function usePathStyles({
     }
 
     if (hasSelectedPaths) {
-      commitHistory({ paths, currentPath, images, layers, texts });
+      if (!transient) {
+        commitHistory({ paths, currentPath, images, layers, texts });
+      }
       const selectedSet = new Set(selectedPathIndices);
       setPaths(prev => prev.map((path, idx) => (
         selectedSet.has(idx) ? { ...path, ...normalizedUpdates } : path
@@ -126,6 +128,7 @@ export function usePathStyles({
     livePathStroke,
     livePathStrokeRenderWidth,
     hasSelectedPaths,
+    selectedPathObjects,
     fillToggleActive,
     strokeToggleActive,
     strokePanelStyle,

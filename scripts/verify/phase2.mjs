@@ -9,16 +9,15 @@ run(async (page) => {
   await new Promise(r => setTimeout(r, 250));
   report.layersPanel = await page.evaluate(() => /Layers/i.test(document.body.innerText));
 
-  // Open Stroke panel via its toolbar button (title contains "Stroke Settings").
-  report.strokeOpened = await page.evaluate(() => {
-    const btn = [...document.querySelectorAll('button[title]')].find(b => /stroke settings/i.test(b.title));
+  // Open the Inspector via its toolbar button (replaced the Stroke panel in 7B).
+  report.inspectorOpened = await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('button[title]')].find(b => b.title === 'Inspector');
     if (!btn) return false;
     btn.click();
     return true;
   });
   await new Promise(r => setTimeout(r, 250));
-  report.strokeInputs = await page.evaluate(() => {
-    // ScrubbableNumberInput renders a text input with font-mono inside the stroke panel.
+  report.inspectorInputs = await page.evaluate(() => {
     return [...document.querySelectorAll('input[type="text"]')].length;
   });
 

@@ -2,22 +2,15 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Check,
-  RefreshCw,
-  Plus,
   GripVertical,
   X,
   Lock,
   Unlock,
-  Droplet,
-  ChevronUp,
-  Download,
-  Ruler,
-  Image as ImageIcon
+  Download
 } from 'lucide-react';
 import LayerIcon from '../../ui/LayerIcon';
-import ConfigInput from '../../ui/inputs/ConfigInput';
 import ScrubbableNumberInput from '../../ui/inputs/ScrubbableNumberInput';
+import Inspector from '../Inspector/Inspector';
 import { PANELS_CONFIG } from '../../config/panels';
 import {
   GRID_SIZE,
@@ -27,19 +20,14 @@ import {
   MAX_CIRCULAR_STEP,
   DEFAULT_CIRCULAR_STEP
 } from '../../constants';
-import { normalizeStrokeColor } from '../../lib/stroke';
 import { useEditor } from '../../state/EditorContext';
 
 // Right-side accordion (desktop) / top sheet (mobile) hosting the
-// Layers / Image Settings / Stroke / Background Config / Export panels.
+// Layers / Inspector / Background Config / Export panels.
 export default function PanelsContainer() {
   const {
-activeImage,
-    anyPanelOpen,
-    applyPathStyle,
+anyPanelOpen,
     canExportSelection,
-    commitStrokeColorInput,
-    commitStrokeWidthInput,
     deleteLayer,
     dragDropTarget,
     draggedLayerId,
@@ -48,7 +36,6 @@ activeImage,
     effectiveCircularStep,
     effectiveGridSize,
     expandedPanel,
-    fileInputRef,
     gridConfig,
     handleExport,
     handleLayerDragEnd,
@@ -57,8 +44,6 @@ activeImage,
     handleLayerDrop,
     handleLayerNameKeyDown,
     handleLayerSelect,
-    handleStrokeColorInputChange,
-    handleStrokeWidthInputChange,
     isExporting,
     isMobile,
     layers,
@@ -74,15 +59,9 @@ activeImage,
     setMobileExportFormat,
     setMobileExportScope,
     setOpenPanels,
-    setStrokeColorInput,
     startEditingLayer,
-    strokeColorInput,
-    strokePanelStyle,
-    strokeToggleActive,
-    strokeWidthInput,
     toggleLayerLock,
-    toggleLayerVisibility,
-    updateActiveImage
+    toggleLayerVisibility
   } = useEditor();
 
   return (
@@ -220,146 +199,7 @@ activeImage,
                     </div>
                   )}
 
-                  {panel.id === 'image' && (
-                    <div className="p-3.5 flex flex-col gap-2">
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center justify-center gap-2 py-2 bg-[#f2f4f7] hover:bg-[#eaecf0] text-[#344054] rounded-lg text-xs font-semibold transition-colors border border-[#d0d5dd]"
-                      >
-                        <ImageIcon size={14} />
-                        Upload Image
-                      </button>
-
-                      {activeImage && (
-                        <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-[#e4e7ec]">
-                          <div className="flex items-center justify-between px-1 mb-1">
-                            <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Image Transform</label>
-                            <div className="flex items-center gap-1">
-                               <button
-                                 onClick={() => updateActiveImage({ locked: !activeImage.locked })}
-                                 className={`p-1 rounded transition-colors ${activeImage.locked ? 'bg-[#eaecf0] text-[#344054]' : 'text-[#667085] hover:text-[#344054] hover:bg-[#eaecf0]'}`}
-                                 title={activeImage.locked ? "Unlock Image" : "Lock Image"}
-                               >
-                                 {activeImage.locked ? <Lock size={12} /> : <Unlock size={12} />}
-                               </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 mt-1">
-                            <ConfigInput
-                              label="X"
-                              value={activeImage.x}
-                              onChange={v => updateActiveImage({ x: v })}
-                            />
-                            <ConfigInput
-                              label="Y"
-                              value={activeImage.y}
-                              onChange={v => updateActiveImage({ y: v })}
-                            />
-                            <ConfigInput
-                              icon={<Ruler size={14} />}
-                              value={activeImage.scale}
-                              scaleFactor={100}
-                              suffix="%"
-                              onChange={v => updateActiveImage({ scale: Math.max(0.01, v) })}
-                            />
-                            <ConfigInput
-                              icon={<RefreshCw size={14} />}
-                              value={activeImage.rotation}
-                              suffix="°"
-                              onChange={v => updateActiveImage({ rotation: v })}
-                            />
-                            <div className="col-span-1">
-                              <ConfigInput
-                                icon={<Droplet size={14} />}
-                                value={activeImage.opacity}
-                                scaleFactor={100}
-                                suffix="%"
-                                onChange={v => updateActiveImage({ opacity: Math.max(0, Math.min(1, v)) })}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {panel.id === 'stroke' && (
-                    <div className="p-3.5 flex flex-col gap-3">
-                      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e4e7ec]">
-                        <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Enable Stroke</label>
-                        <button
-                          onClick={() => applyPathStyle({ strokeEnabled: !strokeToggleActive })}
-                          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${strokeToggleActive ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
-                          title={strokeToggleActive ? 'Disable Stroke' : 'Enable Stroke'}
-                        >
-                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${strokeToggleActive ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-[1fr_88px] gap-2">
-                        <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
-                          <input
-                            type="color"
-                            value={strokePanelStyle.strokeColor}
-                            onChange={(e) => {
-                              const next = normalizeStrokeColor(e.target.value, strokePanelStyle.strokeColor);
-                              setStrokeColorInput(next.replace('#', ''));
-                              applyPathStyle({ strokeColor: next, strokeEnabled: true });
-                            }}
-                            className="h-5 w-5 p-0 border border-[#d0d5dd] rounded cursor-pointer bg-transparent"
-                            title="Stroke Color"
-                          />
-                          <input
-                            type="text"
-                            value={strokeColorInput}
-                            onChange={(e) => handleStrokeColorInputChange(e.target.value)}
-                            onBlur={commitStrokeColorInput}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                commitStrokeColorInput();
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#344054] font-mono uppercase"
-                            placeholder="4A2622"
-                            maxLength={6}
-                          />
-                        </div>
-                        <div className="h-8 flex items-center gap-1 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
-                          <input
-                            type="text"
-                            value={strokeWidthInput}
-                            onChange={(e) => handleStrokeWidthInputChange(e.target.value)}
-                            onBlur={commitStrokeWidthInput}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                commitStrokeWidthInput();
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-[#344054] font-mono"
-                            placeholder="1.5"
-                          />
-                          <span className="text-xs text-[#667085] font-mono select-none">px</span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-[1fr] gap-2">
-                        <select
-                          value={strokePanelStyle.strokeAlign}
-                          onChange={(e) => applyPathStyle({ strokeAlign: e.target.value })}
-                          className="h-8 bg-[#f2f4f7] rounded-md border border-transparent px-2 text-xs text-[#344054] focus:outline-none focus:ring-1 focus:ring-[#d0d5dd]"
-                        >
-                          <option value="center">Center</option>
-                          <option value="inside">Inside</option>
-                          <option value="outside">Outside</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
+                  {panel.id === 'inspector' && <Inspector />}
 
                   {panel.id === 'layers' && (
                     <div className={`p-3 flex flex-col gap-2 min-h-0 flex-1 ${isMobile ? 'max-h-[36vh]' : 'max-h-[60vh]'}`}>

@@ -38,6 +38,7 @@ import { usePendingTouchDraw } from './hooks/usePendingTouchDraw';
 import { useUIShell } from './hooks/useUIShell';
 import { useObjectActions } from './hooks/useObjectActions';
 import { usePathStyles } from './hooks/usePathStyles';
+import { useInspectorModel } from './hooks/useInspectorModel';
 import { useTextEditing } from './hooks/useTextEditing';
 import { usePointerInteraction } from './hooks/usePointerInteraction';
 import { EditorProvider } from './state/EditorContext';
@@ -632,6 +633,7 @@ export default function App() {
   useKeyboardShortcuts({
     mode, setMode,
     changeMode,
+    fileInputRef,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
     selectedTextIds, setSelectedTextIds,
@@ -704,6 +706,18 @@ export default function App() {
     if (!activeText) return;
     setTexts(prev => prev.map(text => text.id === activeText.id ? { ...text, ...updates } : text));
   };
+
+  const inspector = useInspectorModel({
+    selectedPathObjects: pathStyles.selectedPathObjects,
+    selectedImageIds,
+    selectedTextIds,
+    pathStyleDefaults,
+    applyPathStyle: pathStyles.applyPathStyle,
+    activeImage,
+    updateActiveImage,
+    activeText,
+    updateActiveText
+  });
 
   const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0;
   const canExportSelection = hasActiveSelection;
@@ -799,6 +813,7 @@ export default function App() {
     imageCountByLayerId,
     images,
     imagesByLayerId,
+    inspector,
     isDrawingCurve,
     isExporting,
     isMobile,

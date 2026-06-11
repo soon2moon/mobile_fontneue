@@ -19,6 +19,7 @@ import {
   Minus,
   ChevronUp,
   Download,
+  SlidersHorizontal,
   Type
 } from 'lucide-react';
 import ToolButton from '../../ui/ToolButton';
@@ -33,6 +34,7 @@ applyPathStyle,
     changeMode,
     clearCanvas,
     correctPathDirections,
+    fileInputRef,
     fillToggleActive,
     hasSelectedPaths,
     mode,
@@ -144,11 +146,11 @@ applyPathStyle,
 
         {/* Configuration Panels Section */}
         <div className="flex gap-1">
-          <ToolButton 
-            active={openPanels.image} 
-            onClick={() => togglePanel('image')} 
-            icon={<ImageIcon size={20} />} 
-            label="Image Settings" 
+          <ToolButton
+            active={false}
+            onClick={() => fileInputRef.current?.click()}
+            icon={<ImageIcon size={20} />}
+            label="Upload Image"
             hotkey="U"
           />
           <ToolButton
@@ -199,10 +201,10 @@ applyPathStyle,
             label={hasSelectedPaths ? "Toggle Fill (Selection)" : "Toggle Fill (Default)"}
           />
           <ToolButton
-            active={openPanels.stroke}
-            onClick={() => togglePanel('stroke')}
-            icon={<Minus size={20} />}
-            label={hasSelectedPaths ? "Stroke Settings (Selection)" : "Stroke Settings (Default)"}
+            active={openPanels.inspector}
+            onClick={() => togglePanel('inspector')}
+            icon={<SlidersHorizontal size={20} />}
+            label="Inspector"
           />
         </div>
 

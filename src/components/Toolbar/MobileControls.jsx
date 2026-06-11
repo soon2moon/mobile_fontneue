@@ -25,6 +25,7 @@ import {
   Scissors,
   ClipboardPaste,
   Download,
+  SlidersHorizontal,
   Type
 } from 'lucide-react';
 import MobileToolButton from '../../ui/MobileToolButton';
@@ -256,18 +257,18 @@ anyMobileOverlayOpen,
                     label="Fill"
                   />
                   <MobileToolButton
-                    active={openPanels.stroke}
+                    active={openPanels.inspector}
                     onClick={() => {
-                      openMobilePanel('stroke');
+                      openMobilePanel('inspector');
                     }}
-                    icon={<Minus size={14} />}
-                    label="Stroke"
+                    icon={<SlidersHorizontal size={14} />}
+                    label="Style"
                   />
                   <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
                   <MobileToolButton
                     onClick={() => {
                       fileInputRef.current?.click();
-                      openMobilePanel('image');
+                      openMobilePanel('inspector');
                     }}
                     icon={<ImageIcon size={14} />}
                     label="Image"

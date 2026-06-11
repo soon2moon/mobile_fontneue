@@ -29,13 +29,14 @@ must stay empty.
 | `smoke-draw.mjs` | rect draw, undo/redo, session reload round-trip |
 | `phase05.mjs` | legacy session-key migration, guides removal, B/G hotkeys |
 | `phase15.mjs` | pasted images arrive at 100% opacity |
-| `phase2.mjs` | layers + stroke panels render (extracted leaf components) |
+| `phase2.mjs` | layers + inspector panels render (extracted leaf components) |
 | `phase3.mjs` | wheel zoom anchoring, async image placement, image undo/redo |
 | `phase4.mjs` | layer hide/show/lock/delete + undo, layer session round-trip |
 | `phase5-desktop.mjs` | pen (close + curve), pencil, shift-rect, marquee+drag, undo chain |
 | `phase5-mobile.mjs` | touch draw, pinch zoom, two-finger pan, long-press menu (390px viewport) |
 | `phase7a-text.mjs` | text tool: editor commit, session/undo/reload, dbl-click re-edit, drag/scale, export, empty-draft discard |
 | `phase7a-mobile.mjs` | mobile text: drawer arm, tap-edit, backdrop commit, contextmenu actions, duplicate |
+| `phase7b-inspector.mjs` | unified Inspector: live stroke fields, mixed placeholders, image/text sections, defaults, upload repoints |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.

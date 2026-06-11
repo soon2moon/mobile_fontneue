@@ -10,6 +10,7 @@ import { useRef, useEffect } from 'react';
 export function useKeyboardShortcuts({
   mode, setMode,
   changeMode,
+  fileInputRef,
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
   selectedTextIds, setSelectedTextIds,
@@ -131,7 +132,7 @@ export function useKeyboardShortcuts({
         return;
       }
       if (e.key.toLowerCase() === 'u') {
-        togglePanel('image');
+        fileInputRef.current?.click();
         return;
       }
       if (e.key === 'Escape') {

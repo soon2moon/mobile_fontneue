@@ -61,8 +61,8 @@ export function useImageImport({
       setSelectedImageIds([newImg.id]);
       setSelectedPoints([]);
       if (shouldOpenImagePanel) {
-        setOpenPanels(prev => ({ ...prev, image: true }));
-        setExpandedPanel('image');
+        setOpenPanels(prev => ({ ...prev, inspector: true }));
+        setExpandedPanel('inspector');
       }
     };
     img.src = url;
