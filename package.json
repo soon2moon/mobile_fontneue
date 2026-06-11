@@ -9,8 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.19",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",
+    "react-colorful": "^5.7.0",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {

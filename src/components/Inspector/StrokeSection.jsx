@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { normalizeStrokeColor } from '../../lib/stroke';
+import ColorControl from '../../ui/ColorControl';
 import { useEditor } from '../../state/EditorContext';
 
 // Stroke toggle + color (swatch & hex) + width + align for the selected
@@ -17,7 +17,7 @@ export default function StrokeSection() {
     handleStrokeWidthInputChange,
     commitStrokeWidthInput
   } = useEditor();
-  const { stroke, apply } = inspector;
+  const { stroke, apply, applyTransient } = inspector;
   const [widthFocused, setWidthFocused] = useState(false);
   const [colorFocused, setColorFocused] = useState(false);
 
@@ -41,16 +41,18 @@ export default function StrokeSection() {
 
       <div className="grid grid-cols-[1fr_88px] gap-2">
         <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
-          <input
-            type="color"
+          <ColorControl
             value={stroke.color}
-            onChange={(e) => {
-              const next = normalizeStrokeColor(e.target.value, stroke.color);
-              setStrokeColorInput(next.replace('#', ''));
-              apply({ strokeColor: next, strokeEnabled: true });
+            showIndeterminate={stroke.indeterminate.color}
+            label="Stroke Color"
+            onChange={(color) => {
+              setStrokeColorInput(color.replace('#', ''));
+              apply({ strokeColor: color, strokeEnabled: true });
             }}
-            className="h-5 w-5 p-0 border border-[#d0d5dd] rounded cursor-pointer bg-transparent"
-            title="Stroke Color"
+            onChangeTransient={(color) => {
+              setStrokeColorInput(color.replace('#', ''));
+              applyTransient({ strokeColor: color });
+            }}
           />
           <input
             type="text"
