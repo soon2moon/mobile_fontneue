@@ -38,6 +38,7 @@ must stay empty.
 | `phase7a-mobile.mjs` | mobile text: drawer arm, tap-edit, backdrop commit, contextmenu actions, duplicate |
 | `phase7b-inspector.mjs` | unified Inspector: live stroke fields, mixed placeholders, image/text sections, defaults, upload repoints |
 | `phase7c-color.mjs` | fillColor: per-color composite groups, picker-drag undo granularity, export alignment, donut hole, legacy-session fallback |
+| `phase7d-consistency.mjs` | portaled tooltips, shape-flyout Popover, Esc consumed by popovers, edge-safe mobile menu + compat-click survival, renamed export context |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.
