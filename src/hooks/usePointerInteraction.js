@@ -135,13 +135,11 @@ activeEditGroupId,
     setSelectedTextIds,
     setSelectionBox,
     setShowNodes,
-    setShowShapeMenu,
     setSnapState,
     setTexts,
     setZoom,
     shapeType,
     showNodes,
-    showShapeMenu,
     snapState,
     svgRef,
     texts,
@@ -233,7 +231,6 @@ activeEditGroupId,
       startClientY: e.clientY,
       dragActivated: (e.pointerType || 'mouse') === 'mouse'
     };
-    if (showShapeMenu) setShowShapeMenu(false);
     setHoveredHandle(null);
     if (!(mode === 'draw' && isTouchLikePointer)) {
       clearPendingTouchDrawAction();
@@ -283,8 +280,8 @@ activeEditGroupId,
 
         setMobileContextMenu({
           type: 'paste',
-          x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
-          y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+          x: e.clientX,
+          y: e.clientY
         });
       }, 520);
 
@@ -2215,8 +2212,8 @@ activeEditGroupId,
         setActivePathEditId(null);
         setMobileContextMenu({
           type: 'actions',
-          x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
-          y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+          x: e.clientX,
+          y: e.clientY
         });
         return;
       }
@@ -2233,8 +2230,8 @@ activeEditGroupId,
           setActivePathEditId(null);
           setMobileContextMenu({
             type: 'actions',
-            x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
-            y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+            x: e.clientX,
+            y: e.clientY
           });
           return;
         }
@@ -2250,8 +2247,8 @@ activeEditGroupId,
         setActivePathEditId(null);
         setMobileContextMenu({
           type: 'actions',
-          x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
-          y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+          x: e.clientX,
+          y: e.clientY
         });
         return;
       }

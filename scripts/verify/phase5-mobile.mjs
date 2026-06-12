@@ -94,16 +94,17 @@ run(async (page) => {
   const lp = await page.touchscreen.touchStart(200, 350);
   await pause(750);
   report.longPressMenu = await page.evaluate(() =>
-    !!document.querySelector('button[aria-label="Close actions menu"]') ||
-    /Paste/i.test(document.body.innerText)
+    !!document.querySelector('[role="menu"][aria-label="Canvas actions"]')
   );
   await lp.end();
-  await pause(200);
-  // Menu should close on next tap.
-  await page.touchscreen.tap(320, 600);
+  // Wait out the Popover's 400ms outside-press guard (it keeps the
+  // touchend's compatibility click from instantly dismissing the menu),
+  // then an outside tap on empty canvas closes it.
+  await pause(400);
+  await page.touchscreen.tap(320, 250);
   await pause(250);
   report.menuClosedAfterTap = await page.evaluate(() =>
-    !document.querySelector('button[aria-label="Close actions menu"]')
+    !document.querySelector('[role="menu"][aria-label="Canvas actions"]')
   );
 
   await page.screenshot({ path: '/tmp/shots/phase5-mobile.png' });

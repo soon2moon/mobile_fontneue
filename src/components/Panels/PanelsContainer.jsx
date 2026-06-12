@@ -48,8 +48,8 @@ anyPanelOpen,
     isExporting,
     isMobile,
     layers,
-    mobileExportFormat,
-    mobileExportScope,
+    exportFormat,
+    exportScope,
     mobilePanelsOpen,
     openPanels,
     saveLayerName,
@@ -57,8 +57,8 @@ anyPanelOpen,
     setEditingLayerName,
     setExpandedPanel,
     setGridConfig,
-    setMobileExportFormat,
-    setMobileExportScope,
+    setExportFormat,
+    setExportScope,
     setOpenPanels,
     startEditingLayer,
     toggleLayerLock,
@@ -291,9 +291,9 @@ anyPanelOpen,
                     <div className="p-3.5 flex flex-col gap-3">
                       <div className="grid grid-cols-2 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
                         <button
-                          onClick={() => setMobileExportScope('selection')}
+                          onClick={() => setExportScope('selection')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
-                            mobileExportScope === 'selection'
+                            exportScope === 'selection'
                               ? 'bg-white shadow-sm text-[#344054]'
                               : 'text-[#667085] hover:text-[#344054]'
                           }`}
@@ -301,9 +301,9 @@ anyPanelOpen,
                           Selection
                         </button>
                         <button
-                          onClick={() => setMobileExportScope('canvas')}
+                          onClick={() => setExportScope('canvas')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
-                            mobileExportScope === 'canvas'
+                            exportScope === 'canvas'
                               ? 'bg-white shadow-sm text-[#344054]'
                               : 'text-[#667085] hover:text-[#344054]'
                           }`}
@@ -316,9 +316,9 @@ anyPanelOpen,
                         {['png', 'jpg', 'svg'].map(format => (
                           <button
                             key={format}
-                            onClick={() => setMobileExportFormat(format)}
+                            onClick={() => setExportFormat(format)}
                             className={`py-1.5 text-xs font-semibold uppercase rounded-md transition-all ${
-                              mobileExportFormat === format
+                              exportFormat === format
                                 ? 'bg-white shadow-sm text-[#344054]'
                                 : 'text-[#667085] hover:text-[#344054]'
                             }`}
@@ -328,7 +328,7 @@ anyPanelOpen,
                         ))}
                       </div>
 
-                      {mobileExportScope === 'selection' && !canExportSelection && (
+                      {exportScope === 'selection' && !canExportSelection && (
                         <p className="text-[10px] text-[#98a2b3] px-1">
                           Select one or more objects to export selection.
                         </p>
@@ -337,15 +337,15 @@ anyPanelOpen,
                       <button
                         type="button"
                         onClick={handleExport}
-                        disabled={isExporting || (mobileExportScope === 'selection' && !canExportSelection)}
+                        disabled={isExporting || (exportScope === 'selection' && !canExportSelection)}
                         className={`h-9 rounded-lg border text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${
-                          isExporting || (mobileExportScope === 'selection' && !canExportSelection)
+                          isExporting || (exportScope === 'selection' && !canExportSelection)
                             ? 'bg-[#ecf1f7] border-[#d7dee8] text-[#98a2b3] cursor-not-allowed'
                             : 'bg-[#f2f4f7] border-[#d0d5dd] text-[#344054] hover:bg-[#eaecf0]'
                         }`}
                       >
                         <Download size={14} />
-                        {isExporting ? 'Exporting…' : `Export ${mobileExportFormat.toUpperCase()}`}
+                        {isExporting ? 'Exporting…' : `Export ${exportFormat.toUpperCase()}`}
                       </button>
                     </div>
                   )}

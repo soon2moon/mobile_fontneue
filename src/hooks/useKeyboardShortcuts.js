@@ -32,7 +32,6 @@ export function useKeyboardShortcuts({
   setDrawHover,
   setCurrentPathInfo,
   setDrawingShape,
-  setShowShapeMenu,
   setActiveHandle,
   setSelectionBox,
   setHoveredHandle,
@@ -149,7 +148,6 @@ export function useKeyboardShortcuts({
           }
         } else if (mode === 'shape') {
           setDrawingShape(null);
-          setShowShapeMenu(false);
         } else if (mode === 'text') {
           changeMode('edit');
         } else if (mode === 'edit') {

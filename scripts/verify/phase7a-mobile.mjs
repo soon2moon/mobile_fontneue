@@ -42,7 +42,7 @@ run(async (page) => {
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
   });
   const contextMenuOpen = () => page.evaluate(() =>
-    !!document.querySelector('button[aria-label="Close actions menu"]')
+    !!document.querySelector('[role="menu"][aria-label="Canvas actions"]')
   );
 
   // 1. Drawer Text button arms the tool and closes the drawer.
@@ -62,10 +62,10 @@ run(async (page) => {
   await pause(400);
   expect('backdropCommits', (await textCount()) === 1 && await page.evaluate(() => !document.querySelector('textarea')));
 
-  // 3. Long-press: the fallback timer menu opens while the finger is held.
-  //    (The touchend's compatibility click then lands on the menu backdrop
-  //    and closes it -- pre-existing for all object kinds in this harness;
-  //    real devices long-press through the contextmenu event instead.)
+  // 3. Long-press: the fallback timer menu opens while the finger is held,
+  //    and the touchend's compatibility click lands inside the Popover's
+  //    400ms outside-press guard, so the menu survives the finger lift.
+  //    A later outside tap (past the guard) dismisses it.
   let c = await textScreenCenter();
   const press = await page.touchscreen.touchStart(c.x, c.y);
   await pause(750);
@@ -73,10 +73,10 @@ run(async (page) => {
   await press.end();
   await pause(250);
   expect('longPressMenuWhileHeld', longPressMenu);
-  if (await contextMenuOpen()) {
-    await page.touchscreen.tap(350, 760); // dismiss if it survived
-    await pause(300);
-  }
+  expect('menuSurvivesCompatClick', await contextMenuOpen());
+  await page.touchscreen.tap(330, 250); // empty canvas, clear of the menu
+  await pause(300);
+  expect('outsideTapDismisses', !(await contextMenuOpen()));
 
   // 4. The real-device long-press pathway (contextmenu event) selects the
   //    text and opens the actions menu; Duplicate clones text + layer.
@@ -88,7 +88,7 @@ run(async (page) => {
   }, c);
   await pause(350);
   expect('contextMenuActions', await page.evaluate(() =>
-    !!document.querySelector('button[aria-label="Close actions menu"]')
+    !!document.querySelector('[role="menu"][aria-label="Canvas actions"]')
     && [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Duplicate')
   ));
   await tapButtonByText('Duplicate');

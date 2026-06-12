@@ -22,8 +22,10 @@ import {
   SlidersHorizontal,
   Type
 } from 'lucide-react';
+import { useRef } from 'react';
 import ToolButton from '../../ui/ToolButton';
 import ShapeMenuItem from '../../ui/ShapeMenuItem';
+import Popover from '../../ui/Popover';
 import { useEditor } from '../../state/EditorContext';
 
 // Bottom-centered desktop toolbar: drawing tools + contextual shape menu,
@@ -43,12 +45,12 @@ applyPathStyle,
     setShapeType,
     setShowNodes,
     setShowShapeMenu,
-    shapeMenuContainerRef,
     shapeType,
     showNodes,
     showShapeMenu,
     togglePanel
   } = useEditor();
+  const shapeAnchorRef = useRef(null);
 
   return (
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#f8fafc] p-2 rounded-2xl shadow-lg border border-[#e4e7ec]">
@@ -71,7 +73,7 @@ applyPathStyle,
           />
 
           {/* Contextual Shape Menu */}
-          <div className="relative flex items-center gap-0.5 group" ref={shapeMenuContainerRef}>
+          <div className="relative flex items-center gap-0.5 group" ref={shapeAnchorRef}>
             <button
               onClick={() => { changeMode('shape'); setShowShapeMenu(false); }}
               className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
@@ -100,15 +102,15 @@ applyPathStyle,
             </button>
             
             {/* Shape Dropdown Menu */}
-            {showShapeMenu && (
-               <div className="absolute bottom-[calc(100%+8px)] left-0 w-36 bg-[#f8fafc] p-1.5 rounded-2xl shadow-xl border border-[#e4e7ec] flex flex-col gap-0.5 z-20">
+            <Popover open={showShapeMenu} onOpenChange={setShowShapeMenu} anchorRef={shapeAnchorRef} placement="top-start" offsetPx={8}>
+               <div className="w-36 bg-[#f8fafc] p-1.5 rounded-2xl shadow-xl border border-[#e4e7ec] flex flex-col gap-0.5">
                    <ShapeMenuItem type="rectangle" icon={<Square size={16}/>} label="Rectangle" hotkey="R" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="ellipse" icon={<Circle size={16}/>} label="Ellipse" hotkey="O" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="polygon" icon={<Triangle size={16}/>} label="Polygon" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="star" icon={<Star size={16}/>} label="Star" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="line" icon={<Minus size={16}/>} label="Line" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                </div>
-            )}
+            </Popover>
           </div>
 
           <ToolButton

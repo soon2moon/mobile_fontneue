@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import MobileToolButton from '../../ui/MobileToolButton';
 import ShapeMenuItem from '../../ui/ShapeMenuItem';
+import Popover from '../../ui/Popover';
 import { useEditor } from '../../state/EditorContext';
 
 // All mobile chrome: top controls, tools drawer, shape sheet, long-press
@@ -52,10 +53,8 @@ anyMobileOverlayOpen,
     fillToggleActive,
     getShapeToolIcon,
     handleMobileContextPaste,
-    handleMobileRedo,
-    handleMobileUndo,
-    handleMobileZoomIn,
-    handleMobileZoomOut,
+    handleRedo,
+    handleUndo,
     hasActiveSelection,
     mobileContextMenu,
     mobileMenuDrawerBottom,
@@ -76,6 +75,7 @@ anyMobileOverlayOpen,
     shapeType,
     showBackgroundAids,
     showNodes,
+    stepZoom,
     toggleMobileShapePanel,
     toggleMobileToolsMenu,
     zoom
@@ -93,72 +93,70 @@ anyMobileOverlayOpen,
             />
           )}
 
-          {mobileContextMenu && (
-            <>
-              <button
-                type="button"
-                className="absolute inset-0 z-[22] bg-transparent"
-                onClick={closeMobileContextMenu}
-                aria-label="Close actions menu"
-              />
-              <div
-                className="absolute z-[23] pointer-events-none"
-                style={{ left: `${mobileContextMenu.x}px`, top: `${mobileContextMenu.y}px` }}
-              >
-                <div className="pointer-events-auto -translate-x-1/2 -translate-y-full mb-2 bg-[#f8fafc] border border-[#e4e7ec] rounded-[12px] shadow-[0_12px_24px_rgba(52,64,84,0.14)] p-1.5">
-                  <div className="flex flex-col gap-1">
-                    {mobileContextMenu.type === 'actions' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            copyCurrentSelection();
-                            closeMobileContextMenu();
-                          }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Copy size={14} />
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            cutCurrentSelection();
-                            closeMobileContextMenu();
-                          }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#b42318] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Scissors size={14} />
-                          Cut
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            duplicateCurrentSelection();
-                            closeMobileContextMenu();
-                          }}
-                          className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Plus size={14} />
-                          Duplicate
-                        </button>
-                      </>
-                    )}
-                    {mobileContextMenu.type === 'paste' && (
-                      <button
-                        type="button"
-                        onClick={handleMobileContextPaste}
-                        className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
-                      >
-                        <ClipboardPaste size={14} />
-                        Paste
-                      </button>
-                    )}
-                  </div>
-                </div>
+          <Popover
+            open={!!mobileContextMenu}
+            onOpenChange={(next) => { if (!next) closeMobileContextMenu(); }}
+            virtualAnchor={mobileContextMenu ? { x: mobileContextMenu.x, y: mobileContextMenu.y } : null}
+            placement="top"
+            offsetPx={8}
+            guardOutsidePressMs={400}
+          >
+            <div
+              role="menu"
+              aria-label="Canvas actions"
+              className="bg-[#f8fafc] border border-[#e4e7ec] rounded-[12px] shadow-[0_12px_24px_rgba(52,64,84,0.14)] p-1.5"
+            >
+              <div className="flex flex-col gap-1">
+                {mobileContextMenu?.type === 'actions' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        copyCurrentSelection();
+                        closeMobileContextMenu();
+                      }}
+                      className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                    >
+                      <Copy size={14} />
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        cutCurrentSelection();
+                        closeMobileContextMenu();
+                      }}
+                      className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#b42318] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                    >
+                      <Scissors size={14} />
+                      Cut
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        duplicateCurrentSelection();
+                        closeMobileContextMenu();
+                      }}
+                      className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                    >
+                      <Plus size={14} />
+                      Duplicate
+                    </button>
+                  </>
+                )}
+                {mobileContextMenu?.type === 'paste' && (
+                  <button
+                    type="button"
+                    onClick={handleMobileContextPaste}
+                    className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                  >
+                    <ClipboardPaste size={14} />
+                    Paste
+                  </button>
+                )}
               </div>
-            </>
-          )}
+            </div>
+          </Popover>
 
           <div
             className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
@@ -167,7 +165,7 @@ anyMobileOverlayOpen,
             <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-2 flex items-center gap-1 max-w-full">
               <button
                 type="button"
-                onClick={handleMobileUndo}
+                onClick={handleUndo}
                 onPointerUp={clearTapFocus}
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
@@ -179,7 +177,7 @@ anyMobileOverlayOpen,
               </button>
               <button
                 type="button"
-                onClick={handleMobileRedo}
+                onClick={handleRedo}
                 onPointerUp={clearTapFocus}
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
@@ -206,7 +204,7 @@ anyMobileOverlayOpen,
               <div className="flex items-center gap-0.5">
                 <button
                   type="button"
-                  onClick={handleMobileZoomOut}
+                  onClick={() => stepZoom(-1)}
                   onPointerUp={clearTapFocus}
                   onPointerCancel={clearTapFocus}
                   onTouchEnd={clearTapFocus}
@@ -218,7 +216,7 @@ anyMobileOverlayOpen,
                 </button>
                 <button
                   type="button"
-                  onClick={handleMobileZoomIn}
+                  onClick={() => stepZoom(1)}
                   onPointerUp={clearTapFocus}
                   onPointerCancel={clearTapFocus}
                   onTouchEnd={clearTapFocus}

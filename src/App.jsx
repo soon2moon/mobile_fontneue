@@ -94,7 +94,6 @@ export default function App() {
   const [shapeType, setShapeType] = useState('rectangle');
   const [showShapeMenu, setShowShapeMenu] = useState(false);
   const [drawingShape, setDrawingShape] = useState(null);
-  const shapeMenuContainerRef = useRef(null);
   
   // Grid State
   const [gridConfig, setGridConfig] = useState({
@@ -219,17 +218,6 @@ export default function App() {
     pencilSamplingDistance,
     touchDragThresholdPx
   } = computeHitRadii(isMobile, zoom);
-
-  // Click Outside logic for Shape Dropdown
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (showShapeMenu && shapeMenuContainerRef.current && !shapeMenuContainerRef.current.contains(e.target)) {
-        setShowShapeMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showShapeMenu]);
 
   // Exit path-focus edit if the path disappears, is hidden, or becomes locked.
   useEffect(() => {
@@ -401,8 +389,8 @@ export default function App() {
 
     setMobileContextMenu({
       type: hitText || hitImage || hitPath ? 'actions' : 'paste',
-      x: Math.min(Math.max(12, e.clientX), Math.max(12, viewportSize.width - 140)),
-      y: Math.min(Math.max(12, e.clientY), Math.max(12, viewportSize.height - 56))
+      x: e.clientX,
+      y: e.clientY
     });
 
     setActiveHandle(null);
@@ -410,7 +398,7 @@ export default function App() {
     setBgAction(null);
     setPointAction(null);
     setIsDraggingPoints(false);
-  }, [isMobile, getCanvasCoords, findTopTextAtCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection, viewportSize.width, viewportSize.height]);
+  }, [isMobile, getCanvasCoords, findTopTextAtCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection]);
 
   const { handlePointerDown, handlePointerMove, handlePointerUp } = usePointerInteraction({
     activeEditGroupId,
@@ -501,13 +489,11 @@ export default function App() {
     setSelectedTextIds,
     setSelectionBox,
     setShowNodes,
-    setShowShapeMenu,
     setSnapState,
     setTexts,
     setZoom,
     shapeType,
     showNodes,
-    showShapeMenu,
     snapState,
     svgRef,
     texts,
@@ -627,8 +613,8 @@ export default function App() {
 
 
   const {
-    exportScope: mobileExportScope, setExportScope: setMobileExportScope,
-    exportFormat: mobileExportFormat, setExportFormat: setMobileExportFormat,
+    exportScope, setExportScope,
+    exportFormat, setExportFormat,
     isExporting,
     handleExport
   } = useExport({ layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds });
@@ -658,7 +644,6 @@ export default function App() {
     setDrawHover,
     setCurrentPathInfo,
     setDrawingShape,
-    setShowShapeMenu,
     setActiveHandle,
     setSelectionBox,
     setHoveredHandle,
@@ -752,18 +737,6 @@ export default function App() {
     if (shapeType === 'line') return <Minus size={size} />;
     return <Square size={size} />;
   };
-  const handleMobileUndo = () => {
-    handleUndo();
-  };
-  const handleMobileRedo = () => {
-    handleRedo();
-  };
-  const handleMobileZoomOut = () => {
-    stepZoom(-1);
-  };
-  const handleMobileZoomIn = () => {
-    stepZoom(1);
-  };
   const resetZoomToHundred = () => {
     const currentZoom = zoomRef.current;
     if (Math.abs(currentZoom - 1) < 0.0001) return;
@@ -795,6 +768,8 @@ export default function App() {
     duplicateCurrentSelection,
     dynamicCursor,
     effectiveCircularStep,
+    exportFormat,
+    exportScope,
     effectiveGridSize,
     fileInputRef,
     getLayerPreviewBounds,
@@ -804,13 +779,11 @@ export default function App() {
     handleCanvasContextMenu,
     handleExport,
     handleMobileContextPaste,
-    handleMobileRedo,
-    handleMobileUndo,
-    handleMobileZoomIn,
-    handleMobileZoomOut,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleRedo,
+    handleUndo,
     hasActiveSelection,
     hoveredHandle,
     hoveredStartPoint,
@@ -825,8 +798,6 @@ export default function App() {
     layerIndexById,
     layers,
     mobileBottomInset,
-    mobileExportFormat,
-    mobileExportScope,
     mode,
     pan,
     pathCountByLayerId,
@@ -844,19 +815,19 @@ export default function App() {
     selectionBox,
     setActiveLayerId,
     setGridConfig,
+    setExportFormat,
+    setExportScope,
     setHoveredHandle,
-    setMobileExportFormat,
-    setMobileExportScope,
     setPan,
     setShapeType,
     setShowBackgroundAids,
     setShowNodes,
     setShowShapeMenu,
-    shapeMenuContainerRef,
     shapeType,
     showBackgroundAids,
     showNodes,
     showShapeMenu,
+    stepZoom,
     svgRef,
     textCountByLayerId,
     texts,
