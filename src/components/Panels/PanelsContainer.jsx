@@ -81,7 +81,7 @@ anyPanelOpen,
           return (
             <div
               key={panel.id}
-              className={`bg-[#f8fafc] rounded-2xl shadow-[0_14px_28px_rgba(52,64,84,0.14)] border border-[#e4e7ec] overflow-hidden flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
+              className={`bg-[#f8fafc] rounded-2xl shadow-[0_14px_28px_rgba(52,64,84,0.14)] border border-[#e4e7ec] overflow-clip flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
                 isMobile ? 'w-full' : 'w-60'
               }`}
             >
@@ -151,7 +151,7 @@ anyPanelOpen,
 
                         {gridConfig.type !== 'none' && (
                           <div className="flex flex-col gap-2 mt-1">
-                            <div className="grid grid-cols-[1fr_88px] items-center gap-2">
+                            <div className="grid grid-cols-[minmax(0,1fr)_88px] items-center gap-2">
                               <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Grid Density</label>
                               <ScrubbableNumberInput
                                 value={effectiveGridSize}
@@ -166,7 +166,7 @@ anyPanelOpen,
                               />
                             </div>
                             {gridConfig.type === 'circular' && (
-                              <div className="grid grid-cols-[1fr_88px] items-center gap-2">
+                              <div className="grid grid-cols-[minmax(0,1fr)_88px] items-center gap-2">
                                 <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Angle Step</label>
                                 <ScrubbableNumberInput
                                   value={effectiveCircularStep}

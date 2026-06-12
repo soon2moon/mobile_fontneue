@@ -38,7 +38,7 @@ export default function StrokeSection() {
         />
       </div>
 
-      <div className="grid grid-cols-[1fr_88px] gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-2">
         <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
           <ColorControl
             value={stroke.color}

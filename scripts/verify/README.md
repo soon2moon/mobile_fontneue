@@ -39,6 +39,7 @@ must stay empty.
 | `phase7b-inspector.mjs` | unified Inspector: live stroke fields, mixed placeholders, image/text sections, defaults, upload repoints |
 | `phase7c-color.mjs` | fillColor: per-color composite groups, picker-drag undo granularity, export alignment, donut hole, legacy-session fallback |
 | `phase7d-consistency.mjs` | portaled tooltips, shape-flyout Popover, Esc consumed by popovers, edge-safe mobile menu + compat-click survival, renamed export context |
+| `phase8a-consistency.mjs` | inspector card fits + never focus-scrolls (desktop/mobile); shape/options/auto-correct/clear buttons use the shared Tooltip |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.

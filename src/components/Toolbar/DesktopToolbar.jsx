@@ -26,6 +26,7 @@ import { useRef } from 'react';
 import ToolButton from '../../ui/ToolButton';
 import ShapeMenuItem from '../../ui/ShapeMenuItem';
 import Popover from '../../ui/Popover';
+import Tooltip from '../../ui/Tooltip';
 import { useEditor } from '../../state/EditorContext';
 
 // Bottom-centered desktop toolbar: drawing tools + contextual shape menu,
@@ -74,32 +75,36 @@ applyPathStyle,
 
           {/* Contextual Shape Menu */}
           <div className="relative flex items-center gap-0.5 group" ref={shapeAnchorRef}>
-            <button
-              onClick={() => { changeMode('shape'); setShowShapeMenu(false); }}
-              className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
-                mode === 'shape' 
-                  ? 'bg-[#eaecf0] text-[#344054]' 
-                  : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-              }`}
-              title="Shape Tool (R/O)"
-            >
-              {shapeType === 'rectangle' && <Square size={20} />}
-              {shapeType === 'ellipse' && <Circle size={20} />}
-              {shapeType === 'polygon' && <Triangle size={20} />}
-              {shapeType === 'star' && <Star size={20} />}
-              {shapeType === 'line' && <Minus size={20} />}
-            </button>
-            <button
-              onClick={() => setShowShapeMenu(!showShapeMenu)}
-              className={`w-6 h-11 rounded-xl transition-all duration-200 flex items-center justify-center ${
-                 showShapeMenu
-                  ? 'bg-[#eaecf0] text-[#344054]' 
-                  : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-              }`}
-              title="Shape Options"
-            >
-              <ChevronUp size={14} />
-            </button>
+            <Tooltip label="Shape Tool" hotkey="R/O">
+              <button
+                onClick={() => { changeMode('shape'); setShowShapeMenu(false); }}
+                aria-label="Shape Tool (R/O)"
+                className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
+                  mode === 'shape'
+                    ? 'bg-[#eaecf0] text-[#344054]'
+                    : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
+                }`}
+              >
+                {shapeType === 'rectangle' && <Square size={20} />}
+                {shapeType === 'ellipse' && <Circle size={20} />}
+                {shapeType === 'polygon' && <Triangle size={20} />}
+                {shapeType === 'star' && <Star size={20} />}
+                {shapeType === 'line' && <Minus size={20} />}
+              </button>
+            </Tooltip>
+            <Tooltip label="Shape Options">
+              <button
+                onClick={() => setShowShapeMenu(!showShapeMenu)}
+                aria-label="Shape Options"
+                className={`w-6 h-11 rounded-xl transition-all duration-200 flex items-center justify-center ${
+                   showShapeMenu
+                    ? 'bg-[#eaecf0] text-[#344054]'
+                    : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
+                }`}
+              >
+                <ChevronUp size={14} />
+              </button>
+            </Tooltip>
             
             {/* Shape Dropdown Menu */}
             <Popover open={showShapeMenu} onOpenChange={setShowShapeMenu} anchorRef={shapeAnchorRef} placement="top-start" offsetPx={8}>
@@ -215,21 +220,25 @@ applyPathStyle,
 
         {/* Global Actions Section */}
         <div className="flex gap-1">
-          <button 
-            onClick={correctPathDirections}
-            className="p-3 text-[#667085] hover:text-[#344054] hover:bg-[#f2f4f7] rounded-xl transition-all"
-            title={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}
-          >
-            <RefreshCw size={20} />
-          </button>
-          
-          <button 
-            onClick={clearCanvas}
-            className="p-3 text-[#667085] hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-            title="Clear Canvas"
-          >
-            <Trash2 size={20} />
-          </button>
+          <Tooltip label={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}>
+            <button
+              onClick={correctPathDirections}
+              aria-label={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}
+              className="p-3 text-[#667085] hover:text-[#344054] hover:bg-[#f2f4f7] rounded-xl transition-all"
+            >
+              <RefreshCw size={20} />
+            </button>
+          </Tooltip>
+
+          <Tooltip label="Clear Canvas">
+            <button
+              onClick={clearCanvas}
+              aria-label="Clear Canvas"
+              className="p-3 text-[#667085] hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+            >
+              <Trash2 size={20} />
+            </button>
+          </Tooltip>
         </div>
       </div>
   );

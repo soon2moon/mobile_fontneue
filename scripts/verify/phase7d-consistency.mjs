@@ -58,7 +58,7 @@ run(async (page) => {
   expect('tooltipGoneAfterMouseAway', await page.evaluate(() => !document.querySelector('[role="tooltip"]')));
 
   // 2. Shape flyout (Popover): chevron opens, Escape closes.
-  await page.click('button[title="Shape Options"]');
+  await page.click('button[aria-label="Shape Options"]');
   await pause(250);
   expect('shapeFlyoutOpens', await flyoutOpen());
   await page.keyboard.press('Escape');

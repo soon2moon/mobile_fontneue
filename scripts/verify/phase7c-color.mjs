@@ -152,7 +152,7 @@ run(async (page) => {
   await pause(150);
   await page.mouse.click(150, 150); // deselect so the button is in auto-correct mode
   await pause(250);
-  await page.click('button[title="Auto-Correct Path Directions"]');
+  await page.click('button[aria-label="Auto-Correct Path Directions"]');
   await pause(300);
   const donutFills = await compositeFills();
   expect('donutSingleGroup', donutFills.length === 1 && donutFills[0] === '#344054');
