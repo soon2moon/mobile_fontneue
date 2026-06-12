@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { cloneState } from '../lib/paths';
 
-// Undo/redo over the document state (paths/currentPath/images/layers/texts).
+// Undo/redo over the document state (paths/currentPath/images/layers/texts/frames).
 // Undo while actively drawing instead retracts in-progress pen/pencil input,
 // and both undo and redo clear transient interaction UI via injected setters.
 export function useHistory({
@@ -10,6 +10,7 @@ export function useHistory({
   currentPath, setCurrentPath,
   images, setImages,
   texts, setTexts,
+  frames, setFrames,
   layers, setLayers,
   setIsDrawingCurve,
   setDrawHover,
@@ -26,7 +27,7 @@ export function useHistory({
   const [futurePaths, setFuturePaths] = useState([]);
 
   const commitHistory = useCallback((stateToSave) => {
-    setPastPaths(prev => [...prev, cloneState(stateToSave.paths, stateToSave.currentPath, stateToSave.images, stateToSave.layers, stateToSave.texts)]);
+    setPastPaths(prev => [...prev, cloneState(stateToSave.paths, stateToSave.currentPath, stateToSave.images, stateToSave.layers, stateToSave.texts, stateToSave.frames)]);
     setFuturePaths([]);
   }, []);
 
@@ -51,12 +52,13 @@ export function useHistory({
     const previous = pastPaths[pastPaths.length - 1];
     const newPast = pastPaths.slice(0, -1);
 
-    setFuturePaths(prev => [cloneState(paths, currentPath, images, layers, texts), ...prev]);
+    setFuturePaths(prev => [cloneState(paths, currentPath, images, layers, texts, frames), ...prev]);
     setPaths(previous.paths);
     setCurrentPath(previous.currentPath);
     setImages(previous.images || []);
     setLayers(previous.layers || []);
     setTexts(previous.texts || []);
+    setFrames(previous.frames || []);
     setPastPaths(newPast);
 
     setIsDrawingCurve(false);
@@ -70,7 +72,7 @@ export function useHistory({
     setSelectionBox(null);
     setPointAction(null);
     setDrawingShape(null);
-  }, [pastPaths, futurePaths, paths, currentPath, images, layers, texts, mode]);
+  }, [pastPaths, futurePaths, paths, currentPath, images, layers, texts, frames, mode]);
 
   const handleRedo = useCallback(() => {
     if ((mode === 'draw' || mode === 'pencil') && currentPath.length > 0) return;
@@ -79,12 +81,13 @@ export function useHistory({
     const next = futurePaths[0];
     const newFuture = futurePaths.slice(1);
 
-    setPastPaths(prev => [...prev, cloneState(paths, currentPath, images, layers, texts)]);
+    setPastPaths(prev => [...prev, cloneState(paths, currentPath, images, layers, texts, frames)]);
     setPaths(next.paths);
     setCurrentPath(next.currentPath);
     setImages(next.images || []);
     setLayers(next.layers || []);
     setTexts(next.texts || []);
+    setFrames(next.frames || []);
     setFuturePaths(newFuture);
 
     setIsDrawingCurve(false);
@@ -98,7 +101,7 @@ export function useHistory({
     setSelectionBox(null);
     setPointAction(null);
     setDrawingShape(null);
-  }, [pastPaths, futurePaths, paths, currentPath, images, layers, texts, mode]);
+  }, [pastPaths, futurePaths, paths, currentPath, images, layers, texts, frames, mode]);
 
   return { pastPaths, futurePaths, commitHistory, handleUndo, handleRedo };
 }

@@ -7,6 +7,7 @@ export const createLayer = (type, existingCount) => {
    let name = "Vector";
    if (type === 'image') name = "Image";
    else if (type === 'text') name = "Text";
+   else if (type === 'frame') name = "Frame";
    else if (type === 'rectangle') name = "Rectangle";
    else if (type === 'ellipse') name = "Ellipse";
    else if (type === 'polygon') name = "Polygon";
@@ -23,7 +24,7 @@ export const createLayer = (type, existingCount) => {
 };
 
 // Group document content by owning layer, with counts, for the layer panels.
-export const groupContentByLayer = (paths, images, texts = []) => {
+export const groupContentByLayer = (paths, images, texts = [], frames = []) => {
   const pathsByLayerId = {};
   paths.forEach(path => {
     if (!pathsByLayerId[path.layerId]) pathsByLayerId[path.layerId] = [];
@@ -51,12 +52,19 @@ export const groupContentByLayer = (paths, images, texts = []) => {
   texts.forEach(text => {
     textCountByLayerId[text.layerId] = (textCountByLayerId[text.layerId] || 0) + 1;
   });
-  return { pathsByLayerId, imagesByLayerId, textsByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId };
+  const framesByLayerId = {};
+  const frameCountByLayerId = {};
+  frames.forEach(frame => {
+    if (!framesByLayerId[frame.layerId]) framesByLayerId[frame.layerId] = [];
+    framesByLayerId[frame.layerId].push(frame);
+    frameCountByLayerId[frame.layerId] = (frameCountByLayerId[frame.layerId] || 0) + 1;
+  });
+  return { pathsByLayerId, imagesByLayerId, textsByLayerId, framesByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId, frameCountByLayerId };
 };
 
 // Padded world-space bounds of a layer's content, for thumbnail previews.
 // Returns null when the layer is empty.
-export const getLayerPreviewBounds = (layerPaths, layerImages, layerTexts = []) => {
+export const getLayerPreviewBounds = (layerPaths, layerImages, layerTexts = [], layerFrames = []) => {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -123,6 +131,13 @@ export const getLayerPreviewBounds = (layerPaths, layerImages, layerTexts = []) 
       maxX = Math.max(maxX, worldX);
       maxY = Math.max(maxY, worldY);
     });
+  });
+
+  layerFrames.forEach(frame => {
+    minX = Math.min(minX, frame.x - frame.width / 2);
+    minY = Math.min(minY, frame.y - frame.height / 2);
+    maxX = Math.max(maxX, frame.x + frame.width / 2);
+    maxY = Math.max(maxY, frame.y + frame.height / 2);
   });
 
   if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {

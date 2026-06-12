@@ -15,6 +15,7 @@ export function useTextEditing({
   paths, currentPath,
   images,
   texts, setTexts,
+  frames,
   layers, setLayers,
   commitHistory,
   activeLayerId, setActiveLayerId,
@@ -107,7 +108,7 @@ export function useTextEditing({
 
     if (editing.mode === 'new') {
       if (isEmpty) return;
-      commitHistory({ paths, currentPath, images, texts, layers });
+      commitHistory({ paths, currentPath, images, texts, layers, frames });
       const block = measureTextBlock(content, editing.style);
       const count = layers.filter(l => l.itemType === 'text').length;
       const newLayer = createLayer('text', count);
@@ -129,7 +130,7 @@ export function useTextEditing({
     if (!target) return;
 
     if (isEmpty) {
-      commitHistory({ paths, currentPath, images, texts, layers });
+      commitHistory({ paths, currentPath, images, texts, layers, frames });
       const nextTexts = texts.filter(text => text.id !== editing.textId);
       setTexts(nextTexts);
       pruneLayerIfEmpty(target.layerId, nextTexts);
@@ -142,7 +143,7 @@ export function useTextEditing({
       return;
     }
 
-    commitHistory({ paths, currentPath, images, texts, layers });
+    commitHistory({ paths, currentPath, images, texts, layers, frames });
     const block = measureTextBlock(content, target);
     setTexts(prev => prev.map(text => text.id === editing.textId
       ? {

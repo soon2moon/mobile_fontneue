@@ -6,6 +6,7 @@ import {
   Minus,
   Image as ImageIcon,
   Type,
+  Frame,
   PenTool
 } from 'lucide-react';
 
@@ -18,6 +19,7 @@ const LayerIcon = ({ type }) => {
         case 'line': return <Minus size={14} className="text-secondary" />;
         case 'image': return <ImageIcon size={14} className="text-secondary" />;
         case 'text': return <Type size={14} className="text-secondary" />;
+        case 'frame': return <Frame size={14} className="text-secondary" />;
         case 'vector':
         default:
             return <PenTool size={14} className="text-secondary" />;

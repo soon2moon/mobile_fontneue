@@ -123,12 +123,13 @@ export const clonePaths = (pathsArray) => {
   }));
 };
 
-export const cloneState = (pathsArray, currentPathArray, imagesArray, layersArray, textsArray) => ({
+export const cloneState = (pathsArray, currentPathArray, imagesArray, layersArray, textsArray, framesArray) => ({
   paths: clonePaths(pathsArray),
   currentPath: currentPathArray.map(clonePoint),
   images: imagesArray ? imagesArray.map(img => ({ ...img })) : [],
   layers: layersArray ? layersArray.map(l => ({ ...l })) : [],
-  texts: textsArray ? textsArray.map(t => ({ ...t })) : []
+  texts: textsArray ? textsArray.map(t => ({ ...t })) : [],
+  frames: framesArray ? framesArray.map(f => ({ ...f })) : []
 });
 
 // Stroke resolution falls back to the fixed legacy defaults (the normalize

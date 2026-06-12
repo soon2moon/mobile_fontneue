@@ -45,6 +45,7 @@ must stay empty.
 | `phase8c2-dark.mjs` | dark palette (#1e1e1e/#2c2c2c/#0d99ff), white/light-gray new-content defaults, dark tooltips, legacy art pinned to #344054 |
 | `phase8d-quietui.mjs` | Ctrl+\ hides/restores chrome (canvas keeps working); panels fade + click-through during gestures; input guard; mobile Hide UI + pill |
 | `phase8e-contextmenu.mjs` | shared right-click/long-press menu: actions + hints on objects, Paste-here recenters on the point, layer reorder, Esc-safe, Delete |
+| `phase8f1-frames-model.mjs` | frame model threading (inert): session round-trip, layer row, history-preserving undo/redo, frameless sessions load clean |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.

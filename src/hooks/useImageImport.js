@@ -10,6 +10,7 @@ export function useImageImport({
   paths, currentPath,
   images, setImages,
   texts,
+  frames,
   commitHistory,
   setSelectedImageIds, setSelectedPoints,
   setOpenPanels, setExpandedPanel,
@@ -29,7 +30,7 @@ export function useImageImport({
     const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = () => {
-      commitHistory({ paths, currentPath, images, layers, texts });
+      commitHistory({ paths, currentPath, images, layers, texts, frames });
       const count = layers.filter(l => l.itemType === layerType).length;
       const newLayer = createLayer(layerType, count);
       setLayers(prev => [newLayer, ...prev]);
@@ -67,7 +68,7 @@ export function useImageImport({
     };
     img.src = url;
     return true;
-  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, layers, viewportSize.width, viewportSize.height]);
+  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, frames, layers, viewportSize.width, viewportSize.height]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];

@@ -8,11 +8,13 @@ export function useLayers({
   paths, setPaths,
   images, setImages,
   texts, setTexts,
+  frames, setFrames,
   currentPath,
   commitHistory,
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
   selectedTextIds, setSelectedTextIds,
+  selectedFrameIds, setSelectedFrameIds,
   activeLayerId, setActiveLayerId,
   setActivePathEditId,
   mode, changeMode,
@@ -37,6 +39,12 @@ export function useLayers({
           if (text) selectedLayerIds.add(text.layerId);
       });
   }
+  if (selectedFrameIds.length > 0) {
+      selectedFrameIds.forEach(id => {
+          const frame = frames.find(f => f.id === id);
+          if (frame) selectedLayerIds.add(frame.layerId);
+      });
+  }
   selectedPoints.forEach(sp => {
       const path = paths[sp.pathIndex];
       if (path) selectedLayerIds.add(path.layerId);
@@ -51,6 +59,10 @@ export function useLayers({
     selectedTextIds.forEach(textId => {
       const text = texts.find(t => t.id === textId);
       if (text) selectedIds.add(text.layerId);
+    });
+    selectedFrameIds.forEach(frameId => {
+      const frame = frames.find(f => f.id === frameId);
+      if (frame) selectedIds.add(frame.layerId);
     });
     selectedPoints.forEach(sp => {
       const p = paths[sp.pathIndex];
@@ -78,6 +90,10 @@ export function useLayers({
         const text = texts.find(t => t.id === textId);
         return text && !targetIdSet.has(text.layerId);
       }));
+      setSelectedFrameIds(prev => prev.filter(frameId => {
+        const frame = frames.find(f => f.id === frameId);
+        return frame && !targetIdSet.has(frame.layerId);
+      }));
     }
   };
 
@@ -90,6 +106,10 @@ export function useLayers({
     selectedTextIds.forEach(textId => {
       const text = texts.find(t => t.id === textId);
       if (text) selectedIds.add(text.layerId);
+    });
+    selectedFrameIds.forEach(frameId => {
+      const frame = frames.find(f => f.id === frameId);
+      if (frame) selectedIds.add(frame.layerId);
     });
     selectedPoints.forEach(sp => {
       const p = paths[sp.pathIndex];
@@ -118,6 +138,10 @@ export function useLayers({
           const text = texts.find(t => t.id === textId);
           return text && !targetIdSet.has(text.layerId);
       }));
+      setSelectedFrameIds(prev => prev.filter(frameId => {
+          const frame = frames.find(f => f.id === frameId);
+          return frame && !targetIdSet.has(frame.layerId);
+      }));
     }
   };
 
@@ -125,16 +149,18 @@ export function useLayers({
     const pathIdsInLayer = new Set(paths.filter(path => path.layerId === layerId).map(path => path.id));
     const imageIdsInLayer = new Set(images.filter(image => image.layerId === layerId).map(image => image.id));
     const textIdsInLayer = new Set(texts.filter(text => text.layerId === layerId).map(text => text.id));
+    const frameIdsInLayer = new Set(frames.filter(frame => frame.layerId === layerId).map(frame => frame.id));
 
-    if (pathIdsInLayer.size === 0 && imageIdsInLayer.size === 0 && textIdsInLayer.size === 0) {
+    if (pathIdsInLayer.size === 0 && imageIdsInLayer.size === 0 && textIdsInLayer.size === 0 && frameIdsInLayer.size === 0) {
       setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
       return;
     }
 
-    commitHistory({ paths, currentPath, images, layers, texts });
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
     setPaths(prevPaths => prevPaths.filter(path => path.layerId !== layerId));
     setImages(prevImages => prevImages.filter(image => image.layerId !== layerId));
     setTexts(prevTexts => prevTexts.filter(text => text.layerId !== layerId));
+    setFrames(prevFrames => prevFrames.filter(frame => frame.layerId !== layerId));
     setLayers(prevLayers => prevLayers.filter(layer => layer.id !== layerId));
 
     setSelectedPoints(prev => prev.filter(sp => {
@@ -143,6 +169,7 @@ export function useLayers({
     }));
     setSelectedImageIds(prev => prev.filter(id => !imageIdsInLayer.has(id)));
     setSelectedTextIds(prev => prev.filter(id => !textIdsInLayer.has(id)));
+    setSelectedFrameIds(prev => prev.filter(id => !frameIdsInLayer.has(id)));
 
     if (activeLayerId === layerId) {
       const fallbackLayer = layers.find(layer => layer.id !== layerId);
@@ -256,6 +283,7 @@ export function useLayers({
       const newSelPoints = [];
       const newSelImages = [];
       const newSelTexts = [];
+      const newSelFrames = [];
       newSelectedLayerIds.forEach(lId => {
           const layerObj = layers.find(l => l.id === lId);
           if (!layerObj || layerObj.locked || !layerObj.visible) return;
@@ -265,6 +293,9 @@ export function useLayers({
           });
           texts.forEach(text => {
               if (text.layerId === lId) newSelTexts.push(text.id);
+          });
+          frames.forEach(frame => {
+              if (frame.layerId === lId) newSelFrames.push(frame.id);
           });
           paths.forEach((p, pIdx) => {
               if (p.layerId === lId) {
@@ -283,6 +314,7 @@ export function useLayers({
       setSelectedPoints(newSelPoints);
       setSelectedImageIds(newSelImages);
       setSelectedTextIds(newSelTexts);
+      setSelectedFrameIds(newSelFrames);
   };
 
   const moveSelectedLayerQuick = (layerId, direction) => {
@@ -292,7 +324,7 @@ export function useLayers({
     const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (nextIndex < 0 || nextIndex >= layers.length) return;
 
-    commitHistory({ paths, currentPath, images, layers, texts });
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
     setLayers(prevLayers => {
       const fromIndex = prevLayers.findIndex(layer => layer.id === layerId);
       if (fromIndex === -1) return prevLayers;

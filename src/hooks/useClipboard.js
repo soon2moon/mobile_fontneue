@@ -21,6 +21,7 @@ export function useClipboard({
   paths, setPaths,
   images, setImages,
   texts, setTexts,
+  frames,
   layers, setLayers,
   currentPath,
   commitHistory,
@@ -81,7 +82,7 @@ export function useClipboard({
     const textIdSet = new Set(textIds);
     if (pathIdSet.size === 0 && imageIdSet.size === 0 && textIdSet.size === 0) return false;
 
-    commitHistory({ paths, currentPath, images, layers, texts });
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
     const nextPaths = paths.filter(path => !pathIdSet.has(path.id));
     const nextImages = images.filter(img => !imageIdSet.has(img.id));
     const nextTexts = texts.filter(text => !textIdSet.has(text.id));
@@ -110,7 +111,7 @@ export function useClipboard({
       setActiveLayerId(nextLayer ? nextLayer.id : null);
     }
     return true;
-  }, [paths, images, texts, layers, currentPath, commitHistory, activeLayerId]);
+  }, [paths, images, texts, frames, layers, currentPath, commitHistory, activeLayerId]);
 
   const copyCurrentSelection = useCallback(() => {
     const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(paths, selectedPoints);
@@ -177,7 +178,7 @@ export function useClipboard({
       hOut: pt.hOut ? { x: pt.hOut.x + dx, y: pt.hOut.y + dy } : pt.hOut
     });
 
-    commitHistory({ paths, currentPath, images, layers, texts });
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
 
     const newLayers = [];
     const newPaths = [];
@@ -268,7 +269,7 @@ export function useClipboard({
     setBgAction(null);
     setBgInitialState(null);
     return true;
-  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, layers]);
+  }, [activeLayerId, lockedLayerIds, commitHistory, paths, currentPath, images, texts, frames, layers]);
 
   const duplicateCurrentSelection = useCallback(() => {
     const effectiveSelection = activePathEditId ? selectedPoints : expandPathSelectionToGroups(paths, selectedPoints);

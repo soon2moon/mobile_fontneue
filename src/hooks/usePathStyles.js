@@ -22,6 +22,7 @@ export function usePathStyles({
   currentPathInfo,
   images,
   texts,
+  frames,
   layers,
   selectedPoints,
   commitHistory,
@@ -85,7 +86,7 @@ export function usePathStyles({
 
     if (hasSelectedPaths) {
       if (!transient) {
-        commitHistory({ paths, currentPath, images, layers, texts });
+        commitHistory({ paths, currentPath, images, layers, texts, frames });
       }
       const selectedSet = new Set(selectedPathIndices);
       setPaths(prev => prev.map((path, idx) => (

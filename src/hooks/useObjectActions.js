@@ -24,11 +24,13 @@ export function useObjectActions({
   currentPathInfo, setCurrentPathInfo,
   images, setImages,
   texts, setTexts,
+  frames, setFrames,
   layers, setLayers,
   commitHistory,
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
   selectedTextIds, setSelectedTextIds,
+  selectedFrameIds, setSelectedFrameIds,
   activeLayerId, setActiveLayerId,
   setActivePathEditId,
   setActiveHandle,
@@ -51,8 +53,8 @@ export function useObjectActions({
   isPathLocked
 }) {
   const deleteSelectedItems = useCallback(() => {
-    if (selectedPoints.length === 0 && selectedImageIds.length === 0 && selectedTextIds.length === 0) return;
-    commitHistory({ paths, currentPath, images, layers, texts });
+    if (selectedPoints.length === 0 && selectedImageIds.length === 0 && selectedTextIds.length === 0 && selectedFrameIds.length === 0) return;
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
 
     let layerIdsToCheck = new Set();
     let newPaths = paths.map(p => ({ ...p, points: [...p.points] }));
@@ -104,6 +106,16 @@ export function useObjectActions({
         setTexts(prev => prev.filter(text => !selectedTextIds.includes(text.id)));
     }
 
+    // Delete frames
+    if (selectedFrameIds.length > 0) {
+        frames.forEach(frame => {
+            if (selectedFrameIds.includes(frame.id)) {
+                layerIdsToCheck.add(frame.layerId);
+            }
+        });
+        setFrames(prev => prev.filter(frame => !selectedFrameIds.includes(frame.id)));
+    }
+
     const finalPaths = newPaths.filter(p => p.points.length > 0);
     setPaths(finalPaths);
 
@@ -115,7 +127,8 @@ export function useObjectActions({
                 const hasPaths = finalPaths.some(p => p.layerId === l.id);
                 const hasImages = images.some(img => img.layerId === l.id && !selectedImageIds.includes(img.id));
                 const hasTexts = texts.some(text => text.layerId === l.id && !selectedTextIds.includes(text.id));
-                return hasPaths || hasImages || hasTexts;
+                const hasFrames = frames.some(frame => frame.layerId === l.id && !selectedFrameIds.includes(frame.id));
+                return hasPaths || hasImages || hasTexts || hasFrames;
             });
             if (activeLayerId && layerIdsToCheck.has(activeLayerId) && !remainingLayers.some(l => l.id === activeLayerId)) {
                 setActiveLayerId(remainingLayers.length > 0 ? remainingLayers[0].id : null);
@@ -131,7 +144,8 @@ export function useObjectActions({
     setPointAction(null);
     setSelectedImageIds([]);
     setSelectedTextIds([]);
-  }, [paths, currentPath, images, texts, layers, selectedPoints, selectedImageIds, selectedTextIds, activeLayerId, commitHistory]);
+    setSelectedFrameIds([]);
+  }, [paths, currentPath, images, texts, frames, layers, selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds, activeLayerId, commitHistory]);
 
   const activatePathEditSession = (nextPaths, pathId) => {
     const pathIndex = nextPaths.findIndex(p => p.id === pathId);
@@ -142,6 +156,7 @@ export function useObjectActions({
     setActivePathEditId(pathId);
     setSelectedImageIds([]);
     setSelectedTextIds([]);
+    setSelectedFrameIds([]);
     setSelectedPoints([]);
     setActiveLayerId(path.layerId);
     setActiveHandle(null);
@@ -153,7 +168,7 @@ export function useObjectActions({
 
   const finishPath = (isClosed = false, enterDirectEdit = false) => {
     if (currentPath.length > 0) {
-      commitHistory({ paths, currentPath, images, layers, texts });
+      commitHistory({ paths, currentPath, images, layers, texts, frames });
       let targetLayerId = currentPathInfo?.layerId;
       let layerType = currentPathInfo?.itemType || 'vector';
 
@@ -239,11 +254,12 @@ export function useObjectActions({
   };
 
   const clearCanvas = () => {
-    commitHistory({ paths, currentPath, images, layers, texts });
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
     setPaths([]);
     setCurrentPath([]);
     setImages([]);
     setTexts([]);
+    setFrames([]);
     setLayers([]);
     setGhostPoint(null);
     setActivePathEditId(null);
@@ -257,11 +273,12 @@ export function useObjectActions({
     setCurrentPathInfo(null);
     setSelectedImageIds([]);
     setSelectedTextIds([]);
+    setSelectedFrameIds([]);
     clearPendingTouchDrawAction();
   };
 
   const correctPathDirections = () => {
-    commitHistory({ paths, currentPath, images, layers, texts });
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
     setPaths(prev => correctPathDirectionsTransform(prev, selectedPoints, isPathVisible, isPathLocked));
   };
 

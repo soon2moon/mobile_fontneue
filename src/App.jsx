@@ -119,6 +119,7 @@ export default function App() {
     paths, setPaths,
     images, setImages,
     texts, setTexts,
+    frames, setFrames,
     currentPath, setCurrentPath,
     currentPathInfo, setCurrentPathInfo
   } = useObjects();
@@ -130,6 +131,7 @@ export default function App() {
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
     selectedTextIds, setSelectedTextIds,
+    selectedFrameIds, setSelectedFrameIds,
     activePathEditId, setActivePathEditId
   } = useSelection();
   const [activeHandle, setActiveHandle] = useState(null);
@@ -152,6 +154,7 @@ export default function App() {
     currentPath, setCurrentPath,
     images, setImages,
     texts, setTexts,
+    frames, setFrames,
     layers, setLayers,
     setIsDrawingCurve,
     setDrawHover,
@@ -170,6 +173,7 @@ export default function App() {
     paths, setPaths,
     images, setImages,
     texts, setTexts,
+    frames, setFrames,
     currentPath, setCurrentPath,
     currentPathInfo, setCurrentPathInfo,
     pathStyleDefaults, setPathStyleDefaults,
@@ -309,6 +313,7 @@ export default function App() {
     paths, currentPath,
     images,
     texts, setTexts,
+    frames,
     layers, setLayers,
     commitHistory,
     activeLayerId, setActiveLayerId,
@@ -325,11 +330,13 @@ export default function App() {
     currentPathInfo, setCurrentPathInfo,
     images, setImages,
     texts, setTexts,
+    frames, setFrames,
     layers, setLayers,
     commitHistory,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
     selectedTextIds, setSelectedTextIds,
+    selectedFrameIds, setSelectedFrameIds,
     activeLayerId, setActiveLayerId,
     setActivePathEditId,
     setActiveHandle,
@@ -413,6 +420,7 @@ export default function App() {
     activeHandle,
     activeLayerId,
     activePathEditId,
+    frames,
     beginEditingText,
     beginNewTextAt,
     beginPendingTouchDrawAction,
@@ -551,6 +559,7 @@ export default function App() {
       setActiveHandle(null);
       setSelectionBox(null);
       setSelectedImageIds([]);
+      setSelectedFrameIds([]);
       setSelectedTextIds([]);
       setBgAction(null);
       setPointAction(null);
@@ -568,6 +577,7 @@ export default function App() {
     paths, currentPath,
     images, setImages,
     texts,
+    frames,
     commitHistory,
     setSelectedImageIds, setSelectedPoints,
     setOpenPanels, setExpandedPanel,
@@ -583,6 +593,7 @@ export default function App() {
     paths, setPaths,
     images, setImages,
     texts, setTexts,
+    frames,
     layers, setLayers,
     currentPath,
     commitHistory,
@@ -608,11 +619,13 @@ export default function App() {
     paths, setPaths,
     images, setImages,
     texts, setTexts,
+    frames, setFrames,
     currentPath,
     commitHistory,
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
     selectedTextIds, setSelectedTextIds,
+    selectedFrameIds, setSelectedFrameIds,
     activeLayerId, setActiveLayerId,
     setActivePathEditId,
     mode, changeMode,
@@ -669,6 +682,7 @@ export default function App() {
     currentPathInfo,
     images,
     texts,
+    frames,
     layers,
     selectedPoints,
     commitHistory,
@@ -703,6 +717,11 @@ export default function App() {
     if (!activeText) return;
     setTexts(prev => prev.map(text => text.id === activeText.id ? { ...text, ...updates } : text));
   };
+  const activeFrame = frames.find(frame => selectedFrameIds.includes(frame.id));
+  const updateActiveFrame = (updates) => {
+    if (!activeFrame) return;
+    setFrames(prev => prev.map(frame => frame.id === activeFrame.id ? { ...frame, ...updates } : frame));
+  };
 
   const inspector = useInspectorModel({
     selectedPathObjects: pathStyles.selectedPathObjects,
@@ -720,7 +739,7 @@ export default function App() {
   const canExportSelection = hasActiveSelection;
   const selectedLayersInStackOrder = layers.filter(layer => selectedLayerIds.has(layer.id));
   const layerIndexById = new Map(layers.map((layer, index) => [layer.id, index]));
-  const { pathsByLayerId, imagesByLayerId, textsByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId } = groupContentByLayer(paths, images, texts);
+  const { pathsByLayerId, imagesByLayerId, textsByLayerId, framesByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId, frameCountByLayerId } = groupContentByLayer(paths, images, texts, frames);
   const compositeFillGroups = buildCompositeFillGroups({
     paths,
     layers,
@@ -760,6 +779,7 @@ export default function App() {
     activeEditGroupId,
     activeImage,
     activeLayerId,
+    activeFrame,
     activeText,
     beginEditingText,
     canExportSelection,
@@ -821,9 +841,11 @@ export default function App() {
     selectedImageIds,
     selectedLayersInStackOrder,
     selectedPoints,
+    selectedFrameIds,
     selectedTextIds,
     selectionBox,
     setActiveLayerId,
+    setSelectedFrameIds,
     setGridConfig,
     setExportFormat,
     setExportScope,
@@ -842,7 +864,11 @@ export default function App() {
     textCountByLayerId,
     texts,
     textsByLayerId,
+    frameCountByLayerId,
+    frames,
+    framesByLayerId,
     toggleMobileShapePanel,
+    updateActiveFrame,
     updateActiveImage,
     updateActiveText,
     updateDraft,
