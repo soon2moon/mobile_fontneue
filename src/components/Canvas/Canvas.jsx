@@ -12,7 +12,7 @@ import TextObject from './TextObject';
 export default function Canvas() {
   const {
 activeEditGroupId,
-    compositeFillPathD,
+    compositeFillGroups,
     currentPath,
     currentPathInfo,
     defaultStrokeEnabled,
@@ -158,14 +158,15 @@ activeEditGroupId,
             </g>
           )}
 
-          {/* Global Composite Fill (winding-based interpolation across all visible layers) */}
-          {compositeFillPathD && (
+          {/* Global Composite Fills (one winding-based path per fill color, layer paint order) */}
+          {compositeFillGroups.map(group => (
             <path
-              d={compositeFillPathD}
-              fill={THEME.main}
+              key={group.color}
+              d={group.d}
+              fill={group.color}
               fillRule="nonzero"
             />
-          )}
+          ))}
 
           {/* Finished Paths and Layer-bound Images */}
           {layers.slice().reverse().map(layer => {

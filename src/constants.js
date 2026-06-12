@@ -3,6 +3,7 @@ import { THEME } from './theme';
 export const DEFAULT_STROKE_WIDTH = 1.5;
 export const DEFAULT_STROKE_COLOR = THEME.main;
 export const DEFAULT_STROKE_ALIGN = 'center';
+export const DEFAULT_FILL_COLOR = THEME.main;
 
 export const SNAP_RADIUS = 10;
 export const GRID_SIZE = 50;

@@ -1,8 +1,9 @@
-import { getPathStrokeStyle } from '../lib/paths';
+import { getPathStrokeStyle, getPathFillStyle } from '../lib/paths';
 import {
   DEFAULT_STROKE_WIDTH,
   DEFAULT_STROKE_COLOR,
-  DEFAULT_STROKE_ALIGN
+  DEFAULT_STROKE_ALIGN,
+  DEFAULT_FILL_COLOR
 } from '../constants';
 import {
   normalizeStrokeWidth,
@@ -56,12 +57,19 @@ export function useInspectorModel({
   // they affect the selected paths only).
   const showsPathStyle = kind === 'paths' || kind === 'none' || (kind === 'mixed' && hasPaths);
 
+  const fillStyles = selectedPathObjects.map(getPathFillStyle);
   const fill = showsPathStyle
     ? {
         enabled: hasPaths
           ? selectedPathObjects.every(path => !!path.fillEnabled)
           : !!pathStyleDefaults.fillEnabled,
-        indeterminate: hasPaths && distinct(selectedPathObjects.map(path => !!path.fillEnabled))
+        color: hasPaths
+          ? fillStyles[0].fillColor
+          : normalizeStrokeColor(pathStyleDefaults.fillColor, DEFAULT_FILL_COLOR),
+        indeterminate: {
+          enabled: hasPaths && distinct(selectedPathObjects.map(path => !!path.fillEnabled)),
+          color: hasPaths && distinct(fillStyles.map(style => style.fillColor))
+        }
       }
     : null;
 

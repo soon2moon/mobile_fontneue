@@ -1,8 +1,7 @@
 import { Layers, ChevronUp } from 'lucide-react';
 import LayerIcon from '../../ui/LayerIcon';
 import { useEditor } from '../../state/EditorContext';
-import { THEME } from '../../theme';
-import { getPathStrokeStyle, pointsToPath } from '../../lib/paths';
+import { getPathStrokeStyle, getPathFillStyle, pointsToPath } from '../../lib/paths';
 import TextObject from '../Canvas/TextObject';
 
 // Floating "Quick Layer Reorder" sheet shown while multiple layers are
@@ -119,7 +118,7 @@ activeLayerId,
                                 <path
                                   key={`quick-layer-path-${path.id}-${index}`}
                                   d={pathD}
-                                  fill={path.fillEnabled ? THEME.main : 'none'}
+                                  fill={path.fillEnabled ? getPathFillStyle(path).fillColor : 'none'}
                                   stroke={pathStroke.strokeEnabled ? pathStroke.strokeColor : 'none'}
                                   strokeWidth={pathStroke.strokeEnabled ? Math.max(0.8, pathStroke.strokeWidth) : 0}
                                   strokeLinecap="round"

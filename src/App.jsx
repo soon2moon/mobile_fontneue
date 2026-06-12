@@ -5,13 +5,15 @@ import {
   DEFAULT_STROKE_WIDTH,
   DEFAULT_STROKE_COLOR,
   DEFAULT_STROKE_ALIGN,
+  DEFAULT_FILL_COLOR,
   GRID_SIZE,
   MIN_GRID_SIZE,
   MIN_CIRCULAR_STEP,
   MAX_CIRCULAR_STEP,
   DEFAULT_CIRCULAR_STEP
 } from './constants';
-import { pointsToPath, resolvePathEditGroupId } from './lib/paths';
+import { resolvePathEditGroupId } from './lib/paths';
+import { buildCompositeFillGroups } from './lib/compositeFill';
 import {
   computeHitRadii,
   getBgHit as getBgHitAtCoords,
@@ -81,6 +83,7 @@ export default function App() {
   const [showNodes, setShowNodes] = useState(true);
   const [pathStyleDefaults, setPathStyleDefaults] = useState({
     fillEnabled: false,
+    fillColor: DEFAULT_FILL_COLOR,
     strokeEnabled: true,
     strokeWidth: DEFAULT_STROKE_WIDTH,
     strokeColor: DEFAULT_STROKE_COLOR,
@@ -724,10 +727,11 @@ export default function App() {
   const selectedLayersInStackOrder = layers.filter(layer => selectedLayerIds.has(layer.id));
   const layerIndexById = new Map(layers.map((layer, index) => [layer.id, index]));
   const { pathsByLayerId, imagesByLayerId, textsByLayerId, pathCountByLayerId, imageCountByLayerId, textCountByLayerId } = groupContentByLayer(paths, images, texts);
-  const compositeFillPathD = paths
-    .filter(path => path.isClosed && path.fillEnabled && visibleLayerIds.has(path.layerId))
-    .map(path => pointsToPath(path.points, path.isClosed))
-    .join(' ');
+  const compositeFillGroups = buildCompositeFillGroups({
+    paths,
+    layers,
+    isPathVisible: path => visibleLayerIds.has(path.layerId)
+  });
   const toggleMobileShapePanel = () => {
     const shouldOpen = mode !== 'shape' || !mobileShapePanelOpen;
     closeAllPanels();
@@ -779,7 +783,7 @@ export default function App() {
     canExportSelection,
     changeMode,
     commitTextEditing,
-    compositeFillPathD,
+    compositeFillGroups,
     copyCurrentSelection,
     currentPath,
     currentPathInfo,

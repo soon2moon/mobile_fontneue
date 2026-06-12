@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import {
   DEFAULT_STROKE_WIDTH,
   DEFAULT_STROKE_COLOR,
-  DEFAULT_STROKE_ALIGN
+  DEFAULT_STROKE_ALIGN,
+  DEFAULT_FILL_COLOR
 } from '../constants';
 import { clonePoint, reversePathPoints, resolvePathEditGroupId } from '../lib/paths';
 import {
@@ -180,6 +181,10 @@ export function useObjectActions({
         layerId: targetLayerId,
         itemType: layerType,
         fillEnabled: currentPathInfo?.fillEnabled ?? pathStyleDefaults.fillEnabled,
+        fillColor: normalizeStrokeColor(
+          currentPathInfo?.fillColor,
+          normalizeStrokeColor(pathStyleDefaults.fillColor, DEFAULT_FILL_COLOR)
+        ),
         strokeEnabled: currentPathInfo?.strokeEnabled ?? pathStyleDefaults.strokeEnabled,
         strokeWidth: normalizeStrokeWidth(
           currentPathInfo?.strokeWidth,

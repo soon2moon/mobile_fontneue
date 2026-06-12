@@ -1,13 +1,13 @@
 import { Type } from 'lucide-react';
 import ConfigInput from '../../ui/inputs/ConfigInput';
+import ColorControl from '../../ui/ColorControl';
 import { MIN_FONT_SIZE } from '../../lib/objectModel';
 import { useEditor } from '../../state/EditorContext';
 
-// Text-specific properties for the active text object. The fill color
-// control lands here in 7C.
+// Text-specific properties for the active text object.
 export default function TextSection() {
   const { inspector } = useEditor();
-  const { text, apply } = inspector;
+  const { text, apply, applyTransient } = inspector;
 
   return (
     <div className="flex flex-col gap-2">
@@ -20,6 +20,15 @@ export default function TextSection() {
           onChange={v => apply({ fontSize: Math.max(MIN_FONT_SIZE, v) })}
           title="Font Size"
         />
+        <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2">
+          <ColorControl
+            value={text.fill}
+            label="Text Color"
+            onChange={(color) => apply({ fill: color })}
+            onChangeTransient={(color) => applyTransient({ fill: color })}
+          />
+          <span className="text-xs text-[#667085] select-none">Color</span>
+        </div>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ export function useExport({ layers, paths, images, texts, selectedPoints, select
   const handleExport = useCallback(async () => {
     if (isExporting) return;
     const items = collectExportItems(exportScope, { layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds });
-    const bundle = buildExportSvgBundle(items);
+    const bundle = buildExportSvgBundle({ ...items, layers });
     if (!bundle) return;
 
     setIsExporting(true);

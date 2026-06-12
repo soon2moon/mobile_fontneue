@@ -79,6 +79,9 @@ export function usePathStyles({
     if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'strokeAlign')) {
       normalizedUpdates.strokeAlign = normalizeStrokeAlign(normalizedUpdates.strokeAlign, pathStyleDefaults.strokeAlign);
     }
+    if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'fillColor')) {
+      normalizedUpdates.fillColor = normalizeStrokeColor(normalizedUpdates.fillColor, pathStyleDefaults.fillColor);
+    }
 
     if (hasSelectedPaths) {
       if (!transient) {

@@ -3,6 +3,7 @@ import {
   normalizeStrokeColor,
   normalizeStrokeAlign
 } from './stroke';
+import { DEFAULT_FILL_COLOR } from '../constants';
 
 export const pointsToPath = (points, isClosed) => {
   if (!points || points.length === 0) return '';
@@ -135,6 +136,14 @@ export const getPathStrokeStyle = (path, defaults) => ({
   strokeWidth: normalizeStrokeWidth(path?.strokeWidth, defaults.strokeWidth),
   strokeColor: normalizeStrokeColor(path?.strokeColor, defaults.strokeColor),
   strokeAlign: normalizeStrokeAlign(path?.strokeAlign, defaults.strokeAlign)
+});
+
+// Fill resolution falls back to the fixed DEFAULT_FILL_COLOR (not the live
+// next-path defaults) so canvas, export, and layer previews always agree and
+// paths from before fillColor existed keep rendering the original color.
+export const getPathFillStyle = (path) => ({
+  fillEnabled: !!path?.fillEnabled,
+  fillColor: normalizeStrokeColor(path?.fillColor, DEFAULT_FILL_COLOR)
 });
 
 export const resolvePathEditGroupId = (path) => (

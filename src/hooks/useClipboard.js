@@ -3,6 +3,7 @@ import {
   DEFAULT_STROKE_WIDTH,
   DEFAULT_STROKE_COLOR,
   DEFAULT_STROKE_ALIGN,
+  DEFAULT_FILL_COLOR,
   CLIPBOARD_PAYLOAD_TYPE
 } from '../constants';
 import { clonePoint, resolvePathEditGroupId, expandPathSelectionToGroups } from '../lib/paths';
@@ -182,6 +183,7 @@ export function useClipboard({
         itemType: layerType,
         points: (path.points || []).map(clonePoint),
         fillEnabled: !!path.fillEnabled,
+        fillColor: normalizeStrokeColor(path.fillColor, DEFAULT_FILL_COLOR),
         strokeEnabled: path.strokeEnabled !== false,
         strokeWidth: normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH),
         strokeColor: normalizeStrokeColor(path.strokeColor, DEFAULT_STROKE_COLOR),

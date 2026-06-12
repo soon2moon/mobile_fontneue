@@ -1,6 +1,7 @@
 import { THEME } from '../theme';
 import { DEFAULT_STROKE_WIDTH, DEFAULT_STROKE_COLOR } from '../constants';
 import { pointsToPath } from './paths';
+import { buildCompositeFillGroups } from './compositeFill';
 import { normalizeStrokeWidth, normalizeStrokeColor } from './stroke';
 import { escapeXml } from './svg';
 import { getTextLocalLayout } from './textMeasure';
@@ -31,7 +32,9 @@ export function collectExportItems(scope, { layers, paths, images, texts = [], s
 
 // Build a standalone SVG document tightly cropped around the given items.
 // Returns { svg, width, height } or null when there is nothing to export.
-export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = [] }) {
+// Stacking matches the canvas: per-color composite fills at the bottom, then
+// images, texts, and stroke-only path outlines on top.
+export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = [], layers = [] }) {
   if (exportPaths.length === 0 && exportImages.length === 0 && exportTexts.length === 0) return null;
 
   let minX = Infinity;
@@ -135,16 +138,21 @@ export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = 
     return `<text font-family="${escapeXml(text.fontFamily)}" font-size="${text.fontSize}" font-weight="${text.fontWeight}" fill="${fill}" opacity="${opacity}" xml:space="preserve" transform="translate(${text.x} ${text.y}) rotate(${rotation})">${tspans}</text>`;
   }).join('');
 
+  // Same per-color winding groups as the canvas, so donut holes survive and
+  // multi-color stacking matches what the user sees.
+  const fillMarkup = buildCompositeFillGroups({ paths: exportPaths, layers, isPathVisible: () => true })
+    .map(group => `<path d="${escapeXml(group.d)}" fill="${group.color}" fill-rule="nonzero" />`)
+    .join('');
+
   const pathMarkup = exportPaths.map(path => {
+    if (path.strokeEnabled === false) return '';
     const d = pointsToPath(path.points, path.isClosed);
-    const fill = path.fillEnabled ? THEME.main : 'none';
     const strokeColor = normalizeStrokeColor(path.strokeColor, DEFAULT_STROKE_COLOR);
-    const stroke = path.strokeEnabled === false ? 'none' : strokeColor;
-    const strokeWidthValue = stroke === 'none' ? 0 : normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH);
-    return `<path d="${escapeXml(d)}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
+    const strokeWidthValue = normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH);
+    return `<path d="${escapeXml(d)}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
   }).join('');
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${imageMarkup}${textMarkup}${pathMarkup}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${fillMarkup}${imageMarkup}${textMarkup}${pathMarkup}</g></svg>`;
   return { svg, width, height };
 }
 
