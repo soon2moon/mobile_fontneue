@@ -18,6 +18,7 @@ import {
   Star,
   Minus,
   ChevronUp,
+  Frame as FrameIcon,
   Download,
   SlidersHorizontal,
   Type
@@ -117,6 +118,14 @@ applyPathStyle,
                </div>
             </Popover>
           </div>
+
+          <ToolButton
+            active={mode === 'frame'}
+            onClick={() => changeMode('frame')}
+            icon={<FrameIcon size={20} />}
+            label="Frame"
+            hotkey="F"
+          />
 
           <ToolButton
             active={mode === 'text'}

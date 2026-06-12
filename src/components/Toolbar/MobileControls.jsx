@@ -21,6 +21,7 @@ import {
   Star,
   Minus,
   ChevronUp,
+  Frame as FrameIcon,
   Download,
   SlidersHorizontal,
   Type
@@ -282,6 +283,7 @@ anyMobileOverlayOpen,
                   icon={getShapeToolIcon(16)}
                   label="Shape"
                 />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'frame'} onClick={() => changeMode('frame')} icon={<FrameIcon size={16} />} label="Frame" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Hand" />
                 <MobileToolButton
                   variant="toolbar"

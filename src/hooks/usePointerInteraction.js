@@ -38,7 +38,7 @@ import {
 import { generateEditGroupId } from '../lib/svg';
 import { generateShapePath } from '../lib/shapes';
 import { createLayer } from '../lib/layers';
-import { MIN_FONT_SIZE } from '../lib/objectModel';
+import { MIN_FONT_SIZE, createFrameObject } from '../lib/objectModel';
 import { getTextLocalLayout } from '../lib/textMeasure';
 
 // The pointer/gesture engine: pen, pencil, shape, select, edit, pan tools;
@@ -145,6 +145,11 @@ activeEditGroupId,
     svgRef,
     texts,
     frames,
+    setFrames,
+    drawingFrame,
+    setDrawingFrame,
+    setSelectedFrameIds,
+    changeMode,
     viewportSize,
     zoom,
     zoomRef
@@ -248,7 +253,7 @@ activeEditGroupId,
     // non-pan press; pointer capture guarantees the matching up/cancel).
     setIsCanvasWorking(true);
 
-    if (['shape', 'pencil', 'draw', 'text'].includes(mode)) {
+    if (['shape', 'pencil', 'draw', 'text', 'frame'].includes(mode)) {
         if (activeLayerId && lockedLayerIds.has(activeLayerId)) return;
     }
 
@@ -268,7 +273,7 @@ activeEditGroupId,
     if (
       isMobile
       && (e.pointerType === 'touch' || e.pointerType === 'pen')
-      && !['draw', 'pencil', 'shape', 'text'].includes(mode)
+      && !['draw', 'pencil', 'shape', 'text', 'frame'].includes(mode)
     ) {
       clearMobileLongPress();
       const hitText = findTopTextAtCoords(coords);
@@ -311,6 +316,11 @@ activeEditGroupId,
 
     if (mode === 'shape') {
       setDrawingShape({ startX: snappedCoords.x, startY: snappedCoords.y, currentX: snappedCoords.x, currentY: snappedCoords.y, shiftKey: e.shiftKey });
+      return;
+    }
+
+    if (mode === 'frame') {
+      setDrawingFrame({ startX: snappedCoords.x, startY: snappedCoords.y, currentX: snappedCoords.x, currentY: snappedCoords.y });
       return;
     }
 
@@ -1386,6 +1396,12 @@ activeEditGroupId,
       return;
     }
 
+    if (mode === 'frame' && drawingFrame) {
+      if (!dragThresholdPassed) return;
+      setDrawingFrame(prev => ({ ...prev, currentX: snappedCoords.x, currentY: snappedCoords.y }));
+      return;
+    }
+
     if (pointAction) {
       if (!dragThresholdPassed) return;
       hasDraggedRef.current = true;
@@ -2197,7 +2213,7 @@ activeEditGroupId,
       && longPressState.pointerId != null
       && longPressState.pointerId === (e.pointerId ?? null)
       && !longPressState.triggered
-      && !['draw', 'pencil', 'shape', 'text'].includes(mode);
+      && !['draw', 'pencil', 'shape', 'text', 'frame'].includes(mode);
     clearMobileLongPress();
     if (wasLongPressAction) {
       setIsPanning(false);
@@ -2329,6 +2345,43 @@ activeEditGroupId,
           setBgInitialState(null);
         }
         setDrawingShape(null);
+      }
+      return;
+    }
+    if (mode === 'frame') {
+      if (drawingFrame) {
+        const dragDistance = Math.hypot(drawingFrame.currentX - drawingFrame.startX, drawingFrame.currentY - drawingFrame.startY);
+        const isClick = dragDistance <= 2 / zoom;
+        const frameWidth = isClick ? 100 : Math.abs(drawingFrame.currentX - drawingFrame.startX);
+        const frameHeight = isClick ? 100 : Math.abs(drawingFrame.currentY - drawingFrame.startY);
+        if (frameWidth >= 1 && frameHeight >= 1) {
+          commitHistory({ paths, currentPath, images, layers, texts, frames });
+          const count = layers.filter(l => l.itemType === 'frame').length;
+          const newLayer = createLayer('frame', count);
+          const newFrame = createFrameObject({
+            x: isClick ? drawingFrame.startX : (drawingFrame.startX + drawingFrame.currentX) / 2,
+            y: isClick ? drawingFrame.startY : (drawingFrame.startY + drawingFrame.currentY) / 2,
+            width: frameWidth,
+            height: frameHeight,
+            name: newLayer.name,
+            layerId: newLayer.id
+          });
+          setLayers(prev => [newLayer, ...prev]);
+          setFrames(prev => [...prev, newFrame]);
+          setActiveLayerId(newLayer.id);
+          setActivePathEditId(null);
+          setSelectedPoints([]);
+          setSelectedImageIds([]);
+          setSelectedTextIds([]);
+          setSelectedFrameIds([newFrame.id]);
+          setActiveHandle(null);
+          setSelectionBox(null);
+          setPointAction(null);
+          setBgAction(null);
+          setBgInitialState(null);
+          changeMode('edit');
+        }
+        setDrawingFrame(null);
       }
       return;
     }

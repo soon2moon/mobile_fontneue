@@ -93,11 +93,18 @@ export default function App() {
   });
   // Quiet UI: true while a non-pan pointer gesture is working the canvas.
   const [isCanvasWorking, setIsCanvasWorking] = useState(false);
+  // Stable forwarder so hooks created before changeMode's declaration can
+  // switch modes (same pattern as commitTextEditingRef).
+  const changeModeRef = useRef(null);
+  const changeModeStable = useCallback((nextMode) => changeModeRef.current?.(nextMode), []);
   
   // Shape Tool State
   const [shapeType, setShapeType] = useState('rectangle');
   const [showShapeMenu, setShowShapeMenu] = useState(false);
   const [drawingShape, setDrawingShape] = useState(null);
+
+  // Frame Tool State
+  const [drawingFrame, setDrawingFrame] = useState(null);
   
   // Grid State
   const [gridConfig, setGridConfig] = useState({
@@ -421,6 +428,11 @@ export default function App() {
     activeLayerId,
     activePathEditId,
     frames,
+    setFrames,
+    drawingFrame,
+    setDrawingFrame,
+    setSelectedFrameIds,
+    changeMode: changeModeStable,
     beginEditingText,
     beginNewTextAt,
     beginPendingTouchDrawAction,
@@ -565,6 +577,7 @@ export default function App() {
       setPointAction(null);
     }
   };
+  changeModeRef.current = changeMode;
 
   const {
     fileInputRef,
@@ -648,6 +661,7 @@ export default function App() {
     selectedPoints, setSelectedPoints,
     selectedImageIds, setSelectedImageIds,
     selectedTextIds, setSelectedTextIds,
+    selectedFrameIds, setSelectedFrameIds,
     currentPath, setCurrentPath,
     pastPaths, futurePaths,
     paths, images, layers,
@@ -666,6 +680,7 @@ export default function App() {
     setDrawHover,
     setCurrentPathInfo,
     setDrawingShape,
+    setDrawingFrame,
     toggleUiHidden,
     setActiveHandle,
     setSelectionBox,
@@ -793,6 +808,7 @@ export default function App() {
     drawHover,
     editingText,
     editingTextId,
+    drawingFrame,
     drawingShape,
     duplicateCurrentSelection,
     dynamicCursor,

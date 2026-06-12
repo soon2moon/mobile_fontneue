@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 
-// Global hotkeys, Figma-aligned: tools (P pen, Shift+P pencil, V move,
+// Global hotkeys, Figma-aligned: tools (P pen, Shift+P pencil, V move, F frame,
 // H hand, R/O/L shapes, T text, N nodes, U place image), copy/cut,
 // undo/redo, Escape (finish/cancel/deselect), Delete, and hold-Space
 // temporary panning (restores the previous mode on release/blur).
@@ -15,6 +15,7 @@ export function useKeyboardShortcuts({
   selectedPoints, setSelectedPoints,
   selectedImageIds, setSelectedImageIds,
   selectedTextIds, setSelectedTextIds,
+  selectedFrameIds, setSelectedFrameIds,
   currentPath, setCurrentPath,
   pastPaths, futurePaths,
   paths, images, layers,
@@ -33,6 +34,7 @@ export function useKeyboardShortcuts({
   setDrawHover,
   setCurrentPathInfo,
   setDrawingShape,
+  setDrawingFrame,
   toggleUiHidden,
   setActiveHandle,
   setSelectionBox,
@@ -97,6 +99,10 @@ export function useKeyboardShortcuts({
         changeMode('edit');
         return;
       }
+      if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
+        changeMode('frame');
+        return;
+      }
       if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey) {
         changeMode('pan');
         return;
@@ -157,6 +163,9 @@ export function useKeyboardShortcuts({
           }
         } else if (mode === 'shape') {
           setDrawingShape(null);
+        } else if (mode === 'frame') {
+          setDrawingFrame(null);
+          changeMode('edit');
         } else if (mode === 'text') {
           changeMode('edit');
         } else if (mode === 'edit') {
@@ -173,6 +182,7 @@ export function useKeyboardShortcuts({
           setSelectionBox(null);
           setSelectedImageIds([]);
           setSelectedTextIds([]);
+          setSelectedFrameIds([]);
           setPointAction(null);
         }
         return;
@@ -180,7 +190,7 @@ export function useKeyboardShortcuts({
 
       if ((e.key === 'Backspace' || e.key === 'Delete')) {
         if (editingLayerId) return;
-        if (selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0) {
+        if (selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0 || selectedFrameIds.length > 0) {
           e.preventDefault();
           deleteSelectedItems();
         }
@@ -220,5 +230,5 @@ export function useKeyboardShortcuts({
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [mode, selectedPoints, selectedImageIds, selectedTextIds, currentPath, pastPaths, futurePaths, paths, images, layers, handleUndo, handleRedo, commitHistory, deleteSelectedItems, copyCurrentSelection, cutCurrentSelection, editingLayerId, activePathEditId]);
+  }, [mode, selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds, currentPath, pastPaths, futurePaths, paths, images, layers, handleUndo, handleRedo, commitHistory, deleteSelectedItems, copyCurrentSelection, cutCurrentSelection, editingLayerId, activePathEditId]);
 }

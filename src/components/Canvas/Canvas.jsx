@@ -19,11 +19,13 @@ activeEditGroupId,
     defaultStrokeRenderColor,
     defaultStrokeRenderWidth,
     drawHover,
+    drawingFrame,
     drawingShape,
     dynamicCursor,
     editingTextId,
     effectiveCircularStep,
     effectiveGridSize,
+    frames,
     ghostPoint,
     gridConfig,
     handleCanvasContextMenu,
@@ -45,6 +47,7 @@ activeEditGroupId,
     paths,
     pointAction,
     selBBox,
+    selectedFrameIds,
     selectedImageIds,
     selectedPoints,
     selectionBox,
@@ -157,6 +160,38 @@ activeEditGroupId,
               })}
             </g>
           )}
+
+          {/* Frames (artboards) paint below ALL content; names stay screen-sized */}
+          {layers.slice().reverse().map(layer => {
+            if (!layer.visible) return null;
+            return (
+              <g key={`frame-layer-${layer.id}`}>
+                {frames.map(frame => {
+                  if (frame.layerId !== layer.id) return null;
+                  return (
+                    <g key={`frame-${frame.id}`} pointerEvents="none">
+                      <rect
+                        x={frame.x - frame.width / 2}
+                        y={frame.y - frame.height / 2}
+                        width={frame.width}
+                        height={frame.height}
+                        fill={frame.fill}
+                      />
+                      <text
+                        x={frame.x - frame.width / 2}
+                        y={frame.y - frame.height / 2 - 6 / zoom}
+                        fontSize={11 / zoom}
+                        fill={THEME.handle}
+                        style={{ userSelect: 'none' }}
+                      >
+                        {frame.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
 
           {/* Global Composite Fills (one winding-based path per fill color, layer paint order) */}
           {compositeFillGroups.map(group => (
@@ -450,6 +485,60 @@ activeEditGroupId,
               })}
             </g>
           )})}
+
+          {/* Frame selection chrome + corner handles (above all content) */}
+          {mode === 'edit' && frames.map(frame => {
+            if (!selectedFrameIds.includes(frame.id)) return null;
+            const frameLayer = layers.find(l => l.id === frame.layerId);
+            if (!frameLayer || !frameLayer.visible || frameLayer.locked || frame.locked) return null;
+            const frameLeft = frame.x - frame.width / 2;
+            const frameTop = frame.y - frame.height / 2;
+            return (
+              <g key={`frame-chrome-${frame.id}`} pointerEvents="none">
+                <rect
+                  x={frameLeft}
+                  y={frameTop}
+                  width={frame.width}
+                  height={frame.height}
+                  fill="none"
+                  stroke={THEME.accent}
+                  strokeWidth={1.5 / zoom}
+                />
+                {selectedFrameIds.length === 1 && [
+                  { x: frameLeft, y: frameTop },
+                  { x: frameLeft + frame.width, y: frameTop },
+                  { x: frameLeft + frame.width, y: frameTop + frame.height },
+                  { x: frameLeft, y: frameTop + frame.height }
+                ].map((corner, i) => (
+                  <rect
+                    key={i}
+                    x={corner.x - 4 / zoom}
+                    y={corner.y - 4 / zoom}
+                    width={8 / zoom}
+                    height={8 / zoom}
+                    fill="white"
+                    stroke={THEME.accent}
+                    strokeWidth={1.5 / zoom}
+                  />
+                ))}
+              </g>
+            );
+          })}
+
+          {/* Frame Drawing Preview */}
+          {mode === 'frame' && drawingFrame && (
+            <rect
+              x={Math.min(drawingFrame.startX, drawingFrame.currentX)}
+              y={Math.min(drawingFrame.startY, drawingFrame.currentY)}
+              width={Math.abs(drawingFrame.currentX - drawingFrame.startX)}
+              height={Math.abs(drawingFrame.currentY - drawingFrame.startY)}
+              fill={THEME.accentFaint}
+              stroke={THEME.accent}
+              strokeWidth={1.5 / zoom}
+              strokeDasharray={`${4 / zoom} ${4 / zoom}`}
+              pointerEvents="none"
+            />
+          )}
 
           {/* Drawing Shape Preview (Live Render) */}
           {mode === 'shape' && drawingShape && (
