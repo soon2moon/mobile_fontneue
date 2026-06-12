@@ -96,7 +96,7 @@ activeLayerId,
                             ))}
                             {layerPaths.map((path, index) => {
                               const pathD = pointsToPath(path.points, path.isClosed);
-                              const pathStroke = getPathStrokeStyle(path, pathStyleDefaults);
+                              const pathStroke = getPathStrokeStyle(path);
                               const isSinglePointPath = path.points.length === 1;
 
                               if (isSinglePointPath) {

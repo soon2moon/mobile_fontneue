@@ -21,7 +21,7 @@ run(async (page) => {
     return !!b && b.className.includes('bg-pressed');
   }, aria);
   const pathCount = () => page.evaluate(() =>
-    [...document.querySelectorAll('svg g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length);
+    [...document.querySelectorAll('svg g g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length);
   const panelHeaders = () => page.evaluate(() =>
     [...document.querySelectorAll('h3')].map(h => h.textContent.trim()));
 

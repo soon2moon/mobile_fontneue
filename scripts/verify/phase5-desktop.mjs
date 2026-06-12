@@ -7,7 +7,7 @@ run(async (page) => {
   await page.reload({ waitUntil: 'networkidle0', timeout: 30000 });
 
   const pathCount = () => page.evaluate(() =>
-    [...document.querySelectorAll('svg g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length
+    [...document.querySelectorAll('svg g g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length
   );
   const pause = (ms = 200) => new Promise(r => setTimeout(r, ms));
   const click = async (x, y) => { await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.up(); };
@@ -28,7 +28,7 @@ run(async (page) => {
   await page.keyboard.press('Enter'); await pause(250);
   report.penCurvePaths = await pathCount();
   report.curveHasC = await page.evaluate(() => {
-    const ds = [...document.querySelectorAll('svg g path[d]')].map(p => p.getAttribute('d'));
+    const ds = [...document.querySelectorAll('svg g g path[d]')].map(p => p.getAttribute('d'));
     return ds.some(d => /C/.test(d));
   });
 
@@ -54,13 +54,13 @@ run(async (page) => {
   await page.mouse.move(870, 470); await page.mouse.down();
   await page.mouse.move(1060, 640, { steps: 5 }); await page.mouse.up(); await pause(200);
   const before = await page.evaluate(() => {
-    const ds = [...document.querySelectorAll('svg g path[d]')].map(p => p.getAttribute('d'));
+    const ds = [...document.querySelectorAll('svg g g path[d]')].map(p => p.getAttribute('d'));
     return ds[ds.length - 1];
   });
   await page.mouse.move(960, 540); await page.mouse.down();
   await page.mouse.move(1010, 590, { steps: 6 }); await page.mouse.up(); await pause(250);
   const after = await page.evaluate(() => {
-    const ds = [...document.querySelectorAll('svg g path[d]')].map(p => p.getAttribute('d'));
+    const ds = [...document.querySelectorAll('svg g g path[d]')].map(p => p.getAttribute('d'));
     return ds[ds.length - 1];
   });
   report.dragMovedPath = before !== after;

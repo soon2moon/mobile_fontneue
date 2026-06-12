@@ -7,7 +7,7 @@ run(async (page) => {
   await page.reload({ waitUntil: 'networkidle0', timeout: 30000 });
 
   const countVisiblePaths = () => page.evaluate(() =>
-    [...document.querySelectorAll('svg g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length
+    [...document.querySelectorAll('svg g g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length
   );
 
   // Draw two shapes -> two layers.

@@ -16,7 +16,7 @@ run(async (page) => {
   await pause(300);
 
   const pathCount = () => page.evaluate(() =>
-    [...document.querySelectorAll('svg g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length
+    [...document.querySelectorAll('svg g g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length
   );
   const getTransform = () => page.evaluate(() => {
     const g = document.querySelector('svg g[transform]');

@@ -27,11 +27,11 @@ export default {
         scrim: 'rgb(var(--color-scrim) / <alpha-value>)'
       },
       boxShadow: {
-        card: '0 14px 28px rgb(var(--color-shadow) / 0.14)',
-        menu: '0 12px 24px rgb(var(--color-shadow) / 0.14)',
-        popover: '0 14px 28px rgb(var(--color-shadow) / 0.18)',
-        sheet: '0 14px 32px rgb(var(--color-shadow) / 0.16)',
-        float: '0 12px 28px rgb(var(--color-shadow) / 0.14)'
+        card: '0 14px 28px rgb(var(--color-shadow) / 0.45)',
+        menu: '0 12px 24px rgb(var(--color-shadow) / 0.45)',
+        popover: '0 14px 28px rgb(var(--color-shadow) / 0.5)',
+        sheet: '0 14px 32px rgb(var(--color-shadow) / 0.45)',
+        float: '0 12px 28px rgb(var(--color-shadow) / 0.45)'
       }
     }
   },

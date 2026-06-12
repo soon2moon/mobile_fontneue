@@ -5,7 +5,7 @@ import { normalizeStrokeColor } from '../lib/stroke';
 
 const RECENT_COLORS_KEY = 'vector-editor-recent-colors';
 const RECENT_COLORS_CAP = 8;
-const PRESET_COLORS = ['#344054', '#ffffff', '#f04438', '#f79009', '#fec84b', '#12b76a', '#2e90fa', '#9e77ed'];
+const PRESET_COLORS = ['#ffffff', '#d9d9d9', '#757575', '#1e1e1e', '#f24822', '#ffcd29', '#14ae5c', '#0d99ff'];
 
 const readRecentColors = () => {
   try {

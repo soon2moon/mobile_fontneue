@@ -9,7 +9,7 @@ run(async (page) => {
   const countPaths = () => page.evaluate(() => {
     // Count real geometry paths inside the canvas (exclude UI/icons): the pan/zoom <g> holds them.
     const svg = document.querySelector('svg.touch-none, svg');
-    return svg ? [...svg.querySelectorAll('g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length : 0;
+    return svg ? [...svg.querySelectorAll('g g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length : 0;
   });
 
   report.initialPaths = await countPaths();

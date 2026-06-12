@@ -387,7 +387,7 @@ activeEditGroupId,
           const resumedPoints = shouldReverseForResume
             ? reversePathPoints(basePathPoints)
             : basePathPoints;
-          const existingStroke = getPathStrokeStyle(resumePath, pathStyleDefaults);
+          const existingStroke = getPathStrokeStyle(resumePath);
           setCurrentPathInfo({
             layerId: resumePath.layerId,
             itemType: resumePath.itemType || 'vector',

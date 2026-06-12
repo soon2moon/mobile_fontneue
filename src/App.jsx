@@ -3,9 +3,9 @@ import { Square, Circle, Triangle, Star, Minus } from 'lucide-react';
 
 import {
   DEFAULT_STROKE_WIDTH,
-  DEFAULT_STROKE_COLOR,
   DEFAULT_STROKE_ALIGN,
-  DEFAULT_FILL_COLOR,
+  NEW_SHAPE_FILL_COLOR,
+  NEW_SHAPE_STROKE_COLOR,
   GRID_SIZE,
   MIN_GRID_SIZE,
   MIN_CIRCULAR_STEP,
@@ -82,11 +82,11 @@ export default function App() {
   const [mode, setMode] = useState('pan'); 
   const [showNodes, setShowNodes] = useState(true);
   const [pathStyleDefaults, setPathStyleDefaults] = useState({
-    fillEnabled: false,
-    fillColor: DEFAULT_FILL_COLOR,
+    fillEnabled: true,
+    fillColor: NEW_SHAPE_FILL_COLOR,
     strokeEnabled: true,
     strokeWidth: DEFAULT_STROKE_WIDTH,
-    strokeColor: DEFAULT_STROKE_COLOR,
+    strokeColor: NEW_SHAPE_STROKE_COLOR,
     strokeAlign: DEFAULT_STROKE_ALIGN
   });
   

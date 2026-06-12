@@ -246,7 +246,7 @@ activeEditGroupId,
                 if (mode === 'draw' && currentPath.length > 0 && currentPathInfo?.resumePathId === path.id) return null;
                 const pathD = pointsToPath(path.points, path.isClosed);
                 const isSinglePointPath = path.points.length === 1;
-                const pathStroke = getPathStrokeStyle(path, pathStyleDefaults);
+                const pathStroke = getPathStrokeStyle(path);
                 const renderStrokeWidth = pathStroke.strokeWidth / zoom;
                 const canOffsetStroke = pathStroke.strokeEnabled && path.isClosed && !isSinglePointPath;
                 const effectiveStrokeAlign = canOffsetStroke ? pathStroke.strokeAlign : 'center';

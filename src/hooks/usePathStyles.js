@@ -59,7 +59,7 @@ export function usePathStyles({
     ? selectedPathObjects.every(path => path.strokeEnabled !== false)
     : pathStyleDefaults.strokeEnabled;
   const representativePathStroke = hasSelectedPaths
-    ? getPathStrokeStyle(selectedPathObjects[0], pathStyleDefaults)
+    ? getPathStrokeStyle(selectedPathObjects[0])
     : null;
   const strokePanelStyle = representativePathStroke || {
     strokeEnabled: pathStyleDefaults.strokeEnabled !== false,

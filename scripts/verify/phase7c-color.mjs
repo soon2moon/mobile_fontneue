@@ -68,32 +68,30 @@ run(async (page) => {
   const compositeFills = () => page.evaluate(() =>
     [...document.querySelectorAll('svg path[fill-rule="nonzero"]')].map(p => p.getAttribute('fill')));
 
-  // 1. Fill enabled on the defaults; two rects share ONE composite group.
+  // 1. Fill is on by default; two rects share ONE composite group.
   await page.click('button[aria-label="Design"]');
-  await pause(250);
-  await page.click('button[title="Enable Fill"]');
   await pause(250);
   await drawRect(500, 300, 650, 400);
   await drawRect(300, 480, 420, 580);
   report.singleColorGroups = await compositeFills();
   expect('singleGroupForSingleColor',
-    report.singleColorGroups.length === 1 && report.singleColorGroups[0] === '#344054');
+    report.singleColorGroups.length === 1 && report.singleColorGroups[0] === '#d9d9d9');
 
   // 2. Recolor rect B -> exactly two groups, paint order = first encounter
-  //    (rect A's layer is below rect B's, so #344054 stays first).
+  //    (rect A's layer is below rect B's, so #d9d9d9 stays first).
   await clickPathEdge(360, 480);
   await setInputValue('Fill Color (Hex)', '2e90fa');
   report.twoColorGroups = await compositeFills();
   expect('perColorGroups',
     report.twoColorGroups.length === 2
-    && report.twoColorGroups[0] === '#344054'
+    && report.twoColorGroups[0] === '#d9d9d9'
     && report.twoColorGroups[1] === '#2e90fa');
 
   // 3. Undo collapses back to one group; redo restores the split.
   await undo();
-  expect('undoMergesGroups', (await compositeFills()).join(',') === '#344054');
+  expect('undoMergesGroups', (await compositeFills()).join(',') === '#d9d9d9');
   await redo();
-  expect('redoSplitsGroups', (await compositeFills()).join(',') === '#344054,#2e90fa');
+  expect('redoSplitsGroups', (await compositeFills()).join(',') === '#d9d9d9,#2e90fa');
 
   // 4. A full picker drag commits exactly ONE undo step.
   await clickPathEdge(360, 480);
@@ -112,7 +110,7 @@ run(async (page) => {
   await page.mouse.click(150, 150);
   await pause(250);
   await undo();
-  expect('dragIsOneUndoStep', (await compositeFills()).join(',') === '#344054,#2e90fa');
+  expect('dragIsOneUndoStep', (await compositeFills()).join(',') === '#d9d9d9,#2e90fa');
 
   // 5. SVG export: same per-color nonzero groups, fills below the
   //    stroke-only outlines, no legacy per-path fills.
@@ -130,10 +128,10 @@ run(async (page) => {
   report.exportFillRuleCount = (svgText?.match(/fill-rule="nonzero"/g) || []).length;
   expect('exportHasBothFillGroups',
     report.exportFillRuleCount === 2
-    && svgText.includes('fill="#344054"')
+    && svgText.includes('fill="#d9d9d9"')
     && svgText.includes('fill="#2e90fa"'));
   expect('exportHasStrokeOnlyPaths',
-    svgText.includes('fill="none" stroke="#344054"'));
+    svgText.includes('fill="none" stroke="#ffffff"'));
   expect('exportFillsBelowStrokes',
     svgText.indexOf('fill-rule="nonzero"') < svgText.indexOf('fill="none"'));
 
@@ -144,8 +142,6 @@ run(async (page) => {
   await pause(300);
   await page.click('button[aria-label="Design"]');
   await pause(250);
-  await page.click('button[title="Enable Fill"]');
-  await pause(250);
   await drawRect(400, 300, 700, 560);
   await drawRect(480, 370, 620, 490);
   await page.keyboard.press('v');
@@ -155,7 +151,7 @@ run(async (page) => {
   await page.click('button[aria-label="Auto-Correct Path Directions"]');
   await pause(300);
   const donutFills = await compositeFills();
-  expect('donutSingleGroup', donutFills.length === 1 && donutFills[0] === '#344054');
+  expect('donutSingleGroup', donutFills.length === 1 && donutFills[0] === '#d9d9d9');
   report.donut = await page.evaluate(({ ringPt, holePt }) => {
     const worldGroup = [...document.querySelectorAll('svg g[transform]')]
       .find(g => (g.getAttribute('transform') || '').includes('scale('));

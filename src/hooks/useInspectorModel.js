@@ -44,7 +44,7 @@ export function useInspectorModel({
           : 'none';
 
   const distinct = (values) => new Set(values).size > 1;
-  const strokeStyles = selectedPathObjects.map(path => getPathStrokeStyle(path, pathStyleDefaults));
+  const strokeStyles = selectedPathObjects.map(path => getPathStrokeStyle(path));
   const representative = strokeStyles[0] || {
     strokeEnabled: pathStyleDefaults.strokeEnabled !== false,
     strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),

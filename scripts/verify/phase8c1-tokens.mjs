@@ -1,9 +1,9 @@
 import { run, APP_URL } from './client.mjs';
 
-// Phase 8C.1: every UI color resolves through the CSS-variable tokens with
-// ZERO visual change — body/canvas and panel cards still render the exact
-// light-palette values, the :root variables resolve, and no hardcoded
-// hex-color utility classes remain in the rendered DOM.
+// Phase 8C.1: every UI color resolves through the CSS-variable tokens —
+// body/canvas and panel chrome track the :root variables (theme-agnostic),
+// no hardcoded hex-color utility classes remain in the rendered DOM, and
+// newly drawn shapes use the themed content defaults.
 run(async (page) => {
   const report = {};
   const failures = [];
@@ -15,12 +15,18 @@ run(async (page) => {
   await page.reload({ waitUntil: 'networkidle0', timeout: 30000 });
   await pause(300);
 
+  const resolvedTokens = await page.evaluate(() => {
+    const css = getComputedStyle(document.documentElement);
+    const rgb = (name) => `rgb(${css.getPropertyValue(name).trim().split(/\s+/).join(', ')})`;
+    return { canvas: rgb('--color-canvas'), raised: rgb('--color-raised') };
+  });
+  report.resolvedTokens = resolvedTokens;
   report.bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect('bodyStillLightCanvas', report.bodyBg === 'rgb(242, 244, 247)');
+  expect('bodyUsesCanvasToken', report.bodyBg === resolvedTokens.canvas);
 
   report.varResolves = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--color-raised').trim());
-  expect('rootVarResolves', report.varResolves === '248 250 252');
+  expect('rootVarResolves', /^\d+ \d+ \d+$/.test(report.varResolves));
 
   await page.click('button[aria-label="Design"]');
   await pause(300);
@@ -29,13 +35,13 @@ run(async (page) => {
     const card = header?.closest('.rounded-2xl');
     return card ? getComputedStyle(card).backgroundColor : null;
   });
-  expect('panelCardStillRaisedLight', report.cardBg === 'rgb(248, 250, 252)');
+  expect('panelCardUsesRaisedToken', report.cardBg === resolvedTokens.raised);
 
   report.toolbarBg = await page.evaluate(() => {
     const tb = document.querySelector('.absolute.bottom-8');
     return tb ? getComputedStyle(tb).backgroundColor : null;
   });
-  expect('toolbarStillRaisedLight', report.toolbarBg === 'rgb(248, 250, 252)');
+  expect('toolbarUsesRaisedToken', report.toolbarBg === resolvedTokens.raised);
 
   // No hardcoded color classes left anywhere in the live DOM.
   report.hexClassCount = await page.evaluate(() => {
@@ -45,7 +51,7 @@ run(async (page) => {
   });
   expect('noHexUtilityClasses', report.hexClassCount === 0);
 
-  // Selection chrome still draws the same accent (THEME swap is value-neutral).
+  // New shapes pick up the themed content defaults.
   await page.keyboard.press('r');
   await pause(150);
   await page.mouse.move(500, 300);
@@ -62,7 +68,7 @@ run(async (page) => {
       .find(p => (p.getAttribute('d') || '').length > 10);
     return path?.getAttribute('stroke') ?? null;
   });
-  expect('strokeStillLegacyInk', report.gridStroke === '#344054');
+  expect('newShapeUsesThemedStroke', report.gridStroke === '#ffffff');
 
   await page.screenshot({ path: '/tmp/shots/phase8c1-tokens.png' });
   await page.evaluate(() => localStorage.clear());

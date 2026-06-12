@@ -131,11 +131,15 @@ export const cloneState = (pathsArray, currentPathArray, imagesArray, layersArra
   texts: textsArray ? textsArray.map(t => ({ ...t })) : []
 });
 
-export const getPathStrokeStyle = (path, defaults) => ({
+// Stroke resolution falls back to the fixed legacy defaults (the normalize
+// helpers default to DEFAULT_STROKE_*), NOT the live next-path defaults, so
+// canvas, thumbnails, and export always agree and paths from before style
+// stamping keep rendering the original ink — mirrors getPathFillStyle.
+export const getPathStrokeStyle = (path) => ({
   strokeEnabled: path?.strokeEnabled !== false,
-  strokeWidth: normalizeStrokeWidth(path?.strokeWidth, defaults.strokeWidth),
-  strokeColor: normalizeStrokeColor(path?.strokeColor, defaults.strokeColor),
-  strokeAlign: normalizeStrokeAlign(path?.strokeAlign, defaults.strokeAlign)
+  strokeWidth: normalizeStrokeWidth(path?.strokeWidth),
+  strokeColor: normalizeStrokeColor(path?.strokeColor),
+  strokeAlign: normalizeStrokeAlign(path?.strokeAlign)
 });
 
 // Fill resolution falls back to the fixed DEFAULT_FILL_COLOR (not the live

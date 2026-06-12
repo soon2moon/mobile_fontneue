@@ -3,27 +3,28 @@
 @tailwind utilities;
 
 /* UI color tokens (RGB triplets — consumed via rgb(var(--x) / <alpha>) in
-   tailwind.config.js). Canvas/SVG colors live in src/theme.js. */
+   tailwind.config.js). Canvas/SVG colors live in src/theme.js. Dark theme
+   modeled on Figma's UI (canvas #1e1e1e, panels #2c2c2c, accent #0d99ff). */
 :root {
-  --color-canvas: 242 244 247;
-  --color-raised: 248 250 252;
-  --color-sunken: 242 244 247;
-  --color-pressed: 234 236 240;
-  --color-edge: 228 231 236;
-  --color-edge-strong: 208 213 221;
-  --color-ink: 52 64 84;
-  --color-secondary: 102 112 133;
-  --color-muted: 152 162 179;
-  --color-accent: 59 130 246;
-  --color-accent-strong: 37 99 235;
-  --color-danger: 180 35 24;
-  --color-danger-bg: 254 228 226;
-  --color-chip: 255 255 255;
-  --color-tooltip: 52 64 84;
-  --color-tooltip-ink: 242 244 247;
-  --color-tooltip-chip: 31 41 55;
-  --color-scrim: 52 64 84;
-  --color-shadow: 52 64 84;
+  --color-canvas: 30 30 30;
+  --color-raised: 44 44 44;
+  --color-sunken: 56 56 56;
+  --color-pressed: 68 68 68;
+  --color-edge: 68 68 68;
+  --color-edge-strong: 85 85 85;
+  --color-ink: 255 255 255;
+  --color-secondary: 179 179 179;
+  --color-muted: 140 140 140;
+  --color-accent: 13 153 255;
+  --color-accent-strong: 76 178 255;
+  --color-danger: 242 72 34;
+  --color-danger-bg: 74 38 32;
+  --color-chip: 68 68 68;
+  --color-tooltip: 30 30 30;
+  --color-tooltip-ink: 255 255 255;
+  --color-tooltip-chip: 68 68 68;
+  --color-scrim: 0 0 0;
+  --color-shadow: 0 0 0;
 }
 
 html,
