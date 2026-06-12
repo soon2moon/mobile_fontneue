@@ -134,6 +134,7 @@ activeEditGroupId,
     setSelectedPoints,
     setSelectedTextIds,
     setSelectionBox,
+    setIsCanvasWorking,
     setShowNodes,
     setSnapState,
     setTexts,
@@ -236,10 +237,14 @@ activeEditGroupId,
       clearPendingTouchDrawAction();
     }
 
-    if (e.button === 1 || mode === 'pan') { 
+    if (e.button === 1 || mode === 'pan') {
       setIsPanning(true);
       return;
     }
+
+    // Quiet UI: panels fade while actively working on the canvas (any
+    // non-pan press; pointer capture guarantees the matching up/cancel).
+    setIsCanvasWorking(true);
 
     if (['shape', 'pencil', 'draw', 'text'].includes(mode)) {
         if (activeLayerId && lockedLayerIds.has(activeLayerId)) return;
@@ -2141,6 +2146,7 @@ activeEditGroupId,
   };
 
   const handlePointerUp = (e) => {
+    setIsCanvasWorking(false);
     releasePointer(e);
     const isTouchLikePointer = e.pointerType === 'touch' || e.pointerType === 'pen';
     touchPointsRef.current.delete(e.pointerId);

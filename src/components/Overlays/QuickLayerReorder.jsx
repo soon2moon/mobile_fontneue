@@ -11,6 +11,7 @@ export default function QuickLayerReorder() {
 activeLayerId,
     anyMobileOverlayOpen,
     getLayerPreviewBounds,
+    isCanvasWorking,
     imageCountByLayerId,
     imagesByLayerId,
     isMobile,
@@ -36,7 +37,7 @@ activeLayerId,
           }`}
           style={isMobile ? { top: 'calc(env(safe-area-inset-top, 0px) + 56px)' } : undefined}
         >
-          <div className="pointer-events-auto w-full overflow-hidden rounded-2xl border border-edge bg-raised shadow-sheet">
+          <div className={`w-full overflow-hidden rounded-2xl border border-edge bg-raised shadow-sheet transition-opacity duration-300 ${isCanvasWorking ? 'opacity-25 pointer-events-none delay-100' : 'opacity-100 pointer-events-auto'}`}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-edge bg-sunken">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-secondary">
                 <Layers size={13} />

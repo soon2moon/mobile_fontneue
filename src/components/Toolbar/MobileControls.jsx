@@ -78,6 +78,7 @@ anyMobileOverlayOpen,
     stepZoom,
     toggleMobileShapePanel,
     toggleMobileToolsMenu,
+    toggleUiHidden,
     zoom
   } = useEditor();
 
@@ -305,6 +306,7 @@ anyMobileOverlayOpen,
                     label="Export"
                   />
                   <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={14} />} label="Clear" />
+                  <MobileToolButton onClick={toggleUiHidden} icon={<EyeOff size={14} />} label="Hide UI" />
                 </div>
               </div>
             </div>

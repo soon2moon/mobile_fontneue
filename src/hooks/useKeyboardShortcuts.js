@@ -33,6 +33,7 @@ export function useKeyboardShortcuts({
   setDrawHover,
   setCurrentPathInfo,
   setDrawingShape,
+  toggleUiHidden,
   setActiveHandle,
   setSelectionBox,
   setHoveredHandle,
@@ -46,6 +47,13 @@ export function useKeyboardShortcuts({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      // Show/Hide UI (Figma's Ctrl+\)
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        toggleUiHidden();
+        return;
+      }
 
       // Copy
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && mode === 'edit') {

@@ -13,6 +13,7 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
   const [mobileContextMenu, setMobileContextMenu] = useState(null);
   const [openPanels, setOpenPanels] = useState(CLOSED_PANELS);
   const [expandedPanel, setExpandedPanel] = useState(null);
+  const [uiHidden, setUiHidden] = useState(false);
   const mobileToolbarShellRef = useRef(null);
   const mobileLongPressRef = useRef({ timerId: null, pointerId: null, startX: 0, startY: 0, targetType: null, targetId: null, triggered: false });
 
@@ -177,6 +178,8 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
   };
   const mobileTopInset = 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
+  const toggleUiHidden = useCallback(() => setUiHidden(prev => !prev), []);
+
   return {
     // panels accordion
     openPanels, setOpenPanels,
@@ -185,6 +188,8 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     anyPanelOpen,
     closeAllPanels,
     openMobilePanel,
+    // quiet UI (Ctrl+\ on desktop, drawer button on mobile)
+    uiHidden, toggleUiHidden,
     // mobile drawers + context menu
     mobileToolsOpen, setMobileToolsOpen,
     mobilePanelsOpen, setMobilePanelsOpen,

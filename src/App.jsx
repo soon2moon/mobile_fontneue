@@ -70,6 +70,7 @@ export default function App() {
     setOpenPanels, setExpandedPanel,
     togglePanel,
     closeAllPanels,
+    uiHidden, toggleUiHidden,
     setMobileToolsOpen,
     mobileShapePanelOpen, setMobileShapePanelOpen,
     mobileContextMenu, setMobileContextMenu,
@@ -89,6 +90,8 @@ export default function App() {
     strokeColor: NEW_SHAPE_STROKE_COLOR,
     strokeAlign: DEFAULT_STROKE_ALIGN
   });
+  // Quiet UI: true while a non-pan pointer gesture is working the canvas.
+  const [isCanvasWorking, setIsCanvasWorking] = useState(false);
   
   // Shape Tool State
   const [shapeType, setShapeType] = useState('rectangle');
@@ -488,6 +491,7 @@ export default function App() {
     setSelectedPoints,
     setSelectedTextIds,
     setSelectionBox,
+    setIsCanvasWorking,
     setShowNodes,
     setSnapState,
     setTexts,
@@ -644,6 +648,7 @@ export default function App() {
     setDrawHover,
     setCurrentPathInfo,
     setDrawingShape,
+    toggleUiHidden,
     setActiveHandle,
     setSelectionBox,
     setHoveredHandle,
@@ -790,6 +795,7 @@ export default function App() {
     images,
     imagesByLayerId,
     inspector,
+    isCanvasWorking,
     isDrawingCurve,
     isExporting,
     isMobile,
@@ -860,16 +866,27 @@ export default function App() {
         className="hidden" 
       />
 
-      <QuickLayerReorder />
+      {!uiHidden && <QuickLayerReorder />}
 
-      {isMobile && <MobileControls />}
+      {isMobile && !uiHidden && <MobileControls />}
 
 
       {/* Right-Side Panels Container */}
-      <PanelsContainer />
+      {!uiHidden && <PanelsContainer />}
 
       {/* Bottom Toolbar (Desktop Tools) */}
-      {!isMobile && <DesktopToolbar />}
+      {!isMobile && !uiHidden && <DesktopToolbar />}
+
+      {/* Quiet-UI escape hatch on touch (no Ctrl+\ there) */}
+      {isMobile && uiHidden && (
+        <button
+          type="button"
+          onClick={toggleUiHidden}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 h-9 px-4 rounded-full bg-raised/90 border border-edge text-secondary text-xs font-semibold shadow-menu"
+        >
+          Show UI
+        </button>
+      )}
 
     </div>
     </EditorProvider>

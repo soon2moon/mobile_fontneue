@@ -29,6 +29,7 @@ export default function PanelsContainer() {
   const {
 anyPanelOpen,
     canExportSelection,
+    isCanvasWorking,
     deleteLayer,
     dragDropTarget,
     draggedLayerId,
@@ -81,9 +82,9 @@ anyPanelOpen,
           return (
             <div
               key={panel.id}
-              className={`bg-raised rounded-2xl shadow-card border border-edge overflow-clip flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
-                isMobile ? 'w-full' : 'w-60'
-              }`}
+              className={`bg-raised rounded-2xl shadow-card border border-edge overflow-clip flex flex-col shrink-0 transition-all duration-300 ${
+                isCanvasWorking ? 'opacity-25 pointer-events-none delay-100' : 'opacity-100 pointer-events-auto'
+              } ${isMobile ? 'w-full' : 'w-60'}`}
             >
               <div 
                 className={`flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-sunken transition-colors rounded-t-2xl ${!isExpanded ? 'rounded-b-2xl' : 'border-b border-edge bg-sunken'}`}

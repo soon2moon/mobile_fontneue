@@ -43,6 +43,7 @@ must stay empty.
 | `phase8b-hotkeys.mjs` | Figma hotkeys (H hand, ⇧P pencil, L line, Ctrl+letter ignored, B/G dead) + wording (Pen/Move/Hand/Design/Canvas Grid, stroke Weight/Position) |
 | `phase8c1-tokens.mjs` | computed UI colors track the CSS-variable tokens; no hex utility classes remain; new shapes use the themed defaults |
 | `phase8c2-dark.mjs` | dark palette (#1e1e1e/#2c2c2c/#0d99ff), white/light-gray new-content defaults, dark tooltips, legacy art pinned to #344054 |
+| `phase8d-quietui.mjs` | Ctrl+\ hides/restores chrome (canvas keeps working); panels fade + click-through during gestures; input guard; mobile Hide UI + pill |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.
