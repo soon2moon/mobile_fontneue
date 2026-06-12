@@ -10,7 +10,7 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
   const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
   const [mobileShapePanelOpen, setMobileShapePanelOpen] = useState(false);
   const [mobileToolbarWidth, setMobileToolbarWidth] = useState(0);
-  const [mobileContextMenu, setMobileContextMenu] = useState(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState(null);
   const [openPanels, setOpenPanels] = useState(CLOSED_PANELS);
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [uiHidden, setUiHidden] = useState(false);
@@ -33,8 +33,8 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     };
   }, []);
 
-  const closeMobileContextMenu = useCallback(() => {
-    setMobileContextMenu(null);
+  const closeCanvasContextMenu = useCallback(() => {
+    setCanvasContextMenu(null);
   }, []);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
 
   useEffect(() => {
     if (!isMobile) {
-      setMobileContextMenu(null);
+      setCanvasContextMenu(null);
       clearMobileLongPress();
     }
   }, [isMobile, clearMobileLongPress]);
@@ -128,7 +128,7 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
 
   const anyPanelOpen = Object.values(openPanels).some(Boolean);
   const closeAllPanels = () => {
-    setMobileContextMenu(null);
+    setCanvasContextMenu(null);
     setMobileToolsOpen(false);
     setMobileShapePanelOpen(false);
     setMobilePanelsOpen(false);
@@ -136,7 +136,7 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     setExpandedPanel(null);
   };
   const openMobilePanel = (panelId) => {
-    setMobileContextMenu(null);
+    setCanvasContextMenu(null);
     setMobileToolsOpen(false);
     setMobileShapePanelOpen(false);
     setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
@@ -194,8 +194,8 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     mobileToolsOpen, setMobileToolsOpen,
     mobilePanelsOpen, setMobilePanelsOpen,
     mobileShapePanelOpen, setMobileShapePanelOpen,
-    mobileContextMenu, setMobileContextMenu,
-    closeMobileContextMenu,
+    canvasContextMenu, setCanvasContextMenu,
+    closeCanvasContextMenu,
     toggleMobileToolsMenu,
     mobileLongPressRef,
     clearMobileLongPress,

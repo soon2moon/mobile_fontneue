@@ -47,6 +47,7 @@ import { EditorProvider } from './state/EditorContext';
 import DesktopToolbar from './components/Toolbar/DesktopToolbar';
 import PanelsContainer from './components/Panels/PanelsContainer';
 import QuickLayerReorder from './components/Overlays/QuickLayerReorder';
+import CanvasContextMenu from './components/Overlays/CanvasContextMenu';
 import MobileControls from './components/Toolbar/MobileControls';
 import Canvas from './components/Canvas/Canvas';
 import TextEditorOverlay from './components/Canvas/TextEditorOverlay';
@@ -73,8 +74,8 @@ export default function App() {
     uiHidden, toggleUiHidden,
     setMobileToolsOpen,
     mobileShapePanelOpen, setMobileShapePanelOpen,
-    mobileContextMenu, setMobileContextMenu,
-    closeMobileContextMenu,
+    canvasContextMenu, setCanvasContextMenu,
+    closeCanvasContextMenu,
     mobileLongPressRef,
     clearMobileLongPress
   } = uiShell;
@@ -365,7 +366,6 @@ export default function App() {
   // --- EVENT HANDLERS ---
 
   const handleCanvasContextMenu = useCallback((e) => {
-    if (!isMobile) return;
     const coords = getCanvasCoords(e.clientX, e.clientY);
     const hitText = findTopTextAtCoords(coords);
     const hitImage = hitText ? null : findTopImageAtCoords(coords);
@@ -390,10 +390,15 @@ export default function App() {
       setActivePathEditId(null);
     }
 
-    setMobileContextMenu({
+    setCanvasContextMenu({
       type: hitText || hitImage || hitPath ? 'actions' : 'paste',
       x: e.clientX,
-      y: e.clientY
+      y: e.clientY,
+      worldX: coords.x,
+      worldY: coords.y,
+      targetLayerId: hitText?.layerId
+        ?? hitImage?.layerId
+        ?? (hitPath ? paths[hitPath.pathIndex]?.layerId ?? null : null)
     });
 
     setActiveHandle(null);
@@ -401,7 +406,7 @@ export default function App() {
     setBgAction(null);
     setPointAction(null);
     setIsDraggingPoints(false);
-  }, [isMobile, getCanvasCoords, findTopTextAtCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection]);
+  }, [getCanvasCoords, findTopTextAtCoords, findTopImageAtCoords, findTopPathAtCoords, clearMobileLongPress, getPathSelection, paths]);
 
   const { handlePointerDown, handlePointerMove, handlePointerUp } = usePointerInteraction({
     activeEditGroupId,
@@ -450,7 +455,7 @@ export default function App() {
     lastFocusedPathEditIdRef,
     layers,
     lockedLayerIds,
-    mobileContextMenu,
+    canvasContextMenu,
     mobileLongPressRef,
     mode,
     panRef,
@@ -483,7 +488,7 @@ export default function App() {
     setIsDrawingCurve,
     setIsPanning,
     setLayers,
-    setMobileContextMenu,
+    setCanvasContextMenu,
     setPan,
     setPaths,
     setPointAction,
@@ -514,7 +519,7 @@ export default function App() {
     if ((mode === 'draw' || mode === 'pencil') && targetMode !== mode && currentPath.length > 0) {
       finishPath(false, false);
     }
-    setMobileContextMenu(null);
+    setCanvasContextMenu(null);
     clearMobileLongPress();
     clearPendingTouchDrawAction();
     setMode(targetMode);
@@ -573,7 +578,7 @@ export default function App() {
     copyCurrentSelection,
     cutCurrentSelection,
     duplicateCurrentSelection,
-    handleMobileContextPaste
+    handleContextPaste
   } = useClipboard({
     paths, setPaths,
     images, setImages,
@@ -594,7 +599,7 @@ export default function App() {
     setBgInitialState,
     deleteSelectedItems,
     insertImageFromFile,
-    closeMobileContextMenu
+    closeCanvasContextMenu
   });
 
   // --- LAYER MANAGEMENT ---
@@ -782,7 +787,7 @@ export default function App() {
     gridConfig,
     handleCanvasContextMenu,
     handleExport,
-    handleMobileContextPaste,
+    handleContextPaste,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -865,6 +870,9 @@ export default function App() {
         onChange={handleImageUpload} 
         className="hidden" 
       />
+
+      {/* Shared right-click / long-press canvas menu (desktop + mobile) */}
+      <CanvasContextMenu />
 
       {!uiHidden && <QuickLayerReorder />}
 

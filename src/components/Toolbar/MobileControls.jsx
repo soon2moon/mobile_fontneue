@@ -21,16 +21,12 @@ import {
   Star,
   Minus,
   ChevronUp,
-  Copy,
-  Scissors,
-  ClipboardPaste,
   Download,
   SlidersHorizontal,
   Type
 } from 'lucide-react';
 import MobileToolButton from '../../ui/MobileToolButton';
 import ShapeMenuItem from '../../ui/ShapeMenuItem';
-import Popover from '../../ui/Popover';
 import { useEditor } from '../../state/EditorContext';
 
 // All mobile chrome: top controls, tools drawer, shape sheet, long-press
@@ -43,20 +39,14 @@ anyMobileOverlayOpen,
     clearCanvas,
     clearTapFocus,
     closeAllPanels,
-    closeMobileContextMenu,
-    copyCurrentSelection,
     correctPathDirections,
-    cutCurrentSelection,
     deleteSelectedItems,
-    duplicateCurrentSelection,
     fileInputRef,
     fillToggleActive,
     getShapeToolIcon,
-    handleMobileContextPaste,
     handleRedo,
     handleUndo,
     hasActiveSelection,
-    mobileContextMenu,
     mobileMenuDrawerBottom,
     mobileShapePanelBottom,
     mobileShapePanelOpen,
@@ -93,71 +83,6 @@ anyMobileOverlayOpen,
               aria-label="Close panels overlay"
             />
           )}
-
-          <Popover
-            open={!!mobileContextMenu}
-            onOpenChange={(next) => { if (!next) closeMobileContextMenu(); }}
-            virtualAnchor={mobileContextMenu ? { x: mobileContextMenu.x, y: mobileContextMenu.y } : null}
-            placement="top"
-            offsetPx={8}
-            guardOutsidePressMs={400}
-          >
-            <div
-              role="menu"
-              aria-label="Canvas actions"
-              className="bg-raised border border-edge rounded-[12px] shadow-menu p-1.5"
-            >
-              <div className="flex flex-col gap-1">
-                {mobileContextMenu?.type === 'actions' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        copyCurrentSelection();
-                        closeMobileContextMenu();
-                      }}
-                      className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-ink active:bg-pressed flex items-center gap-2 text-xs font-semibold"
-                    >
-                      <Copy size={14} />
-                      Copy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        cutCurrentSelection();
-                        closeMobileContextMenu();
-                      }}
-                      className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-danger active:bg-pressed flex items-center gap-2 text-xs font-semibold"
-                    >
-                      <Scissors size={14} />
-                      Cut
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        duplicateCurrentSelection();
-                        closeMobileContextMenu();
-                      }}
-                      className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-ink active:bg-pressed flex items-center gap-2 text-xs font-semibold"
-                    >
-                      <Plus size={14} />
-                      Duplicate
-                    </button>
-                  </>
-                )}
-                {mobileContextMenu?.type === 'paste' && (
-                  <button
-                    type="button"
-                    onClick={handleMobileContextPaste}
-                    className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-ink active:bg-pressed flex items-center gap-2 text-xs font-semibold"
-                  >
-                    <ClipboardPaste size={14} />
-                    Paste
-                  </button>
-                )}
-              </div>
-            </div>
-          </Popover>
 
           <div
             className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"

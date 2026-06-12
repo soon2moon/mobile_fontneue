@@ -93,7 +93,7 @@ activeEditGroupId,
     lastFocusedPathEditIdRef,
     layers,
     lockedLayerIds,
-    mobileContextMenu,
+    canvasContextMenu,
     mobileLongPressRef,
     mode,
     panRef,
@@ -126,7 +126,7 @@ activeEditGroupId,
     setIsDrawingCurve,
     setIsPanning,
     setLayers,
-    setMobileContextMenu,
+    setCanvasContextMenu,
     setPan,
     setPaths,
     setPointAction,
@@ -259,8 +259,8 @@ activeEditGroupId,
     
     // Will update refPoint down below depending on context
     lastPointerDownRef.current = { time: now, x: e.clientX, y: e.clientY, canvasX: coords.x, canvasY: coords.y, refPoint: null };
-    if (mobileContextMenu) {
-      setMobileContextMenu(null);
+    if (canvasContextMenu) {
+      setCanvasContextMenu(null);
     }
 
     if (
@@ -283,10 +283,14 @@ activeEditGroupId,
         setPointAction(null);
         setIsDraggingPoints(false);
 
-        setMobileContextMenu({
+        const longPressWorld = getCanvasCoords(e.clientX, e.clientY);
+        setCanvasContextMenu({
           type: 'paste',
           x: e.clientX,
-          y: e.clientY
+          y: e.clientY,
+          worldX: longPressWorld.x,
+          worldY: longPressWorld.y,
+          targetLayerId: null
         });
       }, 520);
 
@@ -2216,10 +2220,14 @@ activeEditGroupId,
           setSelectedPoints([]);
         }
         setActivePathEditId(null);
-        setMobileContextMenu({
+        const textMenuWorld = getCanvasCoords(e.clientX, e.clientY);
+        setCanvasContextMenu({
           type: 'actions',
           x: e.clientX,
-          y: e.clientY
+          y: e.clientY,
+          worldX: textMenuWorld.x,
+          worldY: textMenuWorld.y,
+          targetLayerId: texts.find(text => text.id === shortPressTargetId)?.layerId ?? null
         });
         return;
       }
@@ -2234,10 +2242,14 @@ activeEditGroupId,
             setSelectedTextIds([]);
           }
           setActivePathEditId(null);
-          setMobileContextMenu({
+          const pathMenuWorld = getCanvasCoords(e.clientX, e.clientY);
+          setCanvasContextMenu({
             type: 'actions',
             x: e.clientX,
-            y: e.clientY
+            y: e.clientY,
+            worldX: pathMenuWorld.x,
+            worldY: pathMenuWorld.y,
+            targetLayerId: paths[targetPathIndex]?.layerId ?? null
           });
           return;
         }
@@ -2251,10 +2263,14 @@ activeEditGroupId,
           setSelectedTextIds([]);
         }
         setActivePathEditId(null);
-        setMobileContextMenu({
+        const imageMenuWorld = getCanvasCoords(e.clientX, e.clientY);
+        setCanvasContextMenu({
           type: 'actions',
           x: e.clientX,
-          y: e.clientY
+          y: e.clientY,
+          worldX: imageMenuWorld.x,
+          worldY: imageMenuWorld.y,
+          targetLayerId: images.find(img => img.id === shortPressTargetId)?.layerId ?? null
         });
         return;
       }

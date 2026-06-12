@@ -11,6 +11,7 @@ import { normalizeStrokeWidth, normalizeStrokeColor, normalizeStrokeAlign } from
 import { generateEditGroupId } from '../lib/svg';
 import { createLayer } from '../lib/layers';
 import { normalizeTextObject } from '../lib/objectModel';
+import { computePayloadBounds } from '../lib/payloadBounds';
 
 // Copy/cut/paste/duplicate for paths + images + texts. Payloads live in an
 // in-memory ref (primary) and round-trip through the system clipboard as JSON
@@ -36,7 +37,7 @@ export function useClipboard({
   setBgInitialState,
   deleteSelectedItems,
   insertImageFromFile,
-  closeMobileContextMenu
+  closeCanvasContextMenu
 }) {
   const copiedContentRef = useRef(null);
 
@@ -148,7 +149,7 @@ export function useClipboard({
     return true;
   }, [activePathEditId, selectedPoints, selectedImageIds, selectedTextIds, paths, buildClipboardPayload, writeClipboardPayload, deleteSelectedItems, removeObjectsByIds]);
 
-  const insertClipboardPayload = useCallback((parsedPayload) => {
+  const insertClipboardPayload = useCallback((parsedPayload, { targetPoint } = {}) => {
     if (!parsedPayload || parsedPayload.type !== CLIPBOARD_PAYLOAD_TYPE) return false;
     const sourcePaths = Array.isArray(parsedPayload.paths) ? parsedPayload.paths : [];
     const sourceImages = Array.isArray(parsedPayload.images) ? parsedPayload.images : [];
@@ -157,6 +158,24 @@ export function useClipboard({
       : [];
     if (sourcePaths.length === 0 && sourceImages.length === 0 && sourceTexts.length === 0) return false;
     if (activeLayerId && lockedLayerIds.has(activeLayerId)) return false;
+
+    // "Paste here": recenter the payload's bounding box on the target point.
+    let dx = 0;
+    let dy = 0;
+    if (targetPoint) {
+      const bounds = computePayloadBounds({ paths: sourcePaths, images: sourceImages, texts: sourceTexts });
+      if (bounds) {
+        dx = targetPoint.x - bounds.centerX;
+        dy = targetPoint.y - bounds.centerY;
+      }
+    }
+    const shiftPoint = (pt) => ({
+      ...pt,
+      x: pt.x + dx,
+      y: pt.y + dy,
+      hIn: pt.hIn ? { x: pt.hIn.x + dx, y: pt.hIn.y + dy } : pt.hIn,
+      hOut: pt.hOut ? { x: pt.hOut.x + dx, y: pt.hOut.y + dy } : pt.hOut
+    });
 
     commitHistory({ paths, currentPath, images, layers, texts });
 
@@ -181,7 +200,7 @@ export function useClipboard({
         id: Date.now() + Math.random(),
         layerId: layer.id,
         itemType: layerType,
-        points: (path.points || []).map(clonePoint),
+        points: (path.points || []).map(clonePoint).map(shiftPoint),
         fillEnabled: !!path.fillEnabled,
         fillColor: normalizeStrokeColor(path.fillColor, DEFAULT_FILL_COLOR),
         strokeEnabled: path.strokeEnabled !== false,
@@ -200,7 +219,9 @@ export function useClipboard({
       newImages.push({
         ...img,
         id: Date.now() + Math.random(),
-        layerId: layer.id
+        layerId: layer.id,
+        x: img.x + dx,
+        y: img.y + dy
       });
     });
 
@@ -212,7 +233,9 @@ export function useClipboard({
       newTexts.push({
         ...text,
         id: crypto.randomUUID(),
-        layerId: layer.id
+        layerId: layer.id,
+        x: text.x + dx,
+        y: text.y + dy
       });
     });
 
@@ -255,8 +278,8 @@ export function useClipboard({
     return insertClipboardPayload(payload);
   }, [activePathEditId, selectedPoints, selectedImageIds, paths, buildClipboardPayload, insertClipboardPayload]);
 
-  const pasteFromAvailableClipboard = useCallback(async () => {
-    if (copiedContentRef.current && insertClipboardPayload(copiedContentRef.current)) {
+  const pasteFromAvailableClipboard = useCallback(async (targetPoint) => {
+    if (copiedContentRef.current && insertClipboardPayload(copiedContentRef.current, { targetPoint })) {
       return true;
     }
 
@@ -283,7 +306,7 @@ export function useClipboard({
         const textData = await navigator.clipboard.readText();
         if (textData) {
           const parsed = JSON.parse(textData);
-          if (insertClipboardPayload(parsed)) {
+          if (insertClipboardPayload(parsed, { targetPoint })) {
             return true;
           }
         }
@@ -295,12 +318,12 @@ export function useClipboard({
     return false;
   }, [insertClipboardPayload, insertImageFromFile]);
 
-  const handleMobileContextPaste = useCallback(async () => {
-    const didPaste = await pasteFromAvailableClipboard();
+  const handleContextPaste = useCallback(async (targetPoint) => {
+    const didPaste = await pasteFromAvailableClipboard(targetPoint);
     if (didPaste) {
-      closeMobileContextMenu();
+      closeCanvasContextMenu();
     }
-  }, [pasteFromAvailableClipboard, closeMobileContextMenu]);
+  }, [pasteFromAvailableClipboard, closeCanvasContextMenu]);
 
   // Document-level paste: editor payload first (JSON text), then raw images.
   useEffect(() => {
@@ -353,6 +376,6 @@ export function useClipboard({
     cutCurrentSelection,
     duplicateCurrentSelection,
     pasteFromAvailableClipboard,
-    handleMobileContextPaste
+    handleContextPaste
   };
 }
