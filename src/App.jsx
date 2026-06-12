@@ -650,7 +650,6 @@ export default function App() {
     setPointAction,
     setShapeType,
     setShowNodes,
-    togglePanel,
     setIsPanning
   });
 

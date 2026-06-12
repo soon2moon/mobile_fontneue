@@ -37,7 +37,7 @@ run(async (page) => {
     [...document.querySelectorAll('button')].some(b => b.textContent.includes('Rectangle')));
 
   // 1. Tooltip: portaled, label + hotkey, gone after mouse-away.
-  await page.hover('button[aria-label="Path Tool (P)"]');
+  await page.hover('button[aria-label="Pen (P)"]');
   await pause(450);
   report.tooltip = await page.evaluate(() => {
     const tip = document.querySelector('[role="tooltip"]');
@@ -51,7 +51,7 @@ run(async (page) => {
   });
   expect('tooltipPortaledWithHotkey',
     !!report.tooltip
-    && report.tooltip.text.includes('Path Tool') && report.tooltip.text.includes('P')
+    && report.tooltip.text.includes('Pen') && report.tooltip.text.includes('P')
     && report.tooltip.portaled && report.tooltip.visible);
   await page.mouse.move(400, 200);
   await pause(300);
@@ -78,7 +78,7 @@ run(async (page) => {
   await pause(150);
   await page.mouse.click(575, 300);
   await pause(250);
-  await page.click('button[aria-label="Inspector"]');
+  await page.click('button[aria-label="Design"]');
   await pause(250);
   await page.click('button[title="Stroke Color"]');
   await pause(300);

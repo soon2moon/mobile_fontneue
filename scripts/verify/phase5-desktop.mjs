@@ -33,7 +33,7 @@ run(async (page) => {
   });
 
   // 3. PENCIL freehand.
-  await page.keyboard.press('f'); await pause();
+  await page.keyboard.down('Shift'); await page.keyboard.press('P'); await page.keyboard.up('Shift'); await pause();
   await page.mouse.move(300, 500); await page.mouse.down();
   for (let i = 1; i <= 12; i++) {
     await page.mouse.move(300 + i * 18, 500 + Math.sin(i / 2) * 60, { steps: 2 });

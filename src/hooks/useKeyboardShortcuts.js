@@ -1,11 +1,12 @@
 import { useRef, useEffect } from 'react';
 
-// Global hotkeys: tool switching (P/F/V/R/O/N), copy/cut, undo/redo,
-// panel toggles (L/U), Escape (finish/cancel/deselect), Delete, and
-// hold-Space temporary panning (restores the previous mode on release/blur).
+// Global hotkeys, Figma-aligned: tools (P pen, Shift+P pencil, V move,
+// H hand, R/O/L shapes, T text, N nodes, U place image), copy/cut,
+// undo/redo, Escape (finish/cancel/deselect), Delete, and hold-Space
+// temporary panning (restores the previous mode on release/blur).
 //
 // The dependency list deliberately tracks the *data* the handlers read; the
-// per-render callbacks (changeMode, finishPath, togglePanel, setters) are
+// per-render callbacks (changeMode, finishPath, setters) are
 // re-captured whenever that data changes, matching the original behavior.
 export function useKeyboardShortcuts({
   mode, setMode,
@@ -38,7 +39,6 @@ export function useKeyboardShortcuts({
   setPointAction,
   setShapeType,
   setShowNodes,
-  togglePanel,
   setIsPanning
 }) {
   const spacePanRef = useRef({ active: false, prevMode: null });
@@ -81,16 +81,16 @@ export function useKeyboardShortcuts({
         return;
       }
 
-      if (e.key.toLowerCase() === 'p') {
-        changeMode('draw');
+      if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) {
+        changeMode(e.shiftKey ? 'pencil' : 'draw');
         return;
       }
-      if (e.key.toLowerCase() === 'f') {
-        changeMode('pencil');
-        return;
-      }
-      if (e.key.toLowerCase() === 'v') {
+      if (e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey) {
         changeMode('edit');
+        return;
+      }
+      if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey) {
+        changeMode('pan');
         return;
       }
       if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
@@ -117,7 +117,7 @@ export function useKeyboardShortcuts({
         }
         return;
       }
-      if (e.key.toLowerCase() === 'n') {
+      if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
         if (mode === 'pencil') {
           changeMode('edit');
           setShowNodes(true);
@@ -126,11 +126,12 @@ export function useKeyboardShortcuts({
         }
         return;
       }
-      if (e.key.toLowerCase() === 'l') {
-        togglePanel('layers');
+      if (e.key.toLowerCase() === 'l' && !e.ctrlKey && !e.metaKey) {
+        changeMode('shape');
+        setShapeType('line');
         return;
       }
-      if (e.key.toLowerCase() === 'u') {
+      if (e.key.toLowerCase() === 'u' && !e.ctrlKey && !e.metaKey) {
         fileInputRef.current?.click();
         return;
       }

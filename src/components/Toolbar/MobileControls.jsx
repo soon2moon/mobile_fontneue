@@ -260,7 +260,7 @@ anyMobileOverlayOpen,
                       openMobilePanel('inspector');
                     }}
                     icon={<SlidersHorizontal size={14} />}
-                    label="Style"
+                    label="Design"
                   />
                   <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
                   <MobileToolButton
@@ -344,8 +344,8 @@ anyMobileOverlayOpen,
                   label="Menu"
                 />
                 <div className="mx-2 h-7 w-px bg-[#d0d5dd] shrink-0" />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Edit" />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Path" />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Move" />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Pen" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />
                 <MobileToolButton
                   variant="toolbar"
@@ -355,7 +355,7 @@ anyMobileOverlayOpen,
                   icon={getShapeToolIcon(16)}
                   label="Shape"
                 />
-                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Pan" />
+                <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pan'} onClick={() => changeMode('pan')} icon={<Hand size={16} />} label="Hand" />
                 <MobileToolButton
                   variant="toolbar"
                   radiusClass="rounded-[8px]"

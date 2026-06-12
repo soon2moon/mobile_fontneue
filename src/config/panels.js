@@ -1,7 +1,7 @@
 export const PANELS_CONFIG = [
   { id: 'layers', title: 'Layers' },
-  { id: 'inspector', title: 'Inspector' },
-  { id: 'grid', title: 'Background Config' },
+  { id: 'inspector', title: 'Design' },
+  { id: 'grid', title: 'Canvas Grid' },
   { id: 'export', title: 'Export' }
 ];
 

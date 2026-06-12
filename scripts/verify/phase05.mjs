@@ -67,14 +67,14 @@ run(async (page) => {
     };
   });
 
-  // 'G' hotkey must do nothing; 'B' must still toggle the Background Config panel.
+  // Legacy 'G' and 'B' hotkeys are unbound — neither may open a panel.
   await page.keyboard.press('g');
   await new Promise(r => setTimeout(r, 250));
   report.afterG = await page.evaluate(() => document.body.innerText.match(/Guides Config/i) ? 'guides-panel-opened' : 'nothing');
   await page.keyboard.press('b');
   await new Promise(r => setTimeout(r, 250));
-  report.afterB = await page.evaluate(() => /Background Config/i.test(document.body.innerText) ? 'grid-panel-open' : 'no-panel');
-  await page.keyboard.press('b'); // close it again
+  report.afterB = await page.evaluate(() => /Canvas Grid/i.test(document.body.innerText) ? 'grid-panel-opened' : 'nothing');
+  if (report.afterG !== 'nothing' || report.afterB !== 'nothing') throw new Error('legacy hotkey opened a panel');
 
   await page.screenshot({ path: '/tmp/shots/phase05-desktop.png' });
   return report;

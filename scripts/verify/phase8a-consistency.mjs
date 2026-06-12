@@ -32,7 +32,7 @@ run(async (page) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle0', timeout: 30000 });
   await pause(300);
-  await page.click('button[aria-label="Inspector"]');
+  await page.click('button[aria-label="Design"]');
   await pause(300);
   const before = await cardState();
   expect('desktopContentFits', !!before && before.contentFits && before.inputInsideCard === true);
@@ -82,7 +82,7 @@ run(async (page) => {
     await pause(350);
   };
   await tapTitle('Menu');
-  await tapTitle('Style');
+  await tapTitle('Design');
   const mobileBefore = await cardState();
   expect('mobileContentFits', !!mobileBefore && mobileBefore.contentFits && mobileBefore.inputInsideCard === true);
   const inputPos = await page.evaluate(() => {

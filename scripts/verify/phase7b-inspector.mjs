@@ -50,14 +50,14 @@ run(async (page) => {
   // 1. Draw a rect, select it, open the Inspector: stroke fields are live.
   await drawRect(500, 300, 650, 400);
   await clickPathEdge(575, 300);
-  await page.click('button[aria-label="Inspector"]');
+  await page.click('button[aria-label="Design"]');
   await pause(250);
   report.widthValueForSelection = await page.evaluate((sel) =>
-    document.querySelector(sel)?.value ?? null, inputByTitle('Stroke Width'));
+    document.querySelector(sel)?.value ?? null, inputByTitle('Stroke Weight'));
   expect('strokeFieldsLive', report.widthValueForSelection === '1.5');
 
   // 2. Width 4 commits to the selected path's rendered attribute.
-  await setInputValue('Stroke Width', '4');
+  await setInputValue('Stroke Weight', '4');
   expect('widthEditHitsAttr', (await strokeWidths())[0] === '4');
 
   // 3. Second rect with a different color; marquee both -> Mixed placeholders.
@@ -77,7 +77,7 @@ run(async (page) => {
   report.mixedPlaceholders = await page.evaluate((widthSel, hexSel) => ({
     width: { value: document.querySelector(widthSel)?.value, placeholder: document.querySelector(widthSel)?.placeholder },
     hex: { value: document.querySelector(hexSel)?.value, placeholder: document.querySelector(hexSel)?.placeholder }
-  }), inputByTitle('Stroke Width'), inputByTitle('Stroke Color (Hex)'));
+  }), inputByTitle('Stroke Weight'), inputByTitle('Stroke Color (Hex)'));
   expect('mixedColorIndeterminate',
     report.mixedPlaceholders.hex.value === '' && report.mixedPlaceholders.hex.placeholder === 'Mixed');
   expect('mixedWidthIndeterminate',
@@ -110,7 +110,7 @@ run(async (page) => {
   // 5. Nothing selected -> edits write the defaults for the next path.
   await page.mouse.click(150, 150);
   await pause(250);
-  await setInputValue('Stroke Width', '7');
+  await setInputValue('Stroke Weight', '7');
   await drawRect(900, 480, 1020, 580);
   const widths = await strokeWidths();
   expect('defaultsAffectNextPath', widths[widths.length - 1] === '7');
@@ -136,7 +136,7 @@ run(async (page) => {
     [...document.querySelectorAll('h3')].map(h => h.textContent.trim()));
   report.headers = headers;
   expect('noOldHeaders', !headers.includes('Image Settings') && !headers.includes('Stroke'));
-  expect('inspectorHeader', headers.includes('Inspector'));
+  expect('inspectorHeader', headers.includes('Design'));
 
   // 7. Toolbar Image button and the U hotkey open the file chooser.
   await page.evaluate(() => {
@@ -144,7 +144,7 @@ run(async (page) => {
     const fileInput = document.querySelector('input[type="file"]');
     fileInput.click = () => { window.__fileClicks += 1; };
   });
-  await page.click('button[aria-label="Upload Image (U)"]');
+  await page.click('button[aria-label="Place Image (U)"]');
   await pause(150);
   await page.keyboard.press('u');
   await pause(150);

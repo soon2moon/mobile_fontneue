@@ -69,7 +69,7 @@ run(async (page) => {
     [...document.querySelectorAll('svg path[fill-rule="nonzero"]')].map(p => p.getAttribute('fill')));
 
   // 1. Fill enabled on the defaults; two rects share ONE composite group.
-  await page.click('button[aria-label="Inspector"]');
+  await page.click('button[aria-label="Design"]');
   await pause(250);
   await page.click('button[title="Enable Fill"]');
   await pause(250);
@@ -142,7 +142,7 @@ run(async (page) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle0', timeout: 30000 });
   await pause(300);
-  await page.click('button[aria-label="Inspector"]');
+  await page.click('button[aria-label="Design"]');
   await pause(250);
   await page.click('button[title="Enable Fill"]');
   await pause(250);

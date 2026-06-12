@@ -94,7 +94,7 @@ export default function StrokeSection() {
             }}
             className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-[#344054] font-mono"
             placeholder={showMixedWidth ? 'Mixed' : '1.5'}
-            title="Stroke Width"
+            title="Stroke Weight"
           />
           <span className="text-xs text-[#667085] font-mono select-none">px</span>
         </div>
@@ -107,12 +107,12 @@ export default function StrokeSection() {
             if (e.target.value) apply({ strokeAlign: e.target.value });
           }}
           className="h-8 bg-[#f2f4f7] rounded-md border border-transparent px-2 text-xs text-[#344054] focus:outline-none focus:ring-1 focus:ring-[#d0d5dd]"
-          title="Stroke Align"
+          title="Stroke Position"
         >
           {stroke.indeterminate.align && <option value="" disabled>Mixed</option>}
-          <option value="center">Center</option>
           <option value="inside">Inside</option>
           <option value="outside">Outside</option>
+          <option value="center">Center</option>
         </select>
       </div>
     </div>

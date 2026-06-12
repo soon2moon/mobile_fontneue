@@ -40,6 +40,7 @@ must stay empty.
 | `phase7c-color.mjs` | fillColor: per-color composite groups, picker-drag undo granularity, export alignment, donut hole, legacy-session fallback |
 | `phase7d-consistency.mjs` | portaled tooltips, shape-flyout Popover, Esc consumed by popovers, edge-safe mobile menu + compat-click survival, renamed export context |
 | `phase8a-consistency.mjs` | inspector card fits + never focus-scrolls (desktop/mobile); shape/options/auto-correct/clear buttons use the shared Tooltip |
+| `phase8b-hotkeys.mjs` | Figma hotkeys (H hand, ⇧P pencil, L line, Ctrl+letter ignored, B/G dead) + wording (Pen/Move/Hand/Design/Canvas Grid, stroke Weight/Position) |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.

@@ -58,19 +58,19 @@ applyPathStyle,
         
         {/* Drawing Tools Section */}
         <div className="flex gap-1">
-          <ToolButton 
-            active={mode === 'draw'} 
-            onClick={() => changeMode('draw')} 
-            icon={<PenTool size={20} />} 
-            label="Path Tool" 
+          <ToolButton
+            active={mode === 'draw'}
+            onClick={() => changeMode('draw')}
+            icon={<PenTool size={20} />}
+            label="Pen"
             hotkey="P"
           />
-          <ToolButton 
-            active={mode === 'pencil'} 
-            onClick={() => changeMode('pencil')} 
-            icon={<Pencil size={20} />} 
-            label="Pencil Tool" 
-            hotkey="F"
+          <ToolButton
+            active={mode === 'pencil'}
+            onClick={() => changeMode('pencil')}
+            icon={<Pencil size={20} />}
+            label="Pencil"
+            hotkey="Shift+P"
           />
 
           {/* Contextual Shape Menu */}
@@ -113,7 +113,7 @@ applyPathStyle,
                    <ShapeMenuItem type="ellipse" icon={<Circle size={16}/>} label="Ellipse" hotkey="O" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="polygon" icon={<Triangle size={16}/>} label="Polygon" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                    <ShapeMenuItem type="star" icon={<Star size={16}/>} label="Star" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
-                   <ShapeMenuItem type="line" icon={<Minus size={16}/>} label="Line" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
+                   <ShapeMenuItem type="line" icon={<Minus size={16}/>} label="Line" hotkey="L" current={shapeType} onClick={(t) => {setShapeType(t); changeMode('shape');}} />
                </div>
             </Popover>
           </div>
@@ -122,7 +122,7 @@ applyPathStyle,
             active={mode === 'text'}
             onClick={() => changeMode('text')}
             icon={<Type size={20} />}
-            label="Text Tool"
+            label="Text"
             hotkey="T"
           />
         </div>
@@ -132,19 +132,19 @@ applyPathStyle,
 
         {/* Manipulation Tools Section */}
         <div className="flex gap-1">
-          <ToolButton 
-            active={mode === 'edit'} 
-            onClick={() => changeMode('edit')} 
-            icon={<MousePointer2 size={20} />} 
-            label="Node Editor" 
+          <ToolButton
+            active={mode === 'edit'}
+            onClick={() => changeMode('edit')}
+            icon={<MousePointer2 size={20} />}
+            label="Move"
             hotkey="V"
           />
-          <ToolButton 
-            active={mode === 'pan'} 
-            onClick={() => changeMode('pan')} 
-            icon={<Hand size={20} />} 
-            label="Pan Canvas" 
-            hotkey="Space"
+          <ToolButton
+            active={mode === 'pan'}
+            onClick={() => changeMode('pan')}
+            icon={<Hand size={20} />}
+            label="Hand"
+            hotkey="H"
           />
         </div>
 
@@ -157,22 +157,20 @@ applyPathStyle,
             active={false}
             onClick={() => fileInputRef.current?.click()}
             icon={<ImageIcon size={20} />}
-            label="Upload Image"
+            label="Place Image"
             hotkey="U"
           />
           <ToolButton
             active={openPanels.grid}
-            onClick={() => togglePanel('grid')} 
-            icon={<Grid size={20} />} 
-            label="Background Config" 
-            hotkey="B"
+            onClick={() => togglePanel('grid')}
+            icon={<Grid size={20} />}
+            label="Canvas Grid"
           />
           <ToolButton
             active={openPanels.layers}
-            onClick={() => togglePanel('layers')} 
-            icon={<Layers size={20} />} 
-            label="Layers Panel" 
-            hotkey="L"
+            onClick={() => togglePanel('layers')}
+            icon={<Layers size={20} />}
+            label="Layers"
           />
           <ToolButton 
             active={openPanels.export} 
@@ -211,7 +209,7 @@ applyPathStyle,
             active={openPanels.inspector}
             onClick={() => togglePanel('inspector')}
             icon={<SlidersHorizontal size={20} />}
-            label="Inspector"
+            label="Design"
           />
         </div>
 

@@ -21,8 +21,8 @@ run(async (page) => {
   await new Promise(r => setTimeout(r, 250));
   report.pathsAfterTwoShapes = await countVisiblePaths();
 
-  // Open layers panel, expand it.
-  await page.keyboard.press('l');
+  // Open layers panel via its toolbar button, expand it.
+  await page.click('button[aria-label="Layers"]');
   await new Promise(r => setTimeout(r, 300));
   report.layerRows = await page.evaluate(() =>
     document.querySelectorAll('button[title="Hide Layer"], button[title="Show Layer"]').length
