@@ -36,13 +36,13 @@ activeLayerId,
           }`}
           style={isMobile ? { top: 'calc(env(safe-area-inset-top, 0px) + 56px)' } : undefined}
         >
-          <div className="pointer-events-auto w-full overflow-hidden rounded-2xl border border-[#e4e7ec] bg-[#f8fafc] shadow-[0_14px_32px_rgba(52,64,84,0.16)]">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[#e4e7ec] bg-[#f2f4f7]">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#667085]">
+          <div className="pointer-events-auto w-full overflow-hidden rounded-2xl border border-edge bg-raised shadow-sheet">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-edge bg-sunken">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-secondary">
                 <Layers size={13} />
                 Quick Layer Reorder
               </div>
-              <span className="text-[10px] font-semibold text-[#98a2b3]">
+              <span className="text-[10px] font-semibold text-muted">
                 {selectedLayersInStackOrder.length} selected
               </span>
             </div>
@@ -63,16 +63,16 @@ activeLayerId,
                     key={`quick-layer-${layer.id}`}
                     className={`flex items-center gap-2 rounded-xl border p-1.5 transition-colors ${
                       isActive
-                        ? 'bg-[#eaecf0] border-[#d0d5dd]'
-                        : 'bg-[#f8fafc] border-[#e4e7ec]'
+                        ? 'bg-pressed border-edge-strong'
+                        : 'bg-raised border-edge'
                     }`}
                   >
                     <button
                       type="button"
                       onClick={() => setActiveLayerId(layer.id)}
-                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 py-1 hover:bg-[#f2f4f7] transition-colors"
+                      className="flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 py-1 hover:bg-sunken transition-colors"
                     >
-                      <div className="w-14 h-9 shrink-0 overflow-hidden rounded-md border border-[#d0d5dd] bg-white flex items-center justify-center">
+                      <div className="w-14 h-9 shrink-0 overflow-hidden rounded-md border border-edge-strong bg-chip flex items-center justify-center">
                         {previewBounds ? (
                           <svg
                             className="w-full h-full"
@@ -131,8 +131,8 @@ activeLayerId,
                           <LayerIcon type={layer.itemType} />
                         )}
                       </div>
-                      <span className="text-xs font-semibold text-[#344054] truncate">{layer.name}</span>
-                      <span className="text-[10px] text-[#98a2b3] shrink-0">{instanceCount} obj</span>
+                      <span className="text-xs font-semibold text-ink truncate">{layer.name}</span>
+                      <span className="text-[10px] text-muted shrink-0">{instanceCount} obj</span>
                     </button>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -141,8 +141,8 @@ activeLayerId,
                         disabled={!canMoveUp}
                         className={`h-7 w-7 rounded-md border flex items-center justify-center transition-colors ${
                           canMoveUp
-                            ? 'border-[#d0d5dd] text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-                            : 'border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed'
+                            ? 'border-edge-strong text-secondary hover:bg-sunken hover:text-ink'
+                            : 'border-edge text-edge-strong cursor-not-allowed'
                         }`}
                         title="Move layer up"
                       >
@@ -154,8 +154,8 @@ activeLayerId,
                         disabled={!canMoveDown}
                         className={`h-7 w-7 rounded-md border flex items-center justify-center transition-colors ${
                           canMoveDown
-                            ? 'border-[#d0d5dd] text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
-                            : 'border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed'
+                            ? 'border-edge-strong text-secondary hover:bg-sunken hover:text-ink'
+                            : 'border-edge text-edge-strong cursor-not-allowed'
                         }`}
                         title="Move layer down"
                       >

@@ -11,7 +11,7 @@ export default function TextSection() {
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Text</label>
+      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Text</label>
       <div className="grid grid-cols-2 gap-2">
         <ConfigInput
           icon={<Type size={14} />}
@@ -20,14 +20,14 @@ export default function TextSection() {
           onChange={v => apply({ fontSize: Math.max(MIN_FONT_SIZE, v) })}
           title="Font Size"
         />
-        <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2">
+        <div className="h-8 flex items-center gap-2 bg-sunken rounded-md px-2">
           <ColorControl
             value={text.fill}
             label="Text Color"
             onChange={(color) => apply({ fill: color })}
             onChangeTransient={(color) => applyTransient({ fill: color })}
           />
-          <span className="text-xs text-[#667085] select-none">Color</span>
+          <span className="text-xs text-secondary select-none">Color</span>
         </div>
       </div>
     </div>

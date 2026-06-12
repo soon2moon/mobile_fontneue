@@ -1,7 +1,7 @@
 function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg', variant = 'solid' }) {
-  const activeStyle = 'bg-[#eaecf0] border-[#d0d5dd] text-[#344054]';
-  const solidIdleStyle = 'bg-[#f5f7fb] border-[#e6eaf0] text-[#667085] active:bg-[#eaecf0]';
-  const toolbarIdleStyle = 'bg-transparent border-transparent text-[#667085] active:bg-[#eaecf0] active:text-[#344054] active:border-[#d0d5dd]';
+  const activeStyle = 'bg-pressed border-edge-strong text-ink';
+  const solidIdleStyle = 'bg-sunken border-edge text-secondary active:bg-pressed';
+  const toolbarIdleStyle = 'bg-transparent border-transparent text-secondary active:bg-pressed active:text-ink active:border-edge-strong';
   const idleStyle = variant === 'toolbar' ? toolbarIdleStyle : solidIdleStyle;
   const handlePointerRelease = (event) => {
     if (event?.currentTarget && typeof event.currentTarget.blur === 'function') {

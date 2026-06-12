@@ -1,3 +1,4 @@
+import { THEME } from '../../theme';
 import { getTextLocalLayout } from '../../lib/textMeasure';
 
 // Live SVG text object: <text>/<tspan> lines laid out around the object's
@@ -31,7 +32,7 @@ export default function TextObject({ text, zoom = 1, showSelectionChrome = false
             width={layout.halfW * 2}
             height={layout.halfH * 2}
             fill="none"
-            stroke="#3b82f6"
+            stroke={THEME.accent}
             strokeWidth={1.5 / zoom}
           />
           {showHandles && [
@@ -44,7 +45,7 @@ export default function TextObject({ text, zoom = 1, showSelectionChrome = false
               width={8 / zoom}
               height={8 / zoom}
               fill="white"
-              stroke="#3b82f6"
+              stroke={THEME.accent}
               strokeWidth={1.5 / zoom}
             />
           ))}

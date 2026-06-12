@@ -1,5 +1,5 @@
 import { THEME } from '../theme';
-import { DEFAULT_STROKE_WIDTH, DEFAULT_STROKE_COLOR } from '../constants';
+import { DEFAULT_STROKE_WIDTH, DEFAULT_STROKE_COLOR, DEFAULT_FILL_COLOR } from '../constants';
 import { pointsToPath } from './paths';
 import { buildCompositeFillGroups } from './compositeFill';
 import { normalizeStrokeWidth, normalizeStrokeColor } from './stroke';
@@ -131,7 +131,7 @@ export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = 
     const layout = getTextLocalLayout(text);
     const opacity = Number.isFinite(text.opacity) ? Math.max(0, Math.min(1, text.opacity)) : 1;
     const rotation = Number.isFinite(text.rotation) ? text.rotation : 0;
-    const fill = normalizeStrokeColor(text.fill, THEME.main);
+    const fill = normalizeStrokeColor(text.fill, DEFAULT_FILL_COLOR);
     const tspans = layout.lines.map(line => (
       `<tspan x="${line.x}" y="${line.y}">${escapeXml(line.text)}</tspan>`
     )).join('');

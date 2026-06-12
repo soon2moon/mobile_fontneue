@@ -40,10 +40,10 @@ export default function Tooltip({ label, hotkey, children }) {
             ref={refs.setFloating}
             style={{ ...floatingStyles, zIndex: 60 }}
             {...getFloatingProps()}
-            className="bg-[#344054] text-[#f2f4f7] text-xs font-medium px-2 py-1 rounded shadow-lg flex items-center gap-2 pointer-events-none whitespace-nowrap"
+            className="bg-tooltip text-tooltip-ink text-xs font-medium px-2 py-1 rounded shadow-lg flex items-center gap-2 pointer-events-none whitespace-nowrap"
           >
             <span>{label}</span>
-            {hotkey && <span className="text-[#98a2b3] font-mono text-[10px] bg-[#1f2937] px-1 rounded">{hotkey}</span>}
+            {hotkey && <span className="text-muted font-mono text-[10px] bg-tooltip-chip px-1 rounded">{hotkey}</span>}
           </div>
         </FloatingPortal>
       )}

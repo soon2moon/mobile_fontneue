@@ -88,7 +88,7 @@ anyMobileOverlayOpen,
             <button
               type="button"
               onClick={closeAllPanels}
-              className="absolute inset-0 z-[9] bg-[#344054]/8"
+              className="absolute inset-0 z-[9] bg-scrim/[0.08]"
               aria-label="Close panels overlay"
             />
           )}
@@ -104,7 +104,7 @@ anyMobileOverlayOpen,
             <div
               role="menu"
               aria-label="Canvas actions"
-              className="bg-[#f8fafc] border border-[#e4e7ec] rounded-[12px] shadow-[0_12px_24px_rgba(52,64,84,0.14)] p-1.5"
+              className="bg-raised border border-edge rounded-[12px] shadow-menu p-1.5"
             >
               <div className="flex flex-col gap-1">
                 {mobileContextMenu?.type === 'actions' && (
@@ -115,7 +115,7 @@ anyMobileOverlayOpen,
                         copyCurrentSelection();
                         closeMobileContextMenu();
                       }}
-                      className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                      className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-ink active:bg-pressed flex items-center gap-2 text-xs font-semibold"
                     >
                       <Copy size={14} />
                       Copy
@@ -126,7 +126,7 @@ anyMobileOverlayOpen,
                         cutCurrentSelection();
                         closeMobileContextMenu();
                       }}
-                      className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#b42318] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                      className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-danger active:bg-pressed flex items-center gap-2 text-xs font-semibold"
                     >
                       <Scissors size={14} />
                       Cut
@@ -137,7 +137,7 @@ anyMobileOverlayOpen,
                         duplicateCurrentSelection();
                         closeMobileContextMenu();
                       }}
-                      className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                      className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-ink active:bg-pressed flex items-center gap-2 text-xs font-semibold"
                     >
                       <Plus size={14} />
                       Duplicate
@@ -148,7 +148,7 @@ anyMobileOverlayOpen,
                   <button
                     type="button"
                     onClick={handleMobileContextPaste}
-                    className="h-9 px-3 rounded-[8px] border border-transparent bg-[#f2f4f7] text-[#344054] active:bg-[#eaecf0] flex items-center gap-2 text-xs font-semibold"
+                    className="h-9 px-3 rounded-[8px] border border-transparent bg-sunken text-ink active:bg-pressed flex items-center gap-2 text-xs font-semibold"
                   >
                     <ClipboardPaste size={14} />
                     Paste
@@ -162,7 +162,7 @@ anyMobileOverlayOpen,
             className="absolute left-2 right-2 z-20 pointer-events-none flex flex-wrap items-center justify-between gap-2"
             style={{ top: mobileTopInset }}
           >
-            <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-2 flex items-center gap-1 max-w-full">
+            <div className="pointer-events-auto h-11 bg-raised rounded-[16px] shadow-lg border border-edge px-2 flex items-center gap-1 max-w-full">
               <button
                 type="button"
                 onClick={handleUndo}
@@ -170,7 +170,7 @@ anyMobileOverlayOpen,
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
                 onMouseUp={clearTapFocus}
-                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
+                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-secondary active:bg-pressed active:border-edge-strong active:text-ink"
                 title="Undo"
               >
                 <RefreshCw size={13} className="-scale-x-100" />
@@ -182,13 +182,13 @@ anyMobileOverlayOpen,
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
                 onMouseUp={clearTapFocus}
-                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
+                className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-secondary active:bg-pressed active:border-edge-strong active:text-ink"
                 title="Redo"
               >
                 <RefreshCw size={13} />
               </button>
             </div>
-            <div className="pointer-events-auto h-11 bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] px-1.5 flex items-center gap-1.5 max-w-full">
+            <div className="pointer-events-auto h-11 bg-raised rounded-[16px] shadow-lg border border-edge px-1.5 flex items-center gap-1.5 max-w-full">
               <button
                 type="button"
                 onClick={resetZoomToHundred}
@@ -196,7 +196,7 @@ anyMobileOverlayOpen,
                 onPointerCancel={clearTapFocus}
                 onTouchEnd={clearTapFocus}
                 onMouseUp={clearTapFocus}
-                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-[#667085] bg-transparent active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
+                className="h-8 min-w-[52px] px-2.5 rounded-[8px] border border-transparent flex items-center justify-center text-[12px] leading-none font-semibold font-mono text-secondary bg-transparent active:bg-pressed active:border-edge-strong active:text-ink"
                 title="Reset zoom to 100%"
               >
                 {Math.round(zoom * 100)}%
@@ -209,7 +209,7 @@ anyMobileOverlayOpen,
                   onPointerCancel={clearTapFocus}
                   onTouchEnd={clearTapFocus}
                   onMouseUp={clearTapFocus}
-                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
+                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-secondary active:bg-pressed active:border-edge-strong active:text-ink"
                   title="Zoom Out"
                 >
                   <Minus size={13} />
@@ -221,7 +221,7 @@ anyMobileOverlayOpen,
                   onPointerCancel={clearTapFocus}
                   onTouchEnd={clearTapFocus}
                   onMouseUp={clearTapFocus}
-                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-[#667085] active:bg-[#eaecf0] active:border-[#d0d5dd] active:text-[#344054]"
+                  className="h-8 w-8 rounded-[8px] border border-transparent flex items-center justify-center bg-transparent text-secondary active:bg-pressed active:border-edge-strong active:text-ink"
                   title="Zoom In"
                 >
                   <Plus size={13} />
@@ -235,11 +235,11 @@ anyMobileOverlayOpen,
             style={{ ...mobileToolbarSharedWidthStyle, bottom: mobileMenuDrawerBottom }}
           >
             <div
-              className={`pointer-events-auto w-full rounded-[16px] shadow-[0_12px_28px_rgba(52,64,84,0.14)] mobile-drawer ${
+              className={`pointer-events-auto w-full rounded-[16px] shadow-float mobile-drawer ${
                 mobileToolsOpen ? 'mobile-drawer-open' : 'mobile-drawer-closed'
               }`}
             >
-              <div className="bg-[#f8fafc] rounded-[16px] border border-[#e4e7ec] p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
+              <div className="bg-raised rounded-[16px] border border-edge p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
                 <div className="grid grid-cols-4 gap-1">
                   <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
                   <MobileToolButton
@@ -315,8 +315,8 @@ anyMobileOverlayOpen,
               className="absolute left-1/2 -translate-x-1/2 z-[21] pointer-events-none w-max max-w-[calc(100vw-16px)]"
               style={{ bottom: mobileShapePanelBottom }}
             >
-              <div className="pointer-events-auto rounded-[16px] shadow-[0_12px_28px_rgba(52,64,84,0.14)] w-max max-w-[calc(100vw-16px)]">
-                <div className="bg-[#f8fafc] rounded-[16px] border border-[#e4e7ec] p-1 overflow-hidden">
+              <div className="pointer-events-auto rounded-[16px] shadow-float w-max max-w-[calc(100vw-16px)]">
+                <div className="bg-raised rounded-[16px] border border-edge p-1 overflow-hidden">
                   <div className="flex items-center gap-0.5 overflow-x-auto">
                     <MobileToolButton active={shapeType === 'rectangle'} onClick={() => selectMobileShape('rectangle')} icon={<Square size={14} />} label="Rect" />
                     <MobileToolButton active={shapeType === 'ellipse'} onClick={() => selectMobileShape('ellipse')} icon={<Circle size={14} />} label="Ellipse" />
@@ -333,7 +333,7 @@ anyMobileOverlayOpen,
             className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none w-max max-w-[calc(100vw-16px)]"
             style={{ bottom: mobileToolbarBottom }}
           >
-            <div ref={mobileToolbarShellRef} className="pointer-events-auto bg-[#f8fafc] rounded-[16px] shadow-lg border border-[#e4e7ec] p-[6px] w-max max-w-[calc(100vw-16px)]">
+            <div ref={mobileToolbarShellRef} className="pointer-events-auto bg-raised rounded-[16px] shadow-lg border border-edge p-[6px] w-max max-w-[calc(100vw-16px)]">
               <div className="flex items-center gap-1 overflow-x-auto">
                 <MobileToolButton
                   variant="toolbar"
@@ -343,7 +343,7 @@ anyMobileOverlayOpen,
                   icon={<Menu size={16} />}
                   label="Menu"
                 />
-                <div className="mx-2 h-7 w-px bg-[#d0d5dd] shrink-0" />
+                <div className="mx-2 h-7 w-px bg-edge-strong shrink-0" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'edit'} onClick={() => changeMode('edit')} icon={<MousePointer2 size={16} />} label="Move" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'draw'} onClick={() => changeMode('draw')} icon={<PenTool size={16} />} label="Pen" />
                 <MobileToolButton variant="toolbar" radiusClass="rounded-[8px]" active={mode === 'pencil'} onClick={() => changeMode('pencil')} icon={<Pencil size={16} />} label="Pencil" />

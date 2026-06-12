@@ -27,8 +27,8 @@ export default function StrokeSection() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e4e7ec]">
-        <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">
+      <div className="flex items-center justify-between px-1 pb-2 border-b border-edge">
+        <label className="text-[10px] font-bold text-secondary uppercase tracking-widest">
           Stroke{stroke.indeterminate.enabled ? ' · Mixed' : ''}
         </label>
         <Toggle
@@ -39,7 +39,7 @@ export default function StrokeSection() {
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-2">
-        <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
+        <div className="h-8 flex items-center gap-2 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">
           <ColorControl
             value={stroke.color}
             showIndeterminate={stroke.indeterminate.color}
@@ -69,13 +69,13 @@ export default function StrokeSection() {
                 e.currentTarget.blur();
               }
             }}
-            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#344054] font-mono uppercase"
+            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-ink font-mono uppercase"
             placeholder={showMixedColor ? 'Mixed' : '4A2622'}
             maxLength={6}
             title="Stroke Color (Hex)"
           />
         </div>
-        <div className="h-8 flex items-center gap-1 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
+        <div className="h-8 flex items-center gap-1 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">
           <input
             type="text"
             value={showMixedWidth ? '' : strokeWidthInput}
@@ -92,11 +92,11 @@ export default function StrokeSection() {
                 e.currentTarget.blur();
               }
             }}
-            className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-[#344054] font-mono"
+            className="flex-1 min-w-0 text-xs text-right bg-transparent border-none outline-none py-1 text-ink font-mono"
             placeholder={showMixedWidth ? 'Mixed' : '1.5'}
             title="Stroke Weight"
           />
-          <span className="text-xs text-[#667085] font-mono select-none">px</span>
+          <span className="text-xs text-secondary font-mono select-none">px</span>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function StrokeSection() {
           onChange={(e) => {
             if (e.target.value) apply({ strokeAlign: e.target.value });
           }}
-          className="h-8 bg-[#f2f4f7] rounded-md border border-transparent px-2 text-xs text-[#344054] focus:outline-none focus:ring-1 focus:ring-[#d0d5dd]"
+          className="h-8 bg-sunken rounded-md border border-transparent px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-edge-strong"
           title="Stroke Position"
         >
           {stroke.indeterminate.align && <option value="" disabled>Mixed</option>}

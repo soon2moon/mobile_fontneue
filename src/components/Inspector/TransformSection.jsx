@@ -11,10 +11,10 @@ export default function TransformSection() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between px-1 mb-1">
-        <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">Transform</label>
+        <label className="text-[10px] font-bold text-secondary uppercase tracking-widest">Transform</label>
         <button
           onClick={() => apply({ locked: !transform.locked })}
-          className={`p-1 rounded transition-colors ${transform.locked ? 'bg-[#eaecf0] text-[#344054]' : 'text-[#667085] hover:text-[#344054] hover:bg-[#eaecf0]'}`}
+          className={`p-1 rounded transition-colors ${transform.locked ? 'bg-pressed text-ink' : 'text-secondary hover:text-ink hover:bg-pressed'}`}
           title={transform.locked ? 'Unlock Object' : 'Lock Object'}
         >
           {transform.locked ? <Lock size={12} /> : <Unlock size={12} />}

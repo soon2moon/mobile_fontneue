@@ -41,6 +41,7 @@ must stay empty.
 | `phase7d-consistency.mjs` | portaled tooltips, shape-flyout Popover, Esc consumed by popovers, edge-safe mobile menu + compat-click survival, renamed export context |
 | `phase8a-consistency.mjs` | inspector card fits + never focus-scrolls (desktop/mobile); shape/options/auto-correct/clear buttons use the shared Tooltip |
 | `phase8b-hotkeys.mjs` | Figma hotkeys (H hand, ⇧P pencil, L line, Ctrl+letter ignored, B/G dead) + wording (Pen/Move/Hand/Design/Canvas Grid, stroke Weight/Position) |
+| `phase8c1-tokens.mjs` | CSS-variable color tokens resolve with zero visual change; no hex utility classes remain; legacy stroke ink pinned |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.

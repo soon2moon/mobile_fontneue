@@ -1,9 +1,10 @@
-import { THEME } from './theme';
-
+// Legacy content fallbacks — pinned to the original ink color so paths,
+// texts, and sessions from before per-object colors keep rendering
+// unchanged regardless of theme (phase7c-color.mjs asserts this).
 export const DEFAULT_STROKE_WIDTH = 1.5;
-export const DEFAULT_STROKE_COLOR = THEME.main;
+export const DEFAULT_STROKE_COLOR = '#344054';
 export const DEFAULT_STROKE_ALIGN = 'center';
-export const DEFAULT_FILL_COLOR = THEME.main;
+export const DEFAULT_FILL_COLOR = '#344054';
 
 export const SNAP_RADIUS = 10;
 export const GRID_SIZE = 50;

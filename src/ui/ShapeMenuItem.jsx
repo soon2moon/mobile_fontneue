@@ -5,14 +5,14 @@ function ShapeMenuItem({ type, icon, label, hotkey, current, onClick }) {
       <button
         onClick={() => onClick(type)}
         className={`flex items-center justify-between w-full p-2 text-xs font-medium rounded-lg transition-colors ${
-            active ? 'bg-[#eaecf0] text-[#344054]' : 'text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054]'
+            active ? 'bg-pressed text-ink' : 'text-secondary hover:bg-sunken hover:text-ink'
         }`}
       >
           <div className="flex items-center gap-2">
             {icon}
             <span>{label}</span>
           </div>
-          {hotkey && <span className="text-[10px] font-mono text-[#98a2b3]">{hotkey}</span>}
+          {hotkey && <span className="text-[10px] font-mono text-muted">{hotkey}</span>}
       </button>
   )
 }

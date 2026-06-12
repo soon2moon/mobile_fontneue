@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* UI color tokens (RGB triplets — consumed via rgb(var(--x) / <alpha>) in
+   tailwind.config.js). Canvas/SVG colors live in src/theme.js. */
+:root {
+  --color-canvas: 242 244 247;
+  --color-raised: 248 250 252;
+  --color-sunken: 242 244 247;
+  --color-pressed: 234 236 240;
+  --color-edge: 228 231 236;
+  --color-edge-strong: 208 213 221;
+  --color-ink: 52 64 84;
+  --color-secondary: 102 112 133;
+  --color-muted: 152 162 179;
+  --color-accent: 59 130 246;
+  --color-accent-strong: 37 99 235;
+  --color-danger: 180 35 24;
+  --color-danger-bg: 254 228 226;
+  --color-chip: 255 255 255;
+  --color-tooltip: 52 64 84;
+  --color-tooltip-ink: 242 244 247;
+  --color-tooltip-chip: 31 41 55;
+  --color-scrim: 52 64 84;
+  --color-shadow: 52 64 84;
+}
+
 html,
 body,
 #root {
@@ -11,8 +35,8 @@ body,
 }
 
 body {
-  background: #f2f4f7;
-  color: #344054;
+  background: rgb(var(--color-canvas));
+  color: rgb(var(--color-ink));
   font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

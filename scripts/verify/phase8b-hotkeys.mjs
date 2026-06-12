@@ -18,7 +18,7 @@ run(async (page) => {
 
   const buttonActive = (aria) => page.evaluate((a) => {
     const b = document.querySelector(`button[aria-label="${a}"]`);
-    return !!b && b.className.includes('bg-[#eaecf0]');
+    return !!b && b.className.includes('bg-pressed');
   }, aria);
   const pathCount = () => page.evaluate(() =>
     [...document.querySelectorAll('svg g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length);

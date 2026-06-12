@@ -73,24 +73,24 @@ activeEditGroupId,
   if (gridConfig.type === 'dots') {
     patternW = s;
     patternH = s;
-    patternContent = <circle cx={1/zoom} cy={1/zoom} r={1.5/zoom} fill="#d0d5dd" />;
+    patternContent = <circle cx={1/zoom} cy={1/zoom} r={1.5/zoom} fill={THEME.gridline} />;
   } else if (gridConfig.type === 'circles') {
     patternW = s;
     patternH = s;
-    patternContent = <circle cx={s/2} cy={s/2} r={s / 2} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
+    patternContent = <circle cx={s/2} cy={s/2} r={s / 2} fill="none" stroke={THEME.gridline} strokeWidth={1/zoom} />;
   } else if (gridConfig.type === 'lines') {
     if (gridConfig.edges === 4) {
       patternW = s;
       patternH = s;
-      patternContent = <path d={`M ${s} 0 L 0 0 L 0 ${s}`} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
+      patternContent = <path d={`M ${s} 0 L 0 0 L 0 ${s}`} fill="none" stroke={THEME.gridline} strokeWidth={1/zoom} />;
     } else if (gridConfig.edges === 3) {
       patternW = s;
       patternH = s * Math.sqrt(3);
-      patternContent = <path d={`M 0 0 L ${patternW} 0 M 0 ${patternH/2} L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} 0 M ${patternW/2} ${patternH} L ${patternW} ${patternH/2} M ${patternW/2} 0 L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} ${patternH}`} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
+      patternContent = <path d={`M 0 0 L ${patternW} 0 M 0 ${patternH/2} L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} 0 M ${patternW/2} ${patternH} L ${patternW} ${patternH/2} M ${patternW/2} 0 L ${patternW} ${patternH/2} M 0 ${patternH/2} L ${patternW/2} ${patternH}`} fill="none" stroke={THEME.gridline} strokeWidth={1/zoom} />;
     } else if (gridConfig.edges === 6) {
       patternW = s * Math.sqrt(3);
       patternH = s * 3;
-      patternContent = <path d={`M 0 ${0.5*s} L ${patternW/2} 0 L ${patternW} ${0.5*s} L ${patternW} ${1.5*s} L ${patternW/2} ${2*s} L 0 ${1.5*s} Z M ${patternW/2} ${2*s} L ${patternW/2} ${3*s}`} fill="none" stroke="#d0d5dd" strokeWidth={1/zoom} />;
+      patternContent = <path d={`M 0 ${0.5*s} L ${patternW/2} 0 L ${patternW} ${0.5*s} L ${patternW} ${1.5*s} L ${patternW/2} ${2*s} L 0 ${1.5*s} Z M ${patternW/2} ${2*s} L ${patternW/2} ${3*s}`} fill="none" stroke={THEME.gridline} strokeWidth={1/zoom} />;
     }
   }
 
@@ -130,7 +130,7 @@ activeEditGroupId,
                 <path
                   d="M 1 0 L 0 0 L 0 1"
                   fill="none"
-                  stroke="#667085"
+                  stroke={THEME.gridlineStrong}
                   strokeOpacity="0.22"
                   strokeWidth={1 / zoom}
                 />
@@ -149,11 +149,11 @@ activeEditGroupId,
           {showCircularGrid && (
             <g className="opacity-60 pointer-events-none">
               {Array.from({length: 100}).map((_, i) => (
-                <circle key={`circ-${i}`} cx={0} cy={0} r={(i + 1) * s} stroke="#d0d5dd" strokeWidth={1/zoom} fill="none" />
+                <circle key={`circ-${i}`} cx={0} cy={0} r={(i + 1) * s} stroke={THEME.gridline} strokeWidth={1/zoom} fill="none" />
               ))}
               {Array.from({length: circularRayCount}).map((_, i) => {
                  const angle = (i * effectiveCircularStep * Math.PI) / 180;
-                 return <line key={`rad-${i}`} x1={-5000 * Math.cos(angle)} y1={-5000 * Math.sin(angle)} x2={5000 * Math.cos(angle)} y2={5000 * Math.sin(angle)} stroke="#d0d5dd" strokeWidth={1/zoom} />
+                 return <line key={`rad-${i}`} x1={-5000 * Math.cos(angle)} y1={-5000 * Math.sin(angle)} x2={5000 * Math.cos(angle)} y2={5000 * Math.sin(angle)} stroke={THEME.gridline} strokeWidth={1/zoom} />
               })}
             </g>
           )}
@@ -202,7 +202,7 @@ activeEditGroupId,
                                width={img.width * img.scale}
                                height={img.height * img.scale}
                                fill="none"
-                               stroke="#3b82f6" 
+                               stroke={THEME.accent} 
                                strokeWidth={1.5/zoom}
                            />
                            {selectedImageIds.length === 1 && selectedTextIds.length === 0 && [
@@ -215,7 +215,7 @@ activeEditGroupId,
                                  width={8/zoom}
                                  height={8/zoom}
                                  fill="white"
-                                 stroke="#3b82f6"
+                                 stroke={THEME.accent}
                                  strokeWidth={1.5/zoom}
                                />
                            ))}
@@ -343,7 +343,7 @@ activeEditGroupId,
                                     y1={p.y}
                                     x2={p.hIn.x}
                                     y2={p.hIn.y}
-                                    stroke={inHovered ? "#2563eb" : THEME.main}
+                                    stroke={inHovered ? THEME.accentStrong : THEME.main}
                                     strokeWidth={(inHovered ? 1.1 : 0.8) / zoom}
                                     className="transition-all duration-150"
                                   />
@@ -361,7 +361,7 @@ activeEditGroupId,
                                     cy={p.hIn.y}
                                     r={2.5 / zoom}
                                     fill={inHovered ? "white" : THEME.nodeFill}
-                                    stroke={inHovered ? "#2563eb" : THEME.main}
+                                    stroke={inHovered ? THEME.accentStrong : THEME.main}
                                     strokeWidth={1 / zoom}
                                     className="transition-colors duration-150"
                                   />
@@ -380,7 +380,7 @@ activeEditGroupId,
                                     y1={p.y}
                                     x2={p.hOut.x}
                                     y2={p.hOut.y}
-                                    stroke={outHovered ? "#2563eb" : THEME.main}
+                                    stroke={outHovered ? THEME.accentStrong : THEME.main}
                                     strokeWidth={(outHovered ? 1.1 : 0.8) / zoom}
                                     className="transition-all duration-150"
                                   />
@@ -398,7 +398,7 @@ activeEditGroupId,
                                     cy={p.hOut.y}
                                     r={2.5 / zoom}
                                     fill={outHovered ? "white" : THEME.nodeFill}
-                                    stroke={outHovered ? "#2563eb" : THEME.main}
+                                    stroke={outHovered ? THEME.accentStrong : THEME.main}
                                     strokeWidth={1 / zoom}
                                     className="transition-colors duration-150"
                                   />
@@ -473,7 +473,7 @@ activeEditGroupId,
               y={Math.min(selectionBox.startY, selectionBox.currentY)}
               width={Math.abs(selectionBox.currentX - selectionBox.startX)}
               height={Math.abs(selectionBox.currentY - selectionBox.startY)}
-              fill="rgba(74, 38, 34, 0.08)"
+              fill={THEME.marqueeFill}
               stroke={THEME.main}
               strokeWidth={1/zoom}
             />
@@ -500,8 +500,8 @@ activeEditGroupId,
                        y={selBBox.minY}
                        width={selBBox.maxX - selBBox.minX}
                        height={selBBox.maxY - selBBox.minY}
-                       fill="rgba(59, 130, 246, 0.03)"
-                       stroke="#3b82f6"
+                       fill={THEME.accentFaint}
+                       stroke={THEME.accent}
                        strokeWidth={1.25}
                        strokeDasharray="4 4"
                        vectorEffect="non-scaling-stroke"
@@ -519,7 +519,7 @@ activeEditGroupId,
                          width={8/zoom}
                          height={8/zoom}
                          fill="white"
-                         stroke="#3b82f6"
+                         stroke={THEME.accent}
                          strokeWidth={1.5}
                          vectorEffect="non-scaling-stroke"
                        />
@@ -546,7 +546,7 @@ activeEditGroupId,
                 <path 
                   d={`M ${currentPath[currentPath.length - 1].x} ${currentPath[currentPath.length - 1].y} C ${currentPath[currentPath.length - 1].hOut ? currentPath[currentPath.length - 1].hOut.x : currentPath[currentPath.length - 1].x} ${currentPath[currentPath.length - 1].hOut ? currentPath[currentPath.length - 1].hOut.y : currentPath[currentPath.length - 1].y}, ${ghostPoint.x} ${ghostPoint.y}, ${ghostPoint.x} ${ghostPoint.y}`}
                   fill="none"
-                  stroke="#98a2b3" 
+                  stroke={THEME.ghost} 
                   strokeWidth={strokeWidth}
                   strokeDasharray={`${4/zoom},${4/zoom}`}
                 />
@@ -561,8 +561,8 @@ activeEditGroupId,
                       <>
                         {activeP.hIn && <line x1={activeP.x} y1={activeP.y} x2={activeP.hIn.x} y2={activeP.hIn.y} stroke={THEME.main} strokeWidth={0.8/zoom} />}
                         {activeP.hOut && <line x1={activeP.x} y1={activeP.y} x2={activeP.hOut.x} y2={activeP.hOut.y} stroke={THEME.main} strokeWidth={0.8/zoom} />}
-                        {activeP.hIn && <circle cx={activeP.hIn.x} cy={activeP.hIn.y} r={2.5/zoom} fill={THEME.nodeFill} stroke={THEME.main} strokeWidth={1/zoom} className="cursor-pointer transition-colors duration-150 hover:fill-white hover:stroke-[#2563eb]" />}
-                        {activeP.hOut && <circle cx={activeP.hOut.x} cy={activeP.hOut.y} r={2.5/zoom} fill={THEME.nodeFill} stroke={THEME.main} strokeWidth={1/zoom} className="cursor-pointer transition-colors duration-150 hover:fill-white hover:stroke-[#2563eb]" />}
+                        {activeP.hIn && <circle cx={activeP.hIn.x} cy={activeP.hIn.y} r={2.5/zoom} fill={THEME.nodeFill} stroke={THEME.main} strokeWidth={1/zoom} className="cursor-pointer transition-colors duration-150 hover:fill-white hover:stroke-accent-strong" />}
+                        {activeP.hOut && <circle cx={activeP.hOut.x} cy={activeP.hOut.y} r={2.5/zoom} fill={THEME.nodeFill} stroke={THEME.main} strokeWidth={1/zoom} className="cursor-pointer transition-colors duration-150 hover:fill-white hover:stroke-accent-strong" />}
                       </>
                     );
                   })()}
@@ -582,8 +582,8 @@ activeEditGroupId,
                        y={p.y - (isStart && hoveredStartPoint ? 4.5/zoom : 3.5/zoom)} 
                        width={isStart && hoveredStartPoint ? 9/zoom : 7/zoom} 
                        height={isStart && hoveredStartPoint ? 9/zoom : 7/zoom} 
-                       fill={isStart && hoveredStartPoint ? "#10b981" : THEME.nodeFill} 
-                       stroke={isStart && hoveredStartPoint ? "#059669" : THEME.main} 
+                       fill={isStart && hoveredStartPoint ? THEME.success : THEME.nodeFill} 
+                       stroke={isStart && hoveredStartPoint ? THEME.successStrong : THEME.main} 
                        strokeWidth={1.5/zoom}
                      />
                    );
@@ -594,8 +594,8 @@ activeEditGroupId,
                        cx={p.x} 
                        cy={p.y} 
                        r={isStart && hoveredStartPoint ? 5/zoom : 3.5/zoom} 
-                       fill={isStart && hoveredStartPoint ? "#10b981" : THEME.nodeFill} 
-                       stroke={isStart && hoveredStartPoint ? "#059669" : THEME.main} 
+                       fill={isStart && hoveredStartPoint ? THEME.success : THEME.nodeFill} 
+                       stroke={isStart && hoveredStartPoint ? THEME.successStrong : THEME.main} 
                        strokeWidth={1.5/zoom}
                      />
                    );
@@ -604,7 +604,7 @@ activeEditGroupId,
               
               {/* Ghost Node */}
               {ghostPoint && !hoveredStartPoint && !isDrawingCurve && showNodes && mode === 'draw' && (
-                <rect x={ghostPoint.x - 3/zoom} y={ghostPoint.y - 3/zoom} width={6/zoom} height={6/zoom} fill="#98a2b3" />
+                <rect x={ghostPoint.x - 3/zoom} y={ghostPoint.y - 3/zoom} width={6/zoom} height={6/zoom} fill={THEME.ghost} />
               )}
             </g>
           )}
@@ -615,8 +615,8 @@ activeEditGroupId,
               cx={drawHover.x} 
               cy={drawHover.y} 
               r={drawHover.type === 'endpoint' ? 5/zoom : 4/zoom} 
-              fill={drawHover.type === 'endpoint' ? "#10b981" : THEME.nodeFill} 
-              stroke={drawHover.type === 'endpoint' ? "#059669" : THEME.main} 
+              fill={drawHover.type === 'endpoint' ? THEME.success : THEME.nodeFill} 
+              stroke={drawHover.type === 'endpoint' ? THEME.successStrong : THEME.main} 
               strokeWidth={1.5/zoom}
               className="pointer-events-none"
             />

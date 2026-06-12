@@ -1,4 +1,4 @@
-import { THEME } from '../theme';
+import { DEFAULT_FILL_COLOR } from '../constants';
 import { normalizeStrokeColor } from './stroke';
 
 export const MIN_FONT_SIZE = 1;
@@ -9,7 +9,7 @@ export const DEFAULT_TEXT_STYLE = {
   fontWeight: 400,
   textAlign: 'left',
   lineHeight: 1.14,
-  fill: THEME.main,
+  fill: DEFAULT_FILL_COLOR,
   opacity: 1
 };
 

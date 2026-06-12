@@ -100,7 +100,7 @@ export default function ColorControl({
         <button
           key={`${prefix}-${index}`}
           onClick={() => onChange(color)}
-          className="h-4 w-4 rounded border border-[#d0d5dd]"
+          className="h-4 w-4 rounded border border-edge-strong"
           style={{ background: color }}
           title={color}
         />
@@ -114,7 +114,7 @@ export default function ColorControl({
         ref={chipRef}
         disabled={disabled}
         onClick={() => handleOpenChange(!open)}
-        className={`h-5 w-5 p-0 border border-[#d0d5dd] rounded shrink-0 ${disabled ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+        className={`h-5 w-5 p-0 border border-edge-strong rounded shrink-0 ${disabled ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
         style={{
           background: showIndeterminate
             ? 'linear-gradient(135deg, #ffffff 0 45%, #d0d5dd 45% 55%, #ffffff 55% 100%)'
@@ -123,10 +123,10 @@ export default function ColorControl({
         title={label}
       />
       <Popover open={open} onOpenChange={handleOpenChange} anchorRef={chipRef} placement="bottom-start" offsetPx={8}>
-        <div className="bg-[#f8fafc] border border-[#e4e7ec] rounded-xl shadow-[0_14px_28px_rgba(52,64,84,0.18)] p-2.5 flex flex-col gap-2 w-[216px]">
+        <div className="bg-raised border border-edge rounded-xl shadow-popover p-2.5 flex flex-col gap-2 w-[216px]">
           <HexColorPicker color={value} onChange={handlePickerChange} style={{ width: '100%', height: 140 }} />
-          <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
-            <span className="text-xs text-[#667085] font-mono select-none">#</span>
+          <div className="h-8 flex items-center gap-2 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">
+            <span className="text-xs text-secondary font-mono select-none">#</span>
             <input
               type="text"
               value={hexDraft}
@@ -139,19 +139,19 @@ export default function ColorControl({
                   e.currentTarget.blur();
                 }
               }}
-              className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-[#344054] font-mono uppercase"
+              className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-ink font-mono uppercase"
               maxLength={6}
               title={`${label} (Hex)`}
             />
           </div>
           {recentColors.length > 0 && (
             <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-0.5">Recent</span>
+              <span className="text-[10px] font-bold text-secondary uppercase tracking-widest px-0.5">Recent</span>
               {swatchRow(recentColors, 'recent')}
             </div>
           )}
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-0.5">Presets</span>
+            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest px-0.5">Presets</span>
             {swatchRow(PRESET_COLORS, 'preset')}
           </div>
         </div>

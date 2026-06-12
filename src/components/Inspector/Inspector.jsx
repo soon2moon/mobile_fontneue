@@ -19,17 +19,17 @@ export default function Inspector() {
       {transform && <TransformSection />}
 
       {kind === 'none' && (
-        <p className="text-[10px] text-[#98a2b3] px-1">
+        <p className="text-[10px] text-muted px-1">
           Nothing selected — edits set the style for the next drawn path.
         </p>
       )}
       {kind === 'mixed' && fill && (
-        <p className="text-[10px] text-[#98a2b3] px-1">
+        <p className="text-[10px] text-muted px-1">
           Fill &amp; stroke apply to the selected paths.
         </p>
       )}
       {kind === 'mixed' && !fill && (
-        <p className="text-[10px] text-[#98a2b3] px-1">
+        <p className="text-[10px] text-muted px-1">
           Mixed selection — no shared properties to edit.
         </p>
       )}

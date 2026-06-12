@@ -81,20 +81,20 @@ anyPanelOpen,
           return (
             <div
               key={panel.id}
-              className={`bg-[#f8fafc] rounded-2xl shadow-[0_14px_28px_rgba(52,64,84,0.14)] border border-[#e4e7ec] overflow-clip flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
+              className={`bg-raised rounded-2xl shadow-card border border-edge overflow-clip flex flex-col pointer-events-auto shrink-0 transition-all duration-300 ${
                 isMobile ? 'w-full' : 'w-60'
               }`}
             >
               <div 
-                className={`flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-[#f2f4f7] transition-colors rounded-t-2xl ${!isExpanded ? 'rounded-b-2xl' : 'border-b border-[#e4e7ec] bg-[#f2f4f7]'}`}
+                className={`flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-sunken transition-colors rounded-t-2xl ${!isExpanded ? 'rounded-b-2xl' : 'border-b border-edge bg-sunken'}`}
                 onClick={() => {
                   setExpandedPanel(isExpanded ? null : panel.id);
                 }}
               >
-                <h3 className="text-[10px] font-bold text-[#667085] uppercase tracking-widest select-none">{panel.title}</h3>
+                <h3 className="text-[10px] font-bold text-secondary uppercase tracking-widest select-none">{panel.title}</h3>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setOpenPanels(p => ({...p, [panel.id]: false})); if(expandedPanel===panel.id) setExpandedPanel(null); }}
-                  className="p-1 -mr-1 hover:bg-[#eaecf0] rounded text-[#667085] hover:text-[#344054] transition-colors"
+                  className="p-1 -mr-1 hover:bg-pressed rounded text-secondary hover:text-ink transition-colors"
                   title="Close Panel"
                 >
                   <X size={14} />
@@ -106,43 +106,43 @@ anyPanelOpen,
                   {panel.id === 'grid' && (
                     <div className="p-3.5 flex flex-col gap-3">
                       <div className="flex flex-col gap-3">
-                        <div className="grid grid-cols-3 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
+                        <div className="grid grid-cols-3 gap-2 bg-sunken p-1.5 rounded-lg">
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'none' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'none' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'none'})}
                            >None</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'dots' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'dots' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'dots'})}
                            >Dots</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'lines' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'lines' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'lines'})}
                            >Grid</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circular' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circular' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'circular'})}
                            >Circular</button>
                            <button
-                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circles' ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                              className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circles' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                               onClick={() => setGridConfig({...gridConfig, type: 'circles'})}
                            >Circles</button>
                         </div>
 
                         {gridConfig.type === 'lines' && (
                           <div className="flex flex-col gap-2 mt-1">
-                            <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Grid Shape (Edges)</label>
-                            <div className="flex gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
+                            <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Grid Shape (Edges)</label>
+                            <div className="flex gap-2 bg-sunken p-1.5 rounded-lg">
                                <button
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 3 ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 3 ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                                   onClick={() => setGridConfig({...gridConfig, edges: 3})}
                                >3 (Tri)</button>
                                <button
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 4 ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 4 ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                                   onClick={() => setGridConfig({...gridConfig, edges: 4})}
                                >4 (Sqr)</button>
                                <button
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 6 ? 'bg-white shadow-sm text-[#344054]' : 'text-[#667085] hover:text-[#344054]'}`}
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 6 ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
                                   onClick={() => setGridConfig({...gridConfig, edges: 6})}
                                >6 (Hex)</button>
                             </div>
@@ -152,7 +152,7 @@ anyPanelOpen,
                         {gridConfig.type !== 'none' && (
                           <div className="flex flex-col gap-2 mt-1">
                             <div className="grid grid-cols-[minmax(0,1fr)_88px] items-center gap-2">
-                              <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Grid Density</label>
+                              <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Grid Density</label>
                               <ScrubbableNumberInput
                                 value={effectiveGridSize}
                                 min={MIN_GRID_SIZE}
@@ -167,7 +167,7 @@ anyPanelOpen,
                             </div>
                             {gridConfig.type === 'circular' && (
                               <div className="grid grid-cols-[minmax(0,1fr)_88px] items-center gap-2">
-                                <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Angle Step</label>
+                                <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Angle Step</label>
                                 <ScrubbableNumberInput
                                   value={effectiveCircularStep}
                                   min={MIN_CIRCULAR_STEP}
@@ -187,8 +187,8 @@ anyPanelOpen,
                           </div>
                         )}
                         
-                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-[#e4e7ec]">
-                           <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Snap to Grid</label>
+                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-edge">
+                           <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Snap to Grid</label>
                            <Toggle
                                checked={gridConfig.snapToGrid}
                                onChange={(next) => setGridConfig({...gridConfig, snapToGrid: next})}
@@ -208,7 +208,7 @@ anyPanelOpen,
                           return (
                             <div className="relative" key={layer.id}>
                                 {dragDropTarget?.id === layer.id && dragDropTarget.position === 'top' && (
-                                   <div className="absolute top-[-2px] left-0 right-0 h-[2px] bg-[#344054] z-10 rounded-full" />
+                                   <div className="absolute top-[-2px] left-0 right-0 h-[2px] bg-ink z-10 rounded-full" />
                                 )}
                                 <div 
                                     draggable={!isMobile && editingLayerId !== layer.id}
@@ -218,8 +218,8 @@ anyPanelOpen,
                                     onDragEnd={handleLayerDragEnd}
                                     className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
                                       isSelected 
-                                        ? 'bg-[#eaecf0] border-[#d0d5dd] shadow-sm text-[#344054]' 
-                                        : 'bg-[#f8fafc] border-transparent hover:bg-[#f5f8fc] hover:border-[#e4e7ec] text-[#667085]'
+                                        ? 'bg-pressed border-edge-strong shadow-sm text-ink' 
+                                        : 'bg-raised border-transparent hover:bg-sunken hover:border-edge text-secondary'
                                     } ${draggedLayerId === layer.id ? 'opacity-50' : ''}`}
                                     onClick={(e) => handleLayerSelect(e, layer)}
                                 >
@@ -240,7 +240,7 @@ anyPanelOpen,
                                           onClick={(e) => e.stopPropagation()}
                                           onPointerDown={(e) => e.stopPropagation()}
                                           onMouseDown={(e) => e.stopPropagation()}
-                                          className="text-xs font-semibold text-[#344054] bg-white border border-[#344054] rounded px-1 outline-none w-24 py-0.5 select-text cursor-text ml-1"
+                                          className="text-xs font-semibold text-ink bg-chip border border-ink rounded px-1 outline-none w-24 py-0.5 select-text cursor-text ml-1"
                                         />
                                       ) : (
                                         <span 
@@ -256,21 +256,21 @@ anyPanelOpen,
                                     <div className="flex items-center gap-0.5 shrink-0 ml-2">
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }}
-                                        className={`p-1.5 rounded-md hover:bg-[#e4e7ec]/50 transition-colors ${layer.visible ? 'opacity-100' : 'opacity-40'}`}
+                                        className={`p-1.5 rounded-md hover:bg-edge/50 transition-colors ${layer.visible ? 'opacity-100' : 'opacity-40'}`}
                                         title={layer.visible ? "Hide Layer" : "Show Layer"}
                                       >
                                         {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
                                       </button>
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer.id); }}
-                                        className={`p-1.5 rounded-md hover:bg-[#e4e7ec]/50 transition-colors ${layer.locked ? 'opacity-100' : 'opacity-40'}`}
+                                        className={`p-1.5 rounded-md hover:bg-edge/50 transition-colors ${layer.locked ? 'opacity-100' : 'opacity-40'}`}
                                         title={layer.locked ? "Unlock Layer" : "Lock Layer"}
                                       >
                                         {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
                                       </button>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
-                                        className="p-1.5 rounded-md hover:bg-[#fee4e2] text-[#b42318] transition-colors"
+                                        className="p-1.5 rounded-md hover:bg-danger-bg text-danger transition-colors"
                                         title="Delete Layer"
                                       >
                                         <Trash2 size={14} />
@@ -278,7 +278,7 @@ anyPanelOpen,
                                     </div>
                                 </div>
                                 {dragDropTarget?.id === layer.id && dragDropTarget.position === 'bottom' && (
-                                   <div className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-[#344054] z-10 rounded-full" />
+                                   <div className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-ink z-10 rounded-full" />
                                 )}
                             </div>
                           )
@@ -289,13 +289,13 @@ anyPanelOpen,
 
                   {panel.id === 'export' && (
                     <div className="p-3.5 flex flex-col gap-3">
-                      <div className="grid grid-cols-2 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
+                      <div className="grid grid-cols-2 gap-2 bg-sunken p-1.5 rounded-lg">
                         <button
                           onClick={() => setExportScope('selection')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
                             exportScope === 'selection'
-                              ? 'bg-white shadow-sm text-[#344054]'
-                              : 'text-[#667085] hover:text-[#344054]'
+                              ? 'bg-chip shadow-sm text-ink'
+                              : 'text-secondary hover:text-ink'
                           }`}
                         >
                           Selection
@@ -304,23 +304,23 @@ anyPanelOpen,
                           onClick={() => setExportScope('canvas')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
                             exportScope === 'canvas'
-                              ? 'bg-white shadow-sm text-[#344054]'
-                              : 'text-[#667085] hover:text-[#344054]'
+                              ? 'bg-chip shadow-sm text-ink'
+                              : 'text-secondary hover:text-ink'
                           }`}
                         >
                           Canvas
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 bg-[#f2f4f7] p-1.5 rounded-lg">
+                      <div className="grid grid-cols-3 gap-2 bg-sunken p-1.5 rounded-lg">
                         {['png', 'jpg', 'svg'].map(format => (
                           <button
                             key={format}
                             onClick={() => setExportFormat(format)}
                             className={`py-1.5 text-xs font-semibold uppercase rounded-md transition-all ${
                               exportFormat === format
-                                ? 'bg-white shadow-sm text-[#344054]'
-                                : 'text-[#667085] hover:text-[#344054]'
+                                ? 'bg-chip shadow-sm text-ink'
+                                : 'text-secondary hover:text-ink'
                             }`}
                           >
                             {format}
@@ -329,7 +329,7 @@ anyPanelOpen,
                       </div>
 
                       {exportScope === 'selection' && !canExportSelection && (
-                        <p className="text-[10px] text-[#98a2b3] px-1">
+                        <p className="text-[10px] text-muted px-1">
                           Select one or more objects to export selection.
                         </p>
                       )}
@@ -340,8 +340,8 @@ anyPanelOpen,
                         disabled={isExporting || (exportScope === 'selection' && !canExportSelection)}
                         className={`h-9 rounded-lg border text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${
                           isExporting || (exportScope === 'selection' && !canExportSelection)
-                            ? 'bg-[#ecf1f7] border-[#d7dee8] text-[#98a2b3] cursor-not-allowed'
-                            : 'bg-[#f2f4f7] border-[#d0d5dd] text-[#344054] hover:bg-[#eaecf0]'
+                            ? 'bg-sunken border-edge-strong text-muted cursor-not-allowed'
+                            : 'bg-sunken border-edge-strong text-ink hover:bg-pressed'
                         }`}
                       >
                         <Download size={14} />

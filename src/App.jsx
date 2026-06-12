@@ -841,7 +841,7 @@ export default function App() {
 
   return (
     <EditorProvider value={editor}>
-    <div className="w-screen h-screen bg-[#f2f4f7] overflow-hidden select-none font-sans text-slate-800 flex flex-col fixed inset-0 touch-none">
+    <div className="w-screen h-screen bg-canvas overflow-hidden select-none font-sans text-ink flex flex-col fixed inset-0 touch-none">
       
       {/* CANVAS */}
       <Canvas />

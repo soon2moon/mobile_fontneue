@@ -11,16 +11,16 @@ import {
 
 const LayerIcon = ({ type }) => {
     switch(type) {
-        case 'rectangle': return <Square size={14} className="text-[#667085]" />;
-        case 'ellipse': return <Circle size={14} className="text-[#667085]" />;
-        case 'polygon': return <Triangle size={14} className="text-[#667085]" />;
-        case 'star': return <Star size={14} className="text-[#667085]" />;
-        case 'line': return <Minus size={14} className="text-[#667085]" />;
-        case 'image': return <ImageIcon size={14} className="text-[#667085]" />;
-        case 'text': return <Type size={14} className="text-[#667085]" />;
+        case 'rectangle': return <Square size={14} className="text-secondary" />;
+        case 'ellipse': return <Circle size={14} className="text-secondary" />;
+        case 'polygon': return <Triangle size={14} className="text-secondary" />;
+        case 'star': return <Star size={14} className="text-secondary" />;
+        case 'line': return <Minus size={14} className="text-secondary" />;
+        case 'image': return <ImageIcon size={14} className="text-secondary" />;
+        case 'text': return <Type size={14} className="text-secondary" />;
         case 'vector':
         default:
-            return <PenTool size={14} className="text-[#667085]" />;
+            return <PenTool size={14} className="text-secondary" />;
     }
 };
 
