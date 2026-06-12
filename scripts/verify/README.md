@@ -37,6 +37,7 @@ must stay empty.
 | `phase7a-text.mjs` | text tool: editor commit, session/undo/reload, dbl-click re-edit, drag/scale, export, empty-draft discard |
 | `phase7a-mobile.mjs` | mobile text: drawer arm, tap-edit, backdrop commit, contextmenu actions, duplicate |
 | `phase7b-inspector.mjs` | unified Inspector: live stroke fields, mixed placeholders, image/text sections, defaults, upload repoints |
+| `phase7c-color.mjs` | fillColor: per-color composite groups, picker-drag undo granularity, export alignment, donut hole, legacy-session fallback |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.
