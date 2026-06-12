@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import LayerIcon from '../../ui/LayerIcon';
 import ScrubbableNumberInput from '../../ui/inputs/ScrubbableNumberInput';
+import Toggle from '../../ui/inputs/Toggle';
 import Inspector from '../Inspector/Inspector';
 import { PANELS_CONFIG } from '../../config/panels';
 import {
@@ -188,12 +189,10 @@ anyPanelOpen,
                         
                         <div className="flex items-center justify-between mt-2 pt-3 border-t border-[#e4e7ec]">
                            <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest px-1">Snap to Grid</label>
-                           <button
-                               onClick={() => setGridConfig({...gridConfig, snapToGrid: !gridConfig.snapToGrid})}
-                               className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${gridConfig.snapToGrid ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
-                           >
-                               <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${gridConfig.snapToGrid ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                           </button>
+                           <Toggle
+                               checked={gridConfig.snapToGrid}
+                               onChange={(next) => setGridConfig({...gridConfig, snapToGrid: next})}
+                           />
                         </div>
                       </div>
                     </div>

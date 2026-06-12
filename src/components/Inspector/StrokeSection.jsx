@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ColorControl from '../../ui/ColorControl';
+import Toggle from '../../ui/inputs/Toggle';
 import { useEditor } from '../../state/EditorContext';
 
 // Stroke toggle + color (swatch & hex) + width + align for the selected
@@ -30,13 +31,11 @@ export default function StrokeSection() {
         <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">
           Stroke{stroke.indeterminate.enabled ? ' · Mixed' : ''}
         </label>
-        <button
-          onClick={() => apply({ strokeEnabled: !stroke.enabled })}
-          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${stroke.enabled ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
+        <Toggle
+          checked={stroke.enabled}
+          onChange={(next) => apply({ strokeEnabled: next })}
           title={stroke.enabled ? 'Disable Stroke' : 'Enable Stroke'}
-        >
-          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${stroke.enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-        </button>
+        />
       </div>
 
       <div className="grid grid-cols-[1fr_88px] gap-2">

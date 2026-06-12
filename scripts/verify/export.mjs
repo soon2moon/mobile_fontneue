@@ -36,7 +36,7 @@ run(async (page) => {
   };
 
   // Open the Export panel, scope it to the whole canvas.
-  await page.click('button[title="Export"]');
+  await page.click('button[aria-label="Export"]');
   await new Promise(r => setTimeout(r, 200));
   await clickByText('Canvas');
 

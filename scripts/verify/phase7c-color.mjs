@@ -69,7 +69,7 @@ run(async (page) => {
     [...document.querySelectorAll('svg path[fill-rule="nonzero"]')].map(p => p.getAttribute('fill')));
 
   // 1. Fill enabled on the defaults; two rects share ONE composite group.
-  await page.click('button[title="Inspector"]');
+  await page.click('button[aria-label="Inspector"]');
   await pause(250);
   await page.click('button[title="Enable Fill"]');
   await pause(250);
@@ -116,7 +116,7 @@ run(async (page) => {
 
   // 5. SVG export: same per-color nonzero groups, fills below the
   //    stroke-only outlines, no legacy per-path fills.
-  await page.click('button[title="Export"]');
+  await page.click('button[aria-label="Export"]');
   await pause(200);
   await clickByText('Canvas');
   await clickByText('svg');
@@ -142,7 +142,7 @@ run(async (page) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle0', timeout: 30000 });
   await pause(300);
-  await page.click('button[title="Inspector"]');
+  await page.click('button[aria-label="Inspector"]');
   await pause(250);
   await page.click('button[title="Enable Fill"]');
   await pause(250);

@@ -11,7 +11,7 @@ run(async (page) => {
 
   // Open the Inspector via its toolbar button (replaced the Stroke panel in 7B).
   report.inspectorOpened = await page.evaluate(() => {
-    const btn = [...document.querySelectorAll('button[title]')].find(b => b.title === 'Inspector');
+    const btn = document.querySelector('button[aria-label="Inspector"]');
     if (!btn) return false;
     btn.click();
     return true;

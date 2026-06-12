@@ -158,7 +158,7 @@ run(async (page) => {
     if (!clicked) throw new Error(`button not found: ${label}`);
     await pause(150);
   };
-  await page.click('button[title="Export"]');
+  await page.click('button[aria-label="Export"]');
   await pause(200);
   await clickByText('Canvas');
   await clickByText('svg');
@@ -170,7 +170,7 @@ run(async (page) => {
     return await (await fetch(entry.href)).text();
   });
   expect('exportHasText', !!exported && exported.includes('<text') && exported.includes('Hello'));
-  await page.click('button[title="Export"]'); // close the panel again
+  await page.click('button[aria-label="Export"]'); // close the panel again
   await pause(200);
 
   // 9. Empty draft discards without a history entry: the next undo still

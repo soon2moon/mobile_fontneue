@@ -50,7 +50,7 @@ run(async (page) => {
   // 1. Draw a rect, select it, open the Inspector: stroke fields are live.
   await drawRect(500, 300, 650, 400);
   await clickPathEdge(575, 300);
-  await page.click('button[title="Inspector"]');
+  await page.click('button[aria-label="Inspector"]');
   await pause(250);
   report.widthValueForSelection = await page.evaluate((sel) =>
     document.querySelector(sel)?.value ?? null, inputByTitle('Stroke Width'));
@@ -144,7 +144,7 @@ run(async (page) => {
     const fileInput = document.querySelector('input[type="file"]');
     fileInput.click = () => { window.__fileClicks += 1; };
   });
-  await page.click('button[title="Upload Image (U)"]');
+  await page.click('button[aria-label="Upload Image (U)"]');
   await pause(150);
   await page.keyboard.press('u');
   await pause(150);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ColorControl from '../../ui/ColorControl';
+import Toggle from '../../ui/inputs/Toggle';
 import { useEditor } from '../../state/EditorContext';
 import { normalizeStrokeColor } from '../../lib/stroke';
 
@@ -30,13 +31,11 @@ export default function FillSection() {
         <label className="text-[10px] font-bold text-[#667085] uppercase tracking-widest">
           Fill{fill.indeterminate.enabled ? ' · Mixed' : ''}
         </label>
-        <button
-          onClick={() => apply({ fillEnabled: !fill.enabled })}
-          className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${fill.enabled ? 'bg-[#344054]' : 'bg-[#d0d5dd]'}`}
+        <Toggle
+          checked={fill.enabled}
+          onChange={(next) => apply({ fillEnabled: next })}
           title={fill.enabled ? 'Disable Fill' : 'Enable Fill'}
-        >
-          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${fill.enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-        </button>
+        />
       </div>
 
       <div className="h-8 flex items-center gap-2 bg-[#f2f4f7] rounded-md px-2 focus-within:ring-1 focus-within:ring-[#d0d5dd] transition-all">
