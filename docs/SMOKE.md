@@ -17,6 +17,7 @@ The app must pass every item before a phase is considered done.
 - [ ] Insert text: text appears on canvas and is selectable/movable.
 - [ ] Multi-select (marquee + shift-click): move, rotate selection.
 - [ ] Copy/paste paths (clipboard round-trip), duplicate, delete.
+- [ ] Frame tool (F): drag a board, or pick a Design-panel preset; rename + recolor it in Design; click-select, body-drag move, corner resize (W/H), Delete + undo; export scope "Frame" crops to the board.
 
 ## State
 
@@ -24,11 +25,19 @@ The app must pass every item before a phase is considered done.
 - [ ] Reload the page: session restores (paths, images, layers, grid config, panel state).
 - [ ] Layers: create, rename, reorder (drag), toggle visibility, toggle lock; objects respect both.
 
-## Styling
+## Styling & theme
 
-- [ ] Stroke width/color/alignment edits apply to selection and to next-drawn defaults.
+- [ ] Stroke weight/color/position edits apply to selection and to next-drawn defaults.
 - [ ] Grid: toggle types (square/dot/iso/circular), change spacing, grid snap on/off works while drawing.
-- [ ] Export: SVG, PNG, JPG produce correct output incl. images/text.
+- [ ] Export: SVG, PNG, JPG produce correct output incl. images/text (JPG uses the dark canvas bg).
+- [ ] Dark theme throughout; new shapes default to light fill/stroke; pre-existing (legacy) art keeps #344054.
+
+## Tools, shortcuts & layout
+
+- [ ] Figma hotkeys: V Move, H Hand, P Pen, ⇧P Pencil, R/O/L shapes, F Frame, T Text, U Place Image; Ctrl+letter never switches tools.
+- [ ] Quiet UI: Ctrl+\ hides/restores all chrome (canvas still works); panels fade while drawing/dragging.
+- [ ] Right-click canvas: object → Copy/Cut/Duplicate/Delete/Bring forward/Send backward; empty/board → Paste here (at the point).
+- [ ] Tooltips on every toolbar button; the Inspector ("Design") panel never clips its inputs.
 
 ## Mobile (≤900px or touch emulation)
 

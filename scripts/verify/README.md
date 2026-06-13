@@ -49,6 +49,7 @@ must stay empty.
 | `phase8f2-frame-tool.mjs` | Frame tool (F): drag/click creation, name label, paints below content, returns to Move selected, undo, reload, mobile button + drag |
 | `phase8f3-frame-edit.mjs` | frame editing: click-select, body-drag move, non-uniform corner resize, label-drag select+move, marquee selects content not board, delete+undo |
 | `phase8f4-frame-export.mjs` | frame Design section: presets drop a board, rename updates the label, fill recolors it; Frame export scope crops the SVG to the rect (fill bg first + overlapping content) and rasterizes PNG |
+| `phase8f-frames.mjs` | frames cross-feature: quiet-UI keeps labels, white board on dark canvas + legacy pin, move/resize undo chain, layer hide/show, right-click bare frame → paste menu |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.
