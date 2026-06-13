@@ -1,7 +1,8 @@
 import {
   normalizeStrokeWidth,
   normalizeStrokeColor,
-  normalizeStrokeAlign
+  normalizeStrokeAlign,
+  normalizeOpacity
 } from './stroke';
 import { DEFAULT_FILL_COLOR } from '../constants';
 
@@ -140,7 +141,8 @@ export const getPathStrokeStyle = (path) => ({
   strokeEnabled: path?.strokeEnabled !== false,
   strokeWidth: normalizeStrokeWidth(path?.strokeWidth),
   strokeColor: normalizeStrokeColor(path?.strokeColor),
-  strokeAlign: normalizeStrokeAlign(path?.strokeAlign)
+  strokeAlign: normalizeStrokeAlign(path?.strokeAlign),
+  strokeOpacity: normalizeOpacity(path?.strokeOpacity)
 });
 
 // Fill resolution falls back to the fixed DEFAULT_FILL_COLOR (not the live
@@ -148,7 +150,8 @@ export const getPathStrokeStyle = (path) => ({
 // paths from before fillColor existed keep rendering the original color.
 export const getPathFillStyle = (path) => ({
   fillEnabled: !!path?.fillEnabled,
-  fillColor: normalizeStrokeColor(path?.fillColor, DEFAULT_FILL_COLOR)
+  fillColor: normalizeStrokeColor(path?.fillColor, DEFAULT_FILL_COLOR),
+  fillOpacity: normalizeOpacity(path?.fillOpacity)
 });
 
 export const resolvePathEditGroupId = (path) => (

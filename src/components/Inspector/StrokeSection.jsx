@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ColorControl from '../../ui/ColorControl';
+import OpacityField from '../../ui/inputs/OpacityField';
 import Toggle from '../../ui/inputs/Toggle';
 import { useEditor } from '../../state/EditorContext';
 
@@ -73,6 +74,12 @@ export default function StrokeSection() {
             placeholder={showMixedColor ? 'Mixed' : '4A2622'}
             maxLength={6}
             title="Stroke Color (Hex)"
+          />
+          <OpacityField
+            value={stroke.opacity}
+            indeterminate={stroke.indeterminate.opacity}
+            onCommit={(o) => apply({ strokeOpacity: o })}
+            title="Stroke Opacity"
           />
         </div>
         <div className="h-8 flex items-center gap-1 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">

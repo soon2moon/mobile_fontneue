@@ -248,3 +248,37 @@ export const getFrameLabelHit = (coords, frame, zoom) => {
   return coords.x >= left && coords.x <= left + labelWidth
     && coords.y >= top - 18 / zoom && coords.y <= top;
 };
+
+// --- Frame containment (nesting) ---
+// An object "belongs to" a frame when its center sits inside the frame's rect
+// (Figma's drop rule). Membership is derived from position — nothing stored —
+// and drives move-together (drag a frame and its children follow) and frame
+// export (a frame's children are what gets exported).
+export const isCenterInsideFrame = (cx, cy, frame) => (
+  Math.abs(cx - frame.x) <= frame.width / 2 && Math.abs(cy - frame.y) <= frame.height / 2
+);
+
+export const getPathCenter = (path) => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  (path?.points || []).forEach(pt => {
+    minX = Math.min(minX, pt.x); minY = Math.min(minY, pt.y);
+    maxX = Math.max(maxX, pt.x); maxY = Math.max(maxY, pt.y);
+    if (pt.hIn) { minX = Math.min(minX, pt.hIn.x); minY = Math.min(minY, pt.hIn.y); maxX = Math.max(maxX, pt.hIn.x); maxY = Math.max(maxY, pt.hIn.y); }
+    if (pt.hOut) { minX = Math.min(minX, pt.hOut.x); minY = Math.min(minY, pt.hOut.y); maxX = Math.max(maxX, pt.hOut.x); maxY = Math.max(maxY, pt.hOut.y); }
+  });
+  if (minX === Infinity) return null;
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+};
+
+// Objects on visible layers whose center lies inside the frame.
+export const collectFrameChildren = (frame, { paths = [], images = [], texts = [], layers = [] }) => {
+  const visible = new Set(layers.filter(l => l.visible).map(l => l.id));
+  const childImages = images.filter(img => visible.has(img.layerId) && isCenterInsideFrame(img.x, img.y, frame));
+  const childTexts = texts.filter(t => visible.has(t.layerId) && isCenterInsideFrame(t.x, t.y, frame));
+  const childPaths = paths.filter(p => {
+    if (!visible.has(p.layerId)) return false;
+    const c = getPathCenter(p);
+    return c && isCenterInsideFrame(c.x, c.y, frame);
+  });
+  return { childImages, childTexts, childPaths };
+};

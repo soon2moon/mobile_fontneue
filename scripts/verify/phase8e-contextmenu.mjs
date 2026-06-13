@@ -1,11 +1,11 @@
 import { run, APP_URL } from './client.mjs';
 
-// Phase 8E: the canvas context menu is shared by desktop right-click and
-// mobile long-press. Right-clicking an object selects it and offers
-// Copy/Cut/Duplicate/Delete plus layer reordering (with shortcut hints);
-// right-clicking empty canvas offers "Paste here", which recenters the
-// pasted content on the pressed point. Escape closes the menu without
-// touching the selection (Popover contract).
+// Phase 8E (updated): the canvas context menu is shared by desktop right-click
+// and mobile long-press. Right-clicking an object selects it and offers
+// Copy/Cut/Duplicate/Delete plus an "Arrange" submenu for layer reordering
+// (with shortcut hints); right-clicking empty canvas offers "Paste here"
+// (recenters the paste on the pressed point) and "Show/Hide UI". Escape closes
+// the menu without touching the selection (Popover contract).
 run(async (page) => {
   const report = {};
   const failures = [];
@@ -41,6 +41,16 @@ run(async (page) => {
     if (!clicked) throw new Error(`menu item not found: ${label}`);
     await pause(300);
   };
+  const openArrange = async () => {
+    const box = await page.evaluate(() => {
+      const menu = document.querySelector('[role="menu"][aria-label="Canvas actions"]');
+      const btn = menu && [...menu.querySelectorAll('button')].find(b => b.textContent.trim().startsWith('Arrange'));
+      if (!btn) return null;
+      const r = btn.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    if (box) { await page.mouse.move(box.x, box.y); await pause(300); }
+  };
   const pathCount = () => page.evaluate(() =>
     [...document.querySelectorAll('svg g g path[d]')].filter(p => (p.getAttribute('d') || '').length > 10).length);
 
@@ -58,8 +68,7 @@ run(async (page) => {
     && items.some(t => t.startsWith('Cut'))
     && items.some(t => t.startsWith('Duplicate'))
     && items.some(t => t.startsWith('Delete'))
-    && items.some(t => t.startsWith('Bring forward'))
-    && items.some(t => t.startsWith('Send backward')));
+    && items.some(t => t.startsWith('Arrange')));
   expect('shortcutHints', !!items && items.some(t => t.includes('Ctrl+C')) && items.some(t => t.includes('Del')));
 
   // 2. Copy, then Paste here far away: the copy lands centered on the point.
@@ -91,6 +100,7 @@ run(async (page) => {
   await pause(500);
   await page.mouse.click(575, 350, { button: 'right' });
   await pause(350);
+  await openArrange();
   await clickItem('Bring forward');
   await pause(700);
   const orderAfter = await layerOrder();
@@ -105,7 +115,7 @@ run(async (page) => {
   await pause(250);
   expect('escClosesMenu', (await menuState()) === null);
   expect('selectionSurvivesEsc', await page.evaluate(() =>
-    !!document.querySelector('svg rect[stroke="#0d99ff"]')));
+    !!document.querySelector('svg rect[stroke="#007eea"]')));
 
   // 5. Delete via the menu removes the object.
   await page.mouse.click(1000, 600, { button: 'right' });

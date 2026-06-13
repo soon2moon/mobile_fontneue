@@ -100,6 +100,7 @@ export const computeSelectionBBox = ({
   }
 
   if (minX === Infinity) return null;
-  const pad = 10 / zoom;
-  return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+  // Tight box (no padding) so the selection outline hugs the element exactly,
+  // matching the frame selection chrome.
+  return { minX, minY, maxX, maxY };
 };

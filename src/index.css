@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 /* UI color tokens (RGB triplets — consumed via rgb(var(--x) / <alpha>) in
-   tailwind.config.js). Canvas/SVG colors live in src/theme.js. Dark theme
-   modeled on Figma's UI (canvas #1e1e1e, panels #2c2c2c, accent #0d99ff). */
+   tailwind.config.js). Canvas/SVG colors live in src/theme.js. Modeled on
+   Figma: off-white canvas (#f5f5f5) with #2c2c2c chrome and #007eea accent. */
 :root {
-  --color-canvas: 30 30 30;
+  --color-canvas: 245 245 245;
   --color-raised: 44 44 44;
   --color-sunken: 56 56 56;
   --color-pressed: 68 68 68;
@@ -15,8 +15,8 @@
   --color-ink: 255 255 255;
   --color-secondary: 179 179 179;
   --color-muted: 140 140 140;
-  --color-accent: 13 153 255;
-  --color-accent-strong: 76 178 255;
+  --color-accent: 0 126 234;
+  --color-accent-strong: 51 155 255;
   --color-danger: 242 72 34;
   --color-danger-bg: 74 38 32;
   --color-chip: 68 68 68;

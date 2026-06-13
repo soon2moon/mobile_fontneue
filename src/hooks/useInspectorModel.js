@@ -8,7 +8,8 @@ import {
 import {
   normalizeStrokeWidth,
   normalizeStrokeColor,
-  normalizeStrokeAlign
+  normalizeStrokeAlign,
+  normalizeOpacity
 } from '../lib/stroke';
 
 // Selection-aware model behind the unified Inspector panel: resolves what
@@ -55,7 +56,8 @@ export function useInspectorModel({
     strokeEnabled: pathStyleDefaults.strokeEnabled !== false,
     strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
     strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
-    strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN)
+    strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+    strokeOpacity: normalizeOpacity(pathStyleDefaults.strokeOpacity)
   };
 
   // Path fill/stroke apply to the path selection (or the defaults for the
@@ -72,9 +74,13 @@ export function useInspectorModel({
         color: hasPaths
           ? fillStyles[0].fillColor
           : normalizeStrokeColor(pathStyleDefaults.fillColor, DEFAULT_FILL_COLOR),
+        opacity: hasPaths
+          ? fillStyles[0].fillOpacity
+          : normalizeOpacity(pathStyleDefaults.fillOpacity),
         indeterminate: {
           enabled: hasPaths && distinct(selectedPathObjects.map(path => !!path.fillEnabled)),
-          color: hasPaths && distinct(fillStyles.map(style => style.fillColor))
+          color: hasPaths && distinct(fillStyles.map(style => style.fillColor)),
+          opacity: hasPaths && distinct(fillStyles.map(style => style.fillOpacity))
         }
       }
     : null;
@@ -87,11 +93,13 @@ export function useInspectorModel({
         width: representative.strokeWidth,
         color: representative.strokeColor,
         align: representative.strokeAlign,
+        opacity: representative.strokeOpacity,
         indeterminate: {
           enabled: hasPaths && distinct(selectedPathObjects.map(path => path.strokeEnabled !== false)),
           width: hasPaths && distinct(strokeStyles.map(style => style.strokeWidth)),
           color: hasPaths && distinct(strokeStyles.map(style => style.strokeColor)),
-          align: hasPaths && distinct(strokeStyles.map(style => style.strokeAlign))
+          align: hasPaths && distinct(strokeStyles.map(style => style.strokeAlign)),
+          opacity: hasPaths && distinct(strokeStyles.map(style => style.strokeOpacity))
         }
       }
     : null;

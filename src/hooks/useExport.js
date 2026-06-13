@@ -5,6 +5,7 @@ import {
   downloadBlob,
   rasterizeAndDownloadBundle
 } from '../lib/export';
+import { collectFrameChildren } from '../lib/hitTest';
 
 // Export pipeline state: scope (selection/canvas) + format choice, and the
 // download action (SVG directly, PNG/JPG via offscreen rasterization).
@@ -13,6 +14,7 @@ const slugifyName = (name) => (name || 'frame').toLowerCase().replace(/[^a-z0-9]
 export function useExport({ layers, paths, images, texts, frames = [], selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds = [] }) {
   const [exportScope, setExportScope] = useState('selection');
   const [exportFormat, setExportFormat] = useState('png');
+  const [frameTransparent, setFrameTransparent] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = useCallback(async () => {
@@ -23,9 +25,13 @@ export function useExport({ layers, paths, images, texts, frames = [], selectedP
     if (exportScope === 'frame') {
       const frame = frames.find(f => selectedFrameIds.includes(f.id));
       if (!frame) return;
-      const items = collectExportItems('canvas', { layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds });
+      // A frame exports its children — the objects whose center is inside it —
+      // cropped to the frame rect, with the frame fill (or transparent) behind.
+      const { childImages, childTexts, childPaths } = collectFrameChildren(frame, { paths, images, texts, layers });
       bundle = buildExportSvgBundle({
-        ...items,
+        exportPaths: childPaths,
+        exportImages: childImages,
+        exportTexts: childTexts,
         layers,
         bounds: {
           minX: frame.x - frame.width / 2,
@@ -33,7 +39,7 @@ export function useExport({ layers, paths, images, texts, frames = [], selectedP
           maxX: frame.x + frame.width / 2,
           maxY: frame.y + frame.height / 2
         },
-        background: frame.fill
+        background: frameTransparent ? null : frame.fill
       });
       baseName = slugifyName(frame.name);
     } else {
@@ -53,11 +59,12 @@ export function useExport({ layers, paths, images, texts, frames = [], selectedP
     } finally {
       setIsExporting(false);
     }
-  }, [isExporting, exportScope, exportFormat, layers, paths, images, texts, frames, selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds]);
+  }, [isExporting, exportScope, exportFormat, frameTransparent, layers, paths, images, texts, frames, selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds]);
 
   return {
     exportScope, setExportScope,
     exportFormat, setExportFormat,
+    frameTransparent, setFrameTransparent,
     isExporting,
     handleExport
   };

@@ -196,9 +196,10 @@ activeEditGroupId,
           {/* Global Composite Fills (one winding-based path per fill color, layer paint order) */}
           {compositeFillGroups.map(group => (
             <path
-              key={group.color}
+              key={group.key}
               d={group.d}
               fill={group.color}
+              fillOpacity={group.opacity}
               fillRule="nonzero"
             />
           ))}
@@ -289,6 +290,9 @@ activeEditGroupId,
 
                 return (
                   <g key={path.id}>
+                    {/* Path ink — opacity group fades the fill/stroke without
+                        touching the editing handles rendered below. */}
+                    <g strokeOpacity={pathStroke.strokeOpacity} fillOpacity={pathStroke.strokeOpacity}>
                     {isSinglePointPath ? (
                       pathStroke.strokeEnabled ? (
                         <circle
@@ -353,6 +357,7 @@ activeEditGroupId,
                       </>
                     )}
                     
+                    </g>
                     {/* Nodes and Handles (controlled by Show Nodes, hidden only in pencil mode, and when unlocked) */}
                     {showNodes && (mode === 'edit' || mode === 'draw') && !layer.locked && activeEditGroupId != null && isPathInActiveEditContext(path) && (
                       <g>
@@ -563,7 +568,7 @@ activeEditGroupId,
               width={Math.abs(selectionBox.currentX - selectionBox.startX)}
               height={Math.abs(selectionBox.currentY - selectionBox.startY)}
               fill={THEME.marqueeFill}
-              stroke={THEME.main}
+              stroke={THEME.accent}
               strokeWidth={1/zoom}
             />
           )}
@@ -591,8 +596,7 @@ activeEditGroupId,
                        height={selBBox.maxY - selBBox.minY}
                        fill={THEME.accentFaint}
                        stroke={THEME.accent}
-                       strokeWidth={1.25}
-                       strokeDasharray="4 4"
+                       strokeWidth={1.5}
                        vectorEffect="non-scaling-stroke"
                    />
                    {[

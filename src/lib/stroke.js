@@ -22,3 +22,10 @@ export const normalizeStrokeAlign = (value, fallback = DEFAULT_STROKE_ALIGN) => 
   if (value === 'inside' || value === 'outside' || value === 'center') return value;
   return fallback;
 };
+
+// Fill/stroke opacity as a 0–1 fraction; clamps and defaults to fully opaque.
+export const normalizeOpacity = (value, fallback = 1) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(1, parsed));
+};

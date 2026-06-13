@@ -52,6 +52,7 @@ import CanvasContextMenu from './components/Overlays/CanvasContextMenu';
 import MobileControls from './components/Toolbar/MobileControls';
 import Canvas from './components/Canvas/Canvas';
 import TextEditorOverlay from './components/Canvas/TextEditorOverlay';
+import FrameNameEditor from './components/Canvas/FrameNameEditor';
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
@@ -87,10 +88,12 @@ export default function App() {
   const [pathStyleDefaults, setPathStyleDefaults] = useState({
     fillEnabled: true,
     fillColor: NEW_SHAPE_FILL_COLOR,
+    fillOpacity: 1,
     strokeEnabled: true,
     strokeWidth: DEFAULT_STROKE_WIDTH,
     strokeColor: NEW_SHAPE_STROKE_COLOR,
-    strokeAlign: DEFAULT_STROKE_ALIGN
+    strokeAlign: DEFAULT_STROKE_ALIGN,
+    strokeOpacity: 1
   });
   // Quiet UI: true while a non-pan pointer gesture is working the canvas.
   const [isCanvasWorking, setIsCanvasWorking] = useState(false);
@@ -332,6 +335,9 @@ export default function App() {
     setActivePathEditId
   });
 
+  // Frame title inline-rename session (opened by double-clicking the label).
+  const [renamingFrameId, setRenamingFrameId] = useState(null);
+
   const objectActions = useObjectActions({
     paths, setPaths,
     currentPath, setCurrentPath,
@@ -434,6 +440,7 @@ export default function App() {
     drawingFrame,
     setDrawingFrame,
     setSelectedFrameIds,
+    setRenamingFrameId,
     changeMode: changeModeStable,
     beginEditingText,
     beginNewTextAt,
@@ -656,6 +663,7 @@ export default function App() {
   const {
     exportScope, setExportScope,
     exportFormat, setExportFormat,
+    frameTransparent, setFrameTransparent,
     isExporting,
     handleExport
   } = useExport({ layers, paths, images, texts, frames, selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds });
@@ -742,6 +750,15 @@ export default function App() {
   const updateActiveFrame = (updates) => {
     if (!activeFrame) return;
     setFrames(prev => prev.map(frame => frame.id === activeFrame.id ? { ...frame, ...updates } : frame));
+  };
+
+  // Frame rename (double-click title) — commits one history entry so undo works.
+  const renameFrame = (frameId, rawName) => {
+    const next = (typeof rawName === 'string' ? rawName.trim() : '') || 'Frame';
+    const target = frames.find(f => f.id === frameId);
+    if (!target || target.name === next) return;
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
+    setFrames(prev => prev.map(f => f.id === frameId ? { ...f, name: next } : f));
   };
 
   const inspector = useInspectorModel({
@@ -844,6 +861,8 @@ export default function App() {
     effectiveCircularStep,
     exportFormat,
     exportScope,
+    frameTransparent,
+    setFrameTransparent,
     effectiveGridSize,
     fileInputRef,
     getLayerPreviewBounds,
@@ -891,6 +910,9 @@ export default function App() {
     selectionBox,
     setActiveLayerId,
     setSelectedFrameIds,
+    renamingFrameId,
+    setRenamingFrameId,
+    renameFrame,
     setGridConfig,
     setExportFormat,
     setExportScope,
@@ -930,6 +952,9 @@ export default function App() {
 
       {/* In-place text editing session (textarea + commit backdrop) */}
       <TextEditorOverlay />
+
+      {/* In-place frame title rename (double-click the frame label) */}
+      <FrameNameEditor />
 
       {/* --- UI OVERLAYS --- */}
 

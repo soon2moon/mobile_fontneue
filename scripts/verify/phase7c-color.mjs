@@ -131,7 +131,7 @@ run(async (page) => {
     && svgText.includes('fill="#d9d9d9"')
     && svgText.includes('fill="#2e90fa"'));
   expect('exportHasStrokeOnlyPaths',
-    svgText.includes('fill="none" stroke="#ffffff"'));
+    svgText.includes('fill="none" stroke="#1e1e1e"'));
   expect('exportFillsBelowStrokes',
     svgText.indexOf('fill-rule="nonzero"') < svgText.indexOf('fill="none"'));
 

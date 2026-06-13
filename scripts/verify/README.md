@@ -42,7 +42,7 @@ must stay empty.
 | `phase8a-consistency.mjs` | inspector card fits + never focus-scrolls (desktop/mobile); shape/options/auto-correct/clear buttons use the shared Tooltip |
 | `phase8b-hotkeys.mjs` | Figma hotkeys (H hand, ⇧P pencil, L line, Ctrl+letter ignored, B/G dead) + wording (Pen/Move/Hand/Design/Canvas Grid, stroke Weight/Position) |
 | `phase8c1-tokens.mjs` | computed UI colors track the CSS-variable tokens; no hex utility classes remain; new shapes use the themed defaults |
-| `phase8c2-dark.mjs` | dark palette (#1e1e1e/#2c2c2c/#0d99ff), white/light-gray new-content defaults, dark tooltips, legacy art pinned to #344054 |
+| `phase8c2-dark.mjs` | light canvas (#f5f5f5) + #2c2c2c panels + #007eea accent, dark new-content defaults, dark tooltips, legacy art pinned to #344054 |
 | `phase8d-quietui.mjs` | Ctrl+\ hides/restores chrome (canvas keeps working); panels fade + click-through during gestures; input guard; mobile Hide UI + pill |
 | `phase8e-contextmenu.mjs` | shared right-click/long-press menu: actions + hints on objects, Paste-here recenters on the point, layer reorder, Esc-safe, Delete |
 | `phase8f1-frames-model.mjs` | frame model threading (inert): session round-trip, layer row, history-preserving undo/redo, frameless sessions load clean |

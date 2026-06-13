@@ -39,7 +39,7 @@ import {
 import { generateEditGroupId } from '../lib/svg';
 import { generateShapePath } from '../lib/shapes';
 import { createLayer } from '../lib/layers';
-import { findTopFrameAtCoords, getFrameHandleHit, getFrameLabelHit } from '../lib/hitTest';
+import { findTopFrameAtCoords, getFrameHandleHit, getFrameLabelHit, collectFrameChildren } from '../lib/hitTest';
 import { MIN_FONT_SIZE, createFrameObject } from '../lib/objectModel';
 import { getTextLocalLayout } from '../lib/textMeasure';
 
@@ -152,6 +152,7 @@ activeEditGroupId,
     drawingFrame,
     setDrawingFrame,
     setSelectedFrameIds,
+    setRenamingFrameId,
     changeMode,
     viewportSize,
     zoom,
@@ -178,6 +179,24 @@ activeEditGroupId,
   const lastPointerDownRef = useRef({ time: 0, x: 0, y: 0, canvasX: 0, canvasY: 0, refPoint: null });
   const lastClickedPathIdRef = useRef(null);
   const lastClickedTextIdRef = useRef(null);
+  const lastClickedFrameLabelIdRef = useRef(null);
+
+  // A frame carries the objects whose center is inside it (Figma containment,
+  // derived from position). Snapshot those children's start positions when a
+  // frame move begins so the move handler can translate them by the same delta.
+  const buildFrameMoveInitial = (frame, coords) => {
+    const { childImages, childTexts, childPaths } = collectFrameChildren(frame, { paths, images, texts, layers });
+    return {
+      coords,
+      obj: { ...frame },
+      kind: 'frame',
+      children: {
+        images: childImages.map(i => ({ id: i.id, x: i.x, y: i.y })),
+        texts: childTexts.map(t => ({ id: t.id, x: t.x, y: t.y })),
+        paths: childPaths.map(p => ({ id: p.id, points: p.points }))
+      }
+    };
+  };
 
   const hasPassedDragThreshold = (e) => {
     const gesture = pointerGestureRef.current;
@@ -838,6 +857,20 @@ activeEditGroupId,
           return layer && layer.visible && !layer.locked && !f.locked && getFrameLabelHit(coords, f, zoom);
         });
         if (labelFrame) {
+          // Double-click the title strip → inline rename; a single click
+          // selects the frame and primes a move (same as the frame body).
+          if (isDoubleClick && lastClickedFrameLabelIdRef.current === labelFrame.id) {
+            e.preventDefault();
+            lastClickedFrameLabelIdRef.current = null;
+            setSelectedFrameIds([labelFrame.id]);
+            setSelectedImageIds([]);
+            setSelectedTextIds([]);
+            setSelectedPoints([]);
+            setActivePathEditId(null);
+            setRenamingFrameId?.(labelFrame.id);
+            return;
+          }
+          lastClickedFrameLabelIdRef.current = labelFrame.id;
           lastClickedPathIdRef.current = null;
           lastClickedTextIdRef.current = null;
           setBgAction('move');
@@ -846,7 +879,7 @@ activeEditGroupId,
           setSelectedTextIds([]);
           setSelectedPoints([]);
           setActivePathEditId(null);
-          setBgInitialState({ coords, obj: { ...labelFrame }, kind: 'frame' });
+          setBgInitialState(buildFrameMoveInitial(labelFrame, coords));
           return;
         }
       }
@@ -1355,7 +1388,7 @@ activeEditGroupId,
           lastClickedPathIdRef.current = null;
           lastClickedTextIdRef.current = null;
           setBgAction('move');
-          setBgInitialState({ coords, obj: { ...selFrame }, kind: 'frame' });
+          setBgInitialState(buildFrameMoveInitial(selFrame, coords));
           return;
         }
       }
@@ -1599,11 +1632,41 @@ activeEditGroupId,
       hasDraggedRef.current = true;
       const init = bgInitialState.obj;
       if (bgAction === 'move') {
+        const dx = coords.x - bgInitialState.coords.x;
+        const dy = coords.y - bgInitialState.coords.y;
         setFrames(prev => prev.map(frame => (
           selectedFrameIds.includes(frame.id)
-            ? { ...frame, x: init.x + (coords.x - bgInitialState.coords.x), y: init.y + (coords.y - bgInitialState.coords.y) }
+            ? { ...frame, x: init.x + dx, y: init.y + dy }
             : frame
         )));
+        // Carry the frame's children (objects whose center was inside it at
+        // drag start) by the same delta from their snapshotted positions.
+        const kids = bgInitialState.children;
+        if (kids && kids.images.length) {
+          setImages(prev => prev.map(img => {
+            const k = kids.images.find(c => c.id === img.id);
+            return k ? { ...img, x: k.x + dx, y: k.y + dy } : img;
+          }));
+        }
+        if (kids && kids.texts.length) {
+          setTexts(prev => prev.map(t => {
+            const k = kids.texts.find(c => c.id === t.id);
+            return k ? { ...t, x: k.x + dx, y: k.y + dy } : t;
+          }));
+        }
+        if (kids && kids.paths.length) {
+          const offset = (pt) => ({
+            ...pt,
+            x: pt.x + dx,
+            y: pt.y + dy,
+            hIn: pt.hIn ? { x: pt.hIn.x + dx, y: pt.hIn.y + dy } : pt.hIn,
+            hOut: pt.hOut ? { x: pt.hOut.x + dx, y: pt.hOut.y + dy } : pt.hOut
+          });
+          setPaths(prev => prev.map(p => {
+            const k = kids.paths.find(c => c.id === p.id);
+            return k ? { ...p, points: k.points.map(offset) } : p;
+          }));
+        }
       } else if (bgAction.startsWith('scale-')) {
         const { width, height, newCenter } = computeCornerResize({
           coords,
@@ -2406,10 +2469,12 @@ activeEditGroupId,
             itemType: shapeType,
             fillEnabled: pathStyleDefaults.fillEnabled,
             fillColor: normalizeStrokeColor(pathStyleDefaults.fillColor, DEFAULT_FILL_COLOR),
+            fillOpacity: pathStyleDefaults.fillOpacity,
             strokeEnabled: pathStyleDefaults.strokeEnabled,
             strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
             strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
             strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+            strokeOpacity: pathStyleDefaults.strokeOpacity,
             editGroupId: activeEditGroupId || `path-${newPathId}`
           };
           const nextPaths = [...paths, newPath];
@@ -2519,10 +2584,12 @@ activeEditGroupId,
           layerId: targetLayerId,
           itemType: 'vector',
           fillEnabled: pathStyleDefaults.fillEnabled,
+          fillOpacity: pathStyleDefaults.fillOpacity,
           strokeEnabled: pathStyleDefaults.strokeEnabled,
           strokeWidth: normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH),
           strokeColor: normalizeStrokeColor(pathStyleDefaults.strokeColor, DEFAULT_STROKE_COLOR),
           strokeAlign: normalizeStrokeAlign(pathStyleDefaults.strokeAlign, DEFAULT_STROKE_ALIGN),
+          strokeOpacity: pathStyleDefaults.strokeOpacity,
           editGroupId: activeEditGroupId || `path-${newPathId}`
         };
         const nextPaths = [...paths, newPath];

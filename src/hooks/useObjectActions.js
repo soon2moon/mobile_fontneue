@@ -196,11 +196,13 @@ export function useObjectActions({
         layerId: targetLayerId,
         itemType: layerType,
         fillEnabled: currentPathInfo?.fillEnabled ?? pathStyleDefaults.fillEnabled,
+        fillOpacity: currentPathInfo?.fillOpacity ?? pathStyleDefaults.fillOpacity,
         fillColor: normalizeStrokeColor(
           currentPathInfo?.fillColor,
           normalizeStrokeColor(pathStyleDefaults.fillColor, DEFAULT_FILL_COLOR)
         ),
         strokeEnabled: currentPathInfo?.strokeEnabled ?? pathStyleDefaults.strokeEnabled,
+        strokeOpacity: currentPathInfo?.strokeOpacity ?? pathStyleDefaults.strokeOpacity,
         strokeWidth: normalizeStrokeWidth(
           currentPathInfo?.strokeWidth,
           normalizeStrokeWidth(pathStyleDefaults.strokeWidth, DEFAULT_STROKE_WIDTH)

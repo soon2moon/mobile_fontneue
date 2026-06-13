@@ -317,20 +317,30 @@ export function useLayers({
       setSelectedFrameIds(newSelFrames);
   };
 
+  // Layers are top-first (index 0 paints in front), so 'up'/'top' move toward
+  // index 0 and 'down'/'bottom' toward the end.
+  const resolveReorderIndex = (direction, fromIndex, lastIndex) => {
+    if (direction === 'up') return fromIndex - 1;
+    if (direction === 'down') return fromIndex + 1;
+    if (direction === 'top') return 0;
+    if (direction === 'bottom') return lastIndex;
+    return fromIndex;
+  };
+
   const moveSelectedLayerQuick = (layerId, direction) => {
     const currentIndex = layers.findIndex(layer => layer.id === layerId);
     if (currentIndex === -1) return;
 
-    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (nextIndex < 0 || nextIndex >= layers.length) return;
+    const nextIndex = resolveReorderIndex(direction, currentIndex, layers.length - 1);
+    if (nextIndex === currentIndex || nextIndex < 0 || nextIndex >= layers.length) return;
 
     commitHistory({ paths, currentPath, images, layers, texts, frames });
     setLayers(prevLayers => {
       const fromIndex = prevLayers.findIndex(layer => layer.id === layerId);
       if (fromIndex === -1) return prevLayers;
 
-      const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
-      if (toIndex < 0 || toIndex >= prevLayers.length) return prevLayers;
+      const toIndex = resolveReorderIndex(direction, fromIndex, prevLayers.length - 1);
+      if (toIndex === fromIndex || toIndex < 0 || toIndex >= prevLayers.length) return prevLayers;
 
       const reordered = [...prevLayers];
       const [movedLayer] = reordered.splice(fromIndex, 1);

@@ -2,7 +2,7 @@ import { THEME } from '../theme';
 import { DEFAULT_STROKE_WIDTH, DEFAULT_STROKE_COLOR, DEFAULT_FILL_COLOR } from '../constants';
 import { pointsToPath } from './paths';
 import { buildCompositeFillGroups } from './compositeFill';
-import { normalizeStrokeWidth, normalizeStrokeColor } from './stroke';
+import { normalizeStrokeWidth, normalizeStrokeColor, normalizeOpacity } from './stroke';
 import { escapeXml } from './svg';
 import { getTextLocalLayout } from './textMeasure';
 
@@ -151,7 +151,7 @@ export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = 
   // Same per-color winding groups as the canvas, so donut holes survive and
   // multi-color stacking matches what the user sees.
   const fillMarkup = buildCompositeFillGroups({ paths: exportPaths, layers, isPathVisible: () => true })
-    .map(group => `<path d="${escapeXml(group.d)}" fill="${group.color}" fill-rule="nonzero" />`)
+    .map(group => `<path d="${escapeXml(group.d)}" fill="${group.color}" fill-opacity="${group.opacity}" fill-rule="nonzero" />`)
     .join('');
 
   const pathMarkup = exportPaths.map(path => {
@@ -159,7 +159,8 @@ export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = 
     const d = pointsToPath(path.points, path.isClosed);
     const strokeColor = normalizeStrokeColor(path.strokeColor, DEFAULT_STROKE_COLOR);
     const strokeWidthValue = normalizeStrokeWidth(path.strokeWidth, DEFAULT_STROKE_WIDTH);
-    return `<path d="${escapeXml(d)}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
+    const strokeOpacityValue = normalizeOpacity(path.strokeOpacity);
+    return `<path d="${escapeXml(d)}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidthValue}" stroke-opacity="${strokeOpacityValue}" stroke-linejoin="round" stroke-linecap="round" />`;
   }).join('');
 
   // Frame background rect spans the whole cropped viewBox, painted first.

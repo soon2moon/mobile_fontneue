@@ -34,8 +34,8 @@ run(async (page) => {
   await page.mouse.move(650, 480, { steps: 8 });
   await page.mouse.up();
   await pause(400);
-  expect('frameOnDarkCanvas', await page.evaluate(() =>
-    getComputedStyle(document.body).backgroundColor === 'rgb(30, 30, 30)') && await frameRectVisible());
+  expect('frameOnLightCanvas', await page.evaluate(() =>
+    getComputedStyle(document.body).backgroundColor === 'rgb(245, 245, 245)') && await frameRectVisible());
 
   // 1. Quiet UI: Ctrl+\ hides chrome but the frame + its label remain (canvas).
   await page.keyboard.down('Control');

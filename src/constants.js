@@ -6,11 +6,11 @@ export const DEFAULT_STROKE_COLOR = '#344054';
 export const DEFAULT_STROKE_ALIGN = 'center';
 export const DEFAULT_FILL_COLOR = '#344054';
 
-// Defaults stamped onto NEWLY created content (Figma-style light content
-// on the dark canvas). Old sessions keep their own persisted defaults.
+// Defaults stamped onto NEWLY created content (Figma-style dark content on
+// the off-white canvas). Old sessions keep their own persisted defaults.
 export const NEW_SHAPE_FILL_COLOR = '#d9d9d9';
-export const NEW_SHAPE_STROKE_COLOR = '#ffffff';
-export const NEW_TEXT_FILL_COLOR = '#ffffff';
+export const NEW_SHAPE_STROKE_COLOR = '#1e1e1e';
+export const NEW_TEXT_FILL_COLOR = '#1e1e1e';
 
 export const SNAP_RADIUS = 10;
 export const GRID_SIZE = 50;

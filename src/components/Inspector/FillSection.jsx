@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ColorControl from '../../ui/ColorControl';
+import OpacityField from '../../ui/inputs/OpacityField';
 import Toggle from '../../ui/inputs/Toggle';
 import { useEditor } from '../../state/EditorContext';
 import { normalizeStrokeColor } from '../../lib/stroke';
@@ -72,6 +73,12 @@ export default function FillSection() {
           placeholder={showMixedColor ? 'Mixed' : '344054'}
           maxLength={6}
           title="Fill Color (Hex)"
+        />
+        <OpacityField
+          value={fill.opacity}
+          indeterminate={fill.indeterminate.opacity}
+          onCommit={(o) => apply({ fillOpacity: o })}
+          title="Fill Opacity"
         />
       </div>
     </div>

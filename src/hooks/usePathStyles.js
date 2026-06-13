@@ -8,7 +8,8 @@ import { getPathStrokeStyle } from '../lib/paths';
 import {
   normalizeStrokeWidth,
   normalizeStrokeColor,
-  normalizeStrokeAlign
+  normalizeStrokeAlign,
+  normalizeOpacity
 } from '../lib/stroke';
 
 // Stroke/fill styling surface: zoom-compensated render strokes for the
@@ -82,6 +83,12 @@ export function usePathStyles({
     }
     if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'fillColor')) {
       normalizedUpdates.fillColor = normalizeStrokeColor(normalizedUpdates.fillColor, pathStyleDefaults.fillColor);
+    }
+    if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'fillOpacity')) {
+      normalizedUpdates.fillOpacity = normalizeOpacity(normalizedUpdates.fillOpacity);
+    }
+    if (Object.prototype.hasOwnProperty.call(normalizedUpdates, 'strokeOpacity')) {
+      normalizedUpdates.strokeOpacity = normalizeOpacity(normalizedUpdates.strokeOpacity);
     }
 
     if (hasSelectedPaths) {

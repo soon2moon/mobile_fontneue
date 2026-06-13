@@ -52,6 +52,8 @@ anyPanelOpen,
     layers,
     exportFormat,
     exportScope,
+    frameTransparent,
+    setFrameTransparent,
     mobilePanelsOpen,
     openPanels,
     saveLayerName,
@@ -342,6 +344,21 @@ anyPanelOpen,
                           </button>
                         ))}
                       </div>
+
+                      {exportScope === 'frame' && (
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-xs text-secondary">
+                            Transparent background
+                            {exportFormat === 'jpg' && <span className="text-muted"> · JPG has no alpha</span>}
+                          </span>
+                          <Toggle
+                            checked={frameTransparent && exportFormat !== 'jpg'}
+                            onChange={setFrameTransparent}
+                            disabled={exportFormat === 'jpg'}
+                            title="Transparent background (PNG/SVG)"
+                          />
+                        </div>
+                      )}
 
                       {exportScope === 'selection' && !canExportSelection && (
                         <p className="text-[10px] text-muted px-1">

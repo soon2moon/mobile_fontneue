@@ -48,7 +48,7 @@ run(async (page) => {
   expect('dragDrawsFrame', rects1.length === 1 && Math.round(rects1[0].width) === 400 && Math.round(rects1[0].height) === 300);
   expect('frameNameOnCanvas', (await svgTexts()).some(t => t === 'Frame 1'));
   expect('returnsToMoveSelected', (await buttonActive('Move (V)'))
-    && await page.evaluate(() => !!document.querySelector('svg rect[stroke="#0d99ff"]')));
+    && await page.evaluate(() => !!document.querySelector('svg rect[stroke="#007eea"]')));
 
   // 3. A plain click drops a 100x100 frame.
   await page.keyboard.press('f');

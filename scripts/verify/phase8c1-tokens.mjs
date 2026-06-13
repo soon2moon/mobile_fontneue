@@ -68,7 +68,7 @@ run(async (page) => {
       .find(p => (p.getAttribute('d') || '').length > 10);
     return path?.getAttribute('stroke') ?? null;
   });
-  expect('newShapeUsesThemedStroke', report.gridStroke === '#ffffff');
+  expect('newShapeUsesThemedStroke', report.gridStroke === '#1e1e1e');
 
   await page.screenshot({ path: '/tmp/shots/phase8c1-tokens.png' });
   await page.evaluate(() => localStorage.clear());

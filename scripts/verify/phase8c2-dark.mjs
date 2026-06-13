@@ -1,10 +1,10 @@
 import { run, APP_URL } from './client.mjs';
 
-// Phase 8C.2: the dark theme. Chrome renders the Figma-style dark palette
-// (canvas #1e1e1e, panels #2c2c2c, accent #0d99ff), new shapes default to
-// light content (#ffffff stroke / #d9d9d9 fill, fill ON), new texts are
-// white, tooltips are dark — while LEGACY art without stamped colors still
-// renders the original pinned #344054.
+// Phase 8C.2 (updated for the light-canvas pass): off-white canvas (#f5f5f5)
+// with #2c2c2c panels and a #007eea accent; new shapes default to dark content
+// (#1e1e1e stroke / #d9d9d9 fill, fill ON), new texts are dark, tooltips stay
+// dark — while LEGACY art without stamped colors still renders the original
+// pinned #344054.
 run(async (page) => {
   const report = {};
   const failures = [];
@@ -18,7 +18,7 @@ run(async (page) => {
 
   // 1. Dark chrome.
   report.bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect('darkCanvas', report.bodyBg === 'rgb(30, 30, 30)');
+  expect('lightCanvas', report.bodyBg === 'rgb(245, 245, 245)');
   await page.click('button[aria-label="Design"]');
   await pause(300);
   report.cardBg = await page.evaluate(() => {
@@ -42,7 +42,7 @@ run(async (page) => {
     const fillGroup = document.querySelector('svg path[fill-rule="nonzero"]');
     return { stroke: stroke?.getAttribute('stroke'), fill: fillGroup?.getAttribute('fill') };
   });
-  expect('newShapeWhiteStroke', report.newShape.stroke === '#ffffff');
+  expect('newShapeDarkStroke', report.newShape.stroke === '#1e1e1e');
   expect('newShapeLightFill', report.newShape.fill === '#d9d9d9');
 
   // 3. Selection chrome uses the Figma blue.
@@ -51,7 +51,7 @@ run(async (page) => {
   await page.mouse.click(575, 300);
   await pause(250);
   expect('accentSelectionChrome', await page.evaluate(() =>
-    !!document.querySelector('svg rect[stroke="#0d99ff"]')));
+    !!document.querySelector('svg rect[stroke="#007eea"]')));
   await page.keyboard.press('Escape');
   await pause(200);
 
@@ -63,8 +63,8 @@ run(async (page) => {
   await page.keyboard.type('Aa', { delay: 15 });
   await page.keyboard.press('Escape');
   await pause(300);
-  expect('newTextWhite', await page.evaluate(() =>
-    document.querySelector('svg g text')?.getAttribute('fill') === '#ffffff'));
+  expect('newTextDark', await page.evaluate(() =>
+    document.querySelector('svg g text')?.getAttribute('fill') === '#1e1e1e'));
 
   // 5. Tooltips are dark.
   await page.mouse.move(400, 500);

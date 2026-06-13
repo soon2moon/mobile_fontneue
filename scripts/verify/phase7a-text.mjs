@@ -28,10 +28,10 @@ run(async (page) => {
   });
   const textCount = () => page.evaluate(() => document.querySelectorAll('svg g text').length);
   const chromeHandles = () => page.evaluate(() =>
-    [...document.querySelectorAll('svg rect[stroke="#0d99ff"]')].filter(r => Number(r.getAttribute('width')) < 20).length
+    [...document.querySelectorAll('svg rect[stroke="#007eea"]')].filter(r => Number(r.getAttribute('width')) < 20).length
   );
   const seHandle = () => page.evaluate(() => {
-    const handles = [...document.querySelectorAll('svg rect[stroke="#0d99ff"]')]
+    const handles = [...document.querySelectorAll('svg rect[stroke="#007eea"]')]
       .filter(r => Number(r.getAttribute('width')) < 20);
     if (handles.length === 0) return null;
     const centers = handles.map(h => {

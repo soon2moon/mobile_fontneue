@@ -8,7 +8,7 @@ import { pointsToPath, getPathFillStyle } from './paths';
 // cross-path winding holes (fillRule="nonzero" + lib/pathDirection.js) only
 // ever existed within one color and are preserved per group.
 export function buildCompositeFillGroups({ paths, layers, isPathVisible }) {
-  const groupIndexByColor = new Map();
+  const groupIndexByKey = new Map();
   const groups = [];
 
   [...layers].reverse().forEach(layer => {
@@ -17,13 +17,16 @@ export function buildCompositeFillGroups({ paths, layers, isPathVisible }) {
       if (!path.isClosed || !path.fillEnabled || !isPathVisible(path)) return;
       const d = pointsToPath(path.points, path.isClosed);
       if (!d) return;
-      const { fillColor } = getPathFillStyle(path);
-      if (groupIndexByColor.has(fillColor)) {
-        const group = groups[groupIndexByColor.get(fillColor)];
+      const { fillColor, fillOpacity } = getPathFillStyle(path);
+      // Key by color AND opacity so semi-transparent fills don't merge into
+      // an opaque sibling's group (winding holes still only matter per-group).
+      const key = `${fillColor}@${fillOpacity}`;
+      if (groupIndexByKey.has(key)) {
+        const group = groups[groupIndexByKey.get(key)];
         group.d += ` ${d}`;
       } else {
-        groupIndexByColor.set(fillColor, groups.length);
-        groups.push({ color: fillColor, d });
+        groupIndexByKey.set(key, groups.length);
+        groups.push({ key, color: fillColor, opacity: fillOpacity, d });
       }
     });
   });
