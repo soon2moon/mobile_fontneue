@@ -47,6 +47,7 @@ must stay empty.
 | `phase8e-contextmenu.mjs` | shared right-click/long-press menu: actions + hints on objects, Paste-here recenters on the point, layer reorder, Esc-safe, Delete |
 | `phase8f1-frames-model.mjs` | frame model threading (inert): session round-trip, layer row, history-preserving undo/redo, frameless sessions load clean |
 | `phase8f2-frame-tool.mjs` | Frame tool (F): drag/click creation, name label, paints below content, returns to Move selected, undo, reload, mobile button + drag |
+| `phase8f3-frame-edit.mjs` | frame editing: click-select, body-drag move, non-uniform corner resize, label-drag select+move, marquee selects content not board, delete+undo |
 | `export.mjs` | SVG export markup + PNG rasterization (download intercept) |
 
 Run: `node scripts/verify/<script>.mjs`. Screenshots land in `/tmp/shots/`.

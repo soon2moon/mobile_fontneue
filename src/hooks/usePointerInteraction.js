@@ -16,7 +16,8 @@ import {
   applyShiftSnap,
   shortestDeltaDeg,
   normalizeAngleDeg,
-  computeCornerScale
+  computeCornerScale,
+  computeCornerResize
 } from '../lib/geometry';
 import { applyGridSnap } from '../lib/snap';
 import {
@@ -38,6 +39,7 @@ import {
 import { generateEditGroupId } from '../lib/svg';
 import { generateShapePath } from '../lib/shapes';
 import { createLayer } from '../lib/layers';
+import { findTopFrameAtCoords, getFrameHandleHit, getFrameLabelHit } from '../lib/hitTest';
 import { MIN_FONT_SIZE, createFrameObject } from '../lib/objectModel';
 import { getTextLocalLayout } from '../lib/textMeasure';
 
@@ -146,6 +148,7 @@ activeEditGroupId,
     texts,
     frames,
     setFrames,
+    selectedFrameIds,
     drawingFrame,
     setDrawingFrame,
     setSelectedFrameIds,
@@ -813,6 +816,41 @@ activeEditGroupId,
         }
       }
 
+      // 2.9 Frames: corner handles of the single selected frame, then the
+      // name label of any frame — both beat the generic bg-hit chain.
+      if (!isDirectPathEdit && selectedFrameIds.length === 1) {
+        const selFrame = frames.find(f => f.id === selectedFrameIds[0]);
+        const selLayer = selFrame && layers.find(l => l.id === selFrame.layerId);
+        if (selFrame && selLayer && selLayer.visible && !selLayer.locked && !selFrame.locked) {
+          const handle = getFrameHandleHit(coords, selFrame, scaleHandleHitRadius);
+          if (handle) {
+            lastClickedPathIdRef.current = null;
+            lastClickedTextIdRef.current = null;
+            setBgAction(handle);
+            setBgInitialState({ coords, obj: { ...selFrame }, kind: 'frame' });
+            return;
+          }
+        }
+      }
+      if (!isDirectPathEdit) {
+        const labelFrame = frames.find(f => {
+          const layer = layers.find(l => l.id === f.layerId);
+          return layer && layer.visible && !layer.locked && !f.locked && getFrameLabelHit(coords, f, zoom);
+        });
+        if (labelFrame) {
+          lastClickedPathIdRef.current = null;
+          lastClickedTextIdRef.current = null;
+          setBgAction('move');
+          setSelectedFrameIds([labelFrame.id]);
+          setSelectedImageIds([]);
+          setSelectedTextIds([]);
+          setSelectedPoints([]);
+          setActivePathEditId(null);
+          setBgInitialState({ coords, obj: { ...labelFrame }, kind: 'frame' });
+          return;
+        }
+      }
+
       // 3. Check Background Object Handles (Scale / Rotate)
       const hitBg = isDirectPathEdit ? null : getBgHit(coords);
 
@@ -1305,11 +1343,29 @@ activeEditGroupId,
         return;
       }
 
+      // 5.5 Drag an already-selected frame by its body (content on top stays
+      // grabbable because this runs after the bg-body checks; an UNselected
+      // frame body still starts a marquee so content over it is selectable).
+      if (!isDirectPathEdit && selectedFrameIds.length === 1) {
+        const selFrame = frames.find(f => f.id === selectedFrameIds[0]);
+        const selLayer = selFrame && layers.find(l => l.id === selFrame.layerId);
+        if (selFrame && selLayer && selLayer.visible && !selLayer.locked && !selFrame.locked
+            && Math.abs(coords.x - selFrame.x) <= selFrame.width / 2
+            && Math.abs(coords.y - selFrame.y) <= selFrame.height / 2) {
+          lastClickedPathIdRef.current = null;
+          lastClickedTextIdRef.current = null;
+          setBgAction('move');
+          setBgInitialState({ coords, obj: { ...selFrame }, kind: 'frame' });
+          return;
+        }
+      }
+
       // 6. Start Box selection
       lastClickedPathIdRef.current = null;
       lastClickedTextIdRef.current = null;
       setSelectedImageIds([]);
       setSelectedTextIds([]);
+      setSelectedFrameIds([]);
       setSelectionBox({
         startX: coords.x,
         startY: coords.y,
@@ -1534,6 +1590,34 @@ activeEditGroupId,
               };
             }));
           }
+      }
+      return;
+    }
+
+    if (bgAction && bgInitialState && bgInitialState.kind === 'frame' && selectedFrameIds.length > 0) {
+      if (!dragThresholdPassed) return;
+      hasDraggedRef.current = true;
+      const init = bgInitialState.obj;
+      if (bgAction === 'move') {
+        setFrames(prev => prev.map(frame => (
+          selectedFrameIds.includes(frame.id)
+            ? { ...frame, x: init.x + (coords.x - bgInitialState.coords.x), y: init.y + (coords.y - bgInitialState.coords.y) }
+            : frame
+        )));
+      } else if (bgAction.startsWith('scale-')) {
+        const { width, height, newCenter } = computeCornerResize({
+          coords,
+          cornerId: bgAction.split('-')[1],
+          center: { x: init.x, y: init.y },
+          halfW: init.width / 2,
+          halfH: init.height / 2,
+          minSize: 1
+        });
+        setFrames(prev => prev.map(frame => (
+          selectedFrameIds.includes(frame.id)
+            ? { ...frame, width, height, x: newCenter.x, y: newCenter.y }
+            : frame
+        )));
       }
       return;
     }
@@ -2467,6 +2551,16 @@ activeEditGroupId,
       setIsDrawingCurve(false);
       clearPendingTouchDrawAction();
     } else if (mode === 'edit') {
+      // A plain click (no drag) that fell through to a marquee start and hit
+      // a frame body selects that frame (so marquee over a frame still
+      // selects the content on it; only a click picks the board).
+      if (!hasDraggedRef.current && selectionBox && !e.shiftKey && !e.altKey) {
+        const clickFrame = findTopFrameAtCoords({ x: selectionBox.startX, y: selectionBox.startY }, { frames, layers });
+        if (clickFrame) {
+          setSelectedFrameIds([clickFrame.id]);
+          setActiveLayerId(clickFrame.layerId);
+        }
+      }
       if (hasDraggedRef.current) {
         commitHistory({ paths: dragStartPathsRef.current, currentPath, images: dragStartImagesRef.current, layers, texts: dragStartTextsRef.current, frames: dragStartFramesRef.current });
         hasDraggedRef.current = false;

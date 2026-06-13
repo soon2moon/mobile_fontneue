@@ -494,7 +494,7 @@ activeEditGroupId,
             const frameLeft = frame.x - frame.width / 2;
             const frameTop = frame.y - frame.height / 2;
             return (
-              <g key={`frame-chrome-${frame.id}`} pointerEvents="none">
+              <g key={`frame-chrome-${frame.id}`} data-frame-chrome={frame.id} pointerEvents="none">
                 <rect
                   x={frameLeft}
                   y={frameTop}

@@ -429,6 +429,7 @@ export default function App() {
     activePathEditId,
     frames,
     setFrames,
+    selectedFrameIds,
     drawingFrame,
     setDrawingFrame,
     setSelectedFrameIds,
@@ -750,7 +751,7 @@ export default function App() {
     updateActiveText
   });
 
-  const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0;
+  const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0 || selectedFrameIds.length > 0;
   const canExportSelection = hasActiveSelection;
   const selectedLayersInStackOrder = layers.filter(layer => selectedLayerIds.has(layer.id));
   const layerIndexById = new Map(layers.map((layer, index) => [layer.id, index]));

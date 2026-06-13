@@ -207,3 +207,44 @@ export const findTopPathAtCoords = (testCoords, { paths, isPathVisible, isPathLo
   if (!bestPath) return null;
   return { path: bestPath, pathIndex: bestIndex };
 };
+
+// --- Frames ---
+// Boards select on plain click / label / handles only; their body never
+// joins the generic bg-hit chain so content above stays marquee-able.
+export const findTopFrameAtCoords = (coords, { frames, layers }) => {
+  for (let i = frames.length - 1; i >= 0; i--) {
+    const frame = frames[i];
+    const layer = layers.find(l => l.id === frame.layerId);
+    if (!layer || !layer.visible || layer.locked || frame.locked) continue;
+    if (Math.abs(coords.x - frame.x) <= frame.width / 2 && Math.abs(coords.y - frame.y) <= frame.height / 2) {
+      return frame;
+    }
+  }
+  return null;
+};
+
+export const getFrameHandleHit = (coords, frame, scaleHandleHitRadius) => {
+  const halfW = frame.width / 2;
+  const halfH = frame.height / 2;
+  const corners = [
+    { id: 'scale-nw', x: frame.x - halfW, y: frame.y - halfH },
+    { id: 'scale-ne', x: frame.x + halfW, y: frame.y - halfH },
+    { id: 'scale-se', x: frame.x + halfW, y: frame.y + halfH },
+    { id: 'scale-sw', x: frame.x - halfW, y: frame.y + halfH }
+  ];
+  for (const corner of corners) {
+    if (Math.hypot(coords.x - corner.x, coords.y - corner.y) <= scaleHandleHitRadius) {
+      return corner.id;
+    }
+  }
+  return null;
+};
+
+// The name strip drawn above the frame's top-left corner (screen-sized).
+export const getFrameLabelHit = (coords, frame, zoom) => {
+  const left = frame.x - frame.width / 2;
+  const top = frame.y - frame.height / 2;
+  const labelWidth = Math.min(frame.width, Math.max(40 / zoom, ((frame.name || '').length || 5) * 7 / zoom));
+  return coords.x >= left && coords.x <= left + labelWidth
+    && coords.y >= top - 18 / zoom && coords.y <= top;
+};

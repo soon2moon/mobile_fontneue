@@ -148,3 +148,19 @@ export const computeCornerScale = ({ coords, cornerId, center, rotation, halfW, 
   const newOppositeOffset = rotateVec({ x: s * localOpposite.x, y: s * localOpposite.y });
   return { s, newCenter: { x: fixedPt.x - newOppositeOffset.x, y: fixedPt.y - newOppositeOffset.y } };
 };
+
+// Non-uniform corner resize for axis-aligned boxes (frames): the opposite
+// corner stays fixed; width/height follow the pointer independently.
+export const computeCornerResize = ({ coords, cornerId, center, halfW, halfH, minSize = 1 }) => {
+  const fixed = {
+    x: center.x + (cornerId.includes('w') ? halfW : -halfW),
+    y: center.y + (cornerId.includes('n') ? halfH : -halfH)
+  };
+  const width = Math.max(minSize, Math.abs(coords.x - fixed.x));
+  const height = Math.max(minSize, Math.abs(coords.y - fixed.y));
+  const newCenter = {
+    x: fixed.x + (cornerId.includes('w') ? -width / 2 : width / 2),
+    y: fixed.y + (cornerId.includes('n') ? -height / 2 : height / 2)
+  };
+  return { width, height, newCenter };
+};
