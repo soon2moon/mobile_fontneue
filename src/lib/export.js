@@ -11,6 +11,8 @@ import { getTextLocalLayout } from './textMeasure';
 export function collectExportItems(scope, { layers, paths, images, texts = [], selectedPoints, selectedImageIds, selectedTextIds = [] }) {
   const visibleLayerIdSet = new Set(layers.filter(layer => layer.visible).map(layer => layer.id));
 
+  // Frame export covers all visible content (cropped to the frame rect by
+  // the caller via explicit bounds), like the whole-canvas scope.
   if (scope === 'selection') {
     const selectedPathIndexSet = new Set(selectedPoints.map(point => point.pathIndex));
     const scopedPaths = [...selectedPathIndexSet]
@@ -34,8 +36,8 @@ export function collectExportItems(scope, { layers, paths, images, texts = [], s
 // Returns { svg, width, height } or null when there is nothing to export.
 // Stacking matches the canvas: per-color composite fills at the bottom, then
 // images, texts, and stroke-only path outlines on top.
-export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = [], layers = [] }) {
-  if (exportPaths.length === 0 && exportImages.length === 0 && exportTexts.length === 0) return null;
+export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = [], layers = [], bounds = null, background = null }) {
+  if (exportPaths.length === 0 && exportImages.length === 0 && exportTexts.length === 0 && !bounds) return null;
 
   let minX = Infinity;
   let minY = Infinity;
@@ -104,15 +106,23 @@ export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = 
     });
   });
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
-    return null;
+  // Explicit bounds (frame export) crop to the rect verbatim — no measured
+  // content bbox, no padding. Otherwise crop tight around the content.
+  if (bounds) {
+    minX = bounds.minX;
+    minY = bounds.minY;
+    maxX = bounds.maxX;
+    maxY = bounds.maxY;
+  } else {
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return null;
+    }
+    const padding = 12;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
   }
-
-  const padding = 12;
-  minX -= padding;
-  minY -= padding;
-  maxX += padding;
-  maxY += padding;
   const width = Math.max(1, Math.ceil(maxX - minX));
   const height = Math.max(1, Math.ceil(maxY - minY));
 
@@ -152,7 +162,12 @@ export function buildExportSvgBundle({ exportPaths, exportImages, exportTexts = 
     return `<path d="${escapeXml(d)}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidthValue}" stroke-linejoin="round" stroke-linecap="round" />`;
   }).join('');
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${fillMarkup}${imageMarkup}${textMarkup}${pathMarkup}</g></svg>`;
+  // Frame background rect spans the whole cropped viewBox, painted first.
+  const backgroundMarkup = background
+    ? `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${background}" />`
+    : '';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g transform="translate(${-minX} ${-minY})">${backgroundMarkup}${fillMarkup}${imageMarkup}${textMarkup}${pathMarkup}</g></svg>`;
   return { svg, width, height };
 }
 

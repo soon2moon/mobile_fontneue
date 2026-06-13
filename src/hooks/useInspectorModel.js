@@ -21,17 +21,21 @@ export function useInspectorModel({
   selectedPathObjects,
   selectedImageIds,
   selectedTextIds,
+  selectedFrameIds = [],
   pathStyleDefaults,
   applyPathStyle,
   activeImage,
   updateActiveImage,
   activeText,
-  updateActiveText
+  updateActiveText,
+  activeFrame,
+  updateActiveFrame
 }) {
   const hasPaths = selectedPathObjects.length > 0;
   const hasImages = selectedImageIds.length > 0;
   const hasTexts = selectedTextIds.length > 0;
-  const selectedKindCount = (hasPaths ? 1 : 0) + (hasImages ? 1 : 0) + (hasTexts ? 1 : 0);
+  const hasFrames = selectedFrameIds.length > 0;
+  const selectedKindCount = (hasPaths ? 1 : 0) + (hasImages ? 1 : 0) + (hasTexts ? 1 : 0) + (hasFrames ? 1 : 0);
 
   const kind = selectedKindCount > 1
     ? 'mixed'
@@ -39,9 +43,11 @@ export function useInspectorModel({
       ? 'image'
       : hasTexts
         ? 'text'
-        : hasPaths
-          ? 'paths'
-          : 'none';
+        : hasFrames
+          ? 'frame'
+          : hasPaths
+            ? 'paths'
+            : 'none';
 
   const distinct = (values) => new Set(values).size > 1;
   const strokeStyles = selectedPathObjects.map(path => getPathStrokeStyle(path));
@@ -108,10 +114,22 @@ export function useInspectorModel({
           opacity: activeText.opacity,
           locked: !!activeText.locked
         }
-      : null;
+      : kind === 'frame' && activeFrame
+        ? {
+            x: activeFrame.x,
+            y: activeFrame.y,
+            width: activeFrame.width,
+            height: activeFrame.height,
+            locked: !!activeFrame.locked
+          }
+        : null;
 
   const text = kind === 'text' && activeText
     ? { fontSize: activeText.fontSize, fill: activeText.fill }
+    : null;
+
+  const frame = kind === 'frame' && activeFrame
+    ? { name: activeFrame.name, fill: activeFrame.fill }
     : null;
 
   const apply = (patch) => {
@@ -121,6 +139,10 @@ export function useInspectorModel({
     }
     if (kind === 'text') {
       updateActiveText(patch);
+      return;
+    }
+    if (kind === 'frame') {
+      updateActiveFrame(patch);
       return;
     }
     applyPathStyle(patch);
@@ -135,8 +157,12 @@ export function useInspectorModel({
       updateActiveText(patch);
       return;
     }
+    if (kind === 'frame') {
+      updateActiveFrame(patch);
+      return;
+    }
     applyPathStyle(patch, { transient: true });
   };
 
-  return { kind, fill, stroke, transform, text, apply, applyTransient };
+  return { kind, fill, stroke, transform, text, frame, apply, applyTransient };
 }

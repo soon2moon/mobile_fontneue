@@ -29,6 +29,7 @@ export default function PanelsContainer() {
   const {
 anyPanelOpen,
     canExportSelection,
+    selectedFrameIds,
     isCanvasWorking,
     deleteLayer,
     dragDropTarget,
@@ -290,7 +291,7 @@ anyPanelOpen,
 
                   {panel.id === 'export' && (
                     <div className="p-3.5 flex flex-col gap-3">
-                      <div className="grid grid-cols-2 gap-2 bg-sunken p-1.5 rounded-lg">
+                      <div className="grid grid-cols-3 gap-2 bg-sunken p-1.5 rounded-lg">
                         <button
                           onClick={() => setExportScope('selection')}
                           className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
@@ -310,6 +311,19 @@ anyPanelOpen,
                           }`}
                         >
                           Canvas
+                        </button>
+                        <button
+                          onClick={() => setExportScope('frame')}
+                          disabled={selectedFrameIds.length !== 1}
+                          className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
+                            exportScope === 'frame'
+                              ? 'bg-chip shadow-sm text-ink'
+                              : selectedFrameIds.length !== 1
+                                ? 'text-muted cursor-not-allowed'
+                                : 'text-secondary hover:text-ink'
+                          }`}
+                        >
+                          Frame
                         </button>
                       </div>
 

@@ -23,7 +23,8 @@ import {
 } from './lib/hitTest';
 import { computeSelectionBBox } from './lib/selectionBounds';
 import { computeDynamicCursor } from './lib/cursor';
-import { groupContentByLayer, getLayerPreviewBounds } from './lib/layers';
+import { groupContentByLayer, getLayerPreviewBounds, createLayer } from './lib/layers';
+import { createFrameObject } from './lib/objectModel';
 
 import { useViewportSize } from './hooks/useViewportSize';
 import { useViewport } from './hooks/useViewport';
@@ -554,6 +555,10 @@ export default function App() {
       if (targetMode !== 'shape') {
         setMobileShapePanelOpen(false);
       }
+    } else if (targetMode === 'frame') {
+      // Surface the Design panel's frame presets when arming the tool (desktop).
+      setOpenPanels(prev => ({ ...prev, inspector: true }));
+      setExpandedPanel('inspector');
     }
 
     if (targetMode !== 'shape') {
@@ -653,7 +658,7 @@ export default function App() {
     exportFormat, setExportFormat,
     isExporting,
     handleExport
-  } = useExport({ layers, paths, images, texts, selectedPoints, selectedImageIds, selectedTextIds });
+  } = useExport({ layers, paths, images, texts, frames, selectedPoints, selectedImageIds, selectedTextIds, selectedFrameIds });
 
   useKeyboardShortcuts({
     mode, setMode,
@@ -743,13 +748,35 @@ export default function App() {
     selectedPathObjects: pathStyles.selectedPathObjects,
     selectedImageIds,
     selectedTextIds,
+    selectedFrameIds,
     pathStyleDefaults,
     applyPathStyle: pathStyles.applyPathStyle,
     activeImage,
     updateActiveImage,
     activeText,
-    updateActiveText
+    updateActiveText,
+    activeFrame,
+    updateActiveFrame
   });
+
+  // Drop a preset-sized frame at the current viewport center (Inspector's
+  // Frame-tool preset list), then select it in Move mode.
+  const createFramePreset = (width, height) => {
+    const cx = (viewportSize.width / 2 - panRef.current.x) / zoomRef.current;
+    const cy = (viewportSize.height / 2 - panRef.current.y) / zoomRef.current;
+    commitHistory({ paths, currentPath, images, layers, texts, frames });
+    const count = layers.filter(l => l.itemType === 'frame').length;
+    const newLayer = createLayer('frame', count);
+    const newFrame = createFrameObject({ x: cx, y: cy, width, height, name: newLayer.name, layerId: newLayer.id });
+    setLayers(prev => [newLayer, ...prev]);
+    setFrames(prev => [...prev, newFrame]);
+    setActiveLayerId(newLayer.id);
+    setSelectedPoints([]);
+    setSelectedImageIds([]);
+    setSelectedTextIds([]);
+    setSelectedFrameIds([newFrame.id]);
+    changeMode('edit');
+  };
 
   const hasActiveSelection = selectedPoints.length > 0 || selectedImageIds.length > 0 || selectedTextIds.length > 0 || selectedFrameIds.length > 0;
   const canExportSelection = hasActiveSelection;
@@ -803,6 +830,7 @@ export default function App() {
     commitTextEditing,
     compositeFillGroups,
     copyCurrentSelection,
+    createFramePreset,
     currentPath,
     currentPathInfo,
     cutCurrentSelection,

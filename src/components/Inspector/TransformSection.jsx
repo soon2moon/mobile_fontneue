@@ -34,6 +34,22 @@ export default function TransformSection() {
           onChange={v => apply({ y: v })}
           title="Y"
         />
+        {transform.width != null && (
+          <ConfigInput
+            label="W"
+            value={transform.width}
+            onChange={v => apply({ width: Math.max(1, v) })}
+            title="Width"
+          />
+        )}
+        {transform.height != null && (
+          <ConfigInput
+            label="H"
+            value={transform.height}
+            onChange={v => apply({ height: Math.max(1, v) })}
+            title="Height"
+          />
+        )}
         {transform.scale != null && (
           <ConfigInput
             icon={<Ruler size={14} />}
@@ -44,23 +60,27 @@ export default function TransformSection() {
             title="Scale"
           />
         )}
-        <ConfigInput
-          icon={<RefreshCw size={14} />}
-          value={transform.rotation}
-          suffix="°"
-          onChange={v => apply({ rotation: v })}
-          title="Rotation"
-        />
-        <div className="col-span-1">
+        {transform.rotation != null && (
           <ConfigInput
-            icon={<Droplet size={14} />}
-            value={transform.opacity}
-            scaleFactor={100}
-            suffix="%"
-            onChange={v => apply({ opacity: Math.max(0, Math.min(1, v)) })}
-            title="Opacity"
+            icon={<RefreshCw size={14} />}
+            value={transform.rotation}
+            suffix="°"
+            onChange={v => apply({ rotation: v })}
+            title="Rotation"
           />
-        </div>
+        )}
+        {transform.opacity != null && (
+          <div className="col-span-1">
+            <ConfigInput
+              icon={<Droplet size={14} />}
+              value={transform.opacity}
+              scaleFactor={100}
+              suffix="%"
+              onChange={v => apply({ opacity: Math.max(0, Math.min(1, v)) })}
+              title="Opacity"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
