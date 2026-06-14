@@ -26,3 +26,6 @@ Thumbs.db
 
 # Local-only maintainer files (not committed)
 references.local/
+
+# Local-only Markdown docs
+*.md
