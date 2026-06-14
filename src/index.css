@@ -17,6 +17,7 @@
   --color-muted: 140 140 140;
   --color-accent: 0 126 234;
   --color-accent-strong: 51 155 255;
+  --color-accent-soft: 61 90 178;
   --color-danger: 242 72 34;
   --color-danger-bg: 74 38 32;
   --color-chip: 68 68 68;
@@ -101,4 +102,24 @@ button,
   opacity: 0;
   transform: translateY(-10px);
   pointer-events: none;
+}
+
+/* Thin custom scrollbar for long panel content (e.g. the layers list). */
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-edge-strong)) transparent;
+}
+.panel-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-edge-strong));
+  border-radius: 9999px;
+}
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-muted));
 }

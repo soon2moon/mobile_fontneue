@@ -29,8 +29,8 @@ The app must pass every item before a phase is considered done.
 
 - [ ] Stroke weight/color/position edits apply to selection and to next-drawn defaults.
 - [ ] Grid: toggle types (square/dot/iso/circular), change spacing, grid snap on/off works while drawing.
-- [ ] Export: SVG, PNG, JPG produce correct output incl. images/text (JPG uses the dark canvas bg).
-- [ ] Dark theme throughout; new shapes default to light fill/stroke; pre-existing (legacy) art keeps #344054.
+- [ ] Export: SVG, PNG, JPG produce correct output incl. images/text (JPG uses the light canvas bg #f5f5f5).
+- [ ] Light canvas (#f5f5f5) with #2c2c2c chrome and #007eea accent; new shapes default to dark ink (stroke/text #1e1e1e, fill #d9d9d9); pre-existing (legacy) art keeps #344054.
 
 ## Tools, shortcuts & layout
 

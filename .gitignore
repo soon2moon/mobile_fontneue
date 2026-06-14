@@ -23,3 +23,6 @@ coverage/
 # OS / editor noise
 .DS_Store
 Thumbs.db
+
+# Local-only maintainer files (not committed)
+references.local/

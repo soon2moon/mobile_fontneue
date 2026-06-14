@@ -1,5 +1,5 @@
 function MobileToolButton({ active = false, onClick, icon, label, radiusClass = 'rounded-lg', variant = 'solid' }) {
-  const activeStyle = 'bg-pressed border-edge-strong text-ink';
+  const activeStyle = 'bg-accent border-accent text-white';
   const solidIdleStyle = 'bg-sunken border-edge text-secondary active:bg-pressed';
   const toolbarIdleStyle = 'bg-transparent border-transparent text-secondary active:bg-pressed active:text-ink active:border-edge-strong';
   const idleStyle = variant === 'toolbar' ? toolbarIdleStyle : solidIdleStyle;

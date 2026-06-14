@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { CLOSED_PANELS } from '../config/panels';
+import { CLOSED_PANELS, PANELS_CONFIG } from '../config/panels';
+
+const PANEL_ORDER = PANELS_CONFIG.map(p => p.id);
+// Next open panel after removeId, by config order (wraps); null if none remain.
+const nextOpenPanelId = (panelsState, removeId) => {
+  const start = PANEL_ORDER.indexOf(removeId);
+  for (let i = 1; i <= PANEL_ORDER.length; i++) {
+    const cand = PANEL_ORDER[(start + i) % PANEL_ORDER.length];
+    if (cand !== removeId && panelsState[cand]) return cand;
+  }
+  return null;
+};
 
 // Chrome state shared by desktop and mobile: the panels accordion, the mobile
 // drawers (tools/shapes/panels), the mobile context menu + long-press
@@ -87,37 +98,28 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     clearMobileLongPress();
   }, [clearMobileLongPress]);
 
+  // Remove a panel from the stack; if it was the active tab, advance to the
+  // next open panel by config order.
+  const removePanel = (panelId) => {
+    setOpenPanels(prev => {
+      const next = { ...prev, [panelId]: false };
+      setExpandedPanel(cur => (cur === panelId ? nextOpenPanelId(next, panelId) : cur));
+      return next;
+    });
+  };
+
+  // Toolbar entry point: toggles a panel's membership in the stack. Opening a
+  // panel makes it the active tab; toggling the already-open one removes it.
   const togglePanel = (panelId) => {
-    if (isMobile) {
-      const isSameOpen = openPanels[panelId] && expandedPanel === panelId;
-      setMobileToolsOpen(false);
-      setMobileShapePanelOpen(false);
-      if (isSameOpen) {
-        setOpenPanels({ ...CLOSED_PANELS });
-        setExpandedPanel(null);
-        setMobilePanelsOpen(false);
-      } else {
-        setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
-        setExpandedPanel(panelId);
-        setMobilePanelsOpen(true);
-      }
+    setMobileToolsOpen(false);
+    setMobileShapePanelOpen(false);
+    if (openPanels[panelId]) {
+      removePanel(panelId);
       return;
     }
-    setOpenPanels(prev => {
-      const isCurrentlyOpen = prev[panelId];
-      if (isCurrentlyOpen) {
-        if (expandedPanel === panelId) {
-          setExpandedPanel(null);
-          return { ...prev, [panelId]: false };
-        } else {
-          setExpandedPanel(panelId);
-          return prev;
-        }
-      } else {
-        setExpandedPanel(panelId);
-        return { ...prev, [panelId]: true };
-      }
-    });
+    setExpandedPanel(panelId);
+    setMobilePanelsOpen(true);
+    setOpenPanels(prev => ({ ...prev, [panelId]: true }));
   };
 
   useEffect(() => {
@@ -135,11 +137,14 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     setOpenPanels({ ...CLOSED_PANELS });
     setExpandedPanel(null);
   };
+  // Mobile "open this panel" entry point: ensure it's in the stack and active
+  // (without closing the others — the stack's nav/× manage membership). Matches
+  // the unified desktop behavior.
   const openMobilePanel = (panelId) => {
     setCanvasContextMenu(null);
     setMobileToolsOpen(false);
     setMobileShapePanelOpen(false);
-    setOpenPanels({ ...CLOSED_PANELS, [panelId]: true });
+    setOpenPanels(prev => ({ ...prev, [panelId]: true }));
     setExpandedPanel(panelId);
     setMobilePanelsOpen(true);
   };
@@ -185,6 +190,7 @@ export function useUIShell({ isMobile, viewportSize, mobileBottomInset }) {
     openPanels, setOpenPanels,
     expandedPanel, setExpandedPanel,
     togglePanel,
+    removePanel,
     anyPanelOpen,
     closeAllPanels,
     openMobilePanel,

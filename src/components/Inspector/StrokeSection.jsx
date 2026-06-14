@@ -4,10 +4,11 @@ import OpacityField from '../../ui/inputs/OpacityField';
 import Toggle from '../../ui/inputs/Toggle';
 import { useEditor } from '../../state/EditorContext';
 
-// Stroke toggle + color (swatch & hex) + width + align for the selected
-// paths (or the next-path defaults). Fields whose value differs across the
-// selection show a "Mixed" placeholder until focused; committing a value
-// unifies the whole selection.
+// Stroke toggle + color (swatch & hex) + opacity + align + weight for the
+// selected paths (or the next-path defaults). Two-row layout (Figma-style):
+// row 1 mirrors Fill (swatch · hex · opacity); row 2 is align · weight. Fields
+// whose value differs across the selection show a "Mixed" placeholder until
+// focused; committing a value unifies the whole selection.
 export default function StrokeSection() {
   const {
     inspector,
@@ -39,49 +40,65 @@ export default function StrokeSection() {
         />
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-2">
-        <div className="h-8 flex items-center gap-2 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">
-          <ColorControl
-            value={stroke.color}
-            showIndeterminate={stroke.indeterminate.color}
-            label="Stroke Color"
-            onChange={(color) => {
-              setStrokeColorInput(color.replace('#', ''));
-              apply({ strokeColor: color, strokeEnabled: true });
-            }}
-            onChangeTransient={(color) => {
-              setStrokeColorInput(color.replace('#', ''));
-              applyTransient({ strokeColor: color });
-            }}
-          />
-          <input
-            type="text"
-            value={showMixedColor ? '' : strokeColorInput}
-            onChange={(e) => handleStrokeColorInputChange(e.target.value)}
-            onFocus={() => setColorFocused(true)}
-            onBlur={() => {
-              setColorFocused(false);
+      {/* Row 1: color swatch + hex + opacity (full width, mirrors Fill) */}
+      <div className="h-8 flex items-center gap-2 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">
+        <ColorControl
+          value={stroke.color}
+          showIndeterminate={stroke.indeterminate.color}
+          label="Stroke Color"
+          onChange={(color) => {
+            setStrokeColorInput(color.replace('#', ''));
+            apply({ strokeColor: color, strokeEnabled: true });
+          }}
+          onChangeTransient={(color) => {
+            setStrokeColorInput(color.replace('#', ''));
+            applyTransient({ strokeColor: color });
+          }}
+        />
+        <input
+          type="text"
+          value={showMixedColor ? '' : strokeColorInput}
+          onChange={(e) => handleStrokeColorInputChange(e.target.value)}
+          onFocus={() => setColorFocused(true)}
+          onBlur={() => {
+            setColorFocused(false);
+            commitStrokeColorInput();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
               commitStrokeColorInput();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commitStrokeColorInput();
-                e.currentTarget.blur();
-              }
-            }}
-            className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-ink font-mono uppercase"
-            placeholder={showMixedColor ? 'Mixed' : '4A2622'}
-            maxLength={6}
-            title="Stroke Color (Hex)"
-          />
-          <OpacityField
-            value={stroke.opacity}
-            indeterminate={stroke.indeterminate.opacity}
-            onCommit={(o) => apply({ strokeOpacity: o })}
-            title="Stroke Opacity"
-          />
-        </div>
+              e.currentTarget.blur();
+            }
+          }}
+          className="flex-1 min-w-0 text-xs text-left bg-transparent border-none outline-none py-1 text-ink font-mono uppercase"
+          placeholder={showMixedColor ? 'Mixed' : '4A2622'}
+          maxLength={6}
+          title="Stroke Color (Hex)"
+        />
+        <OpacityField
+          value={stroke.opacity}
+          indeterminate={stroke.indeterminate.opacity}
+          onCommit={(o) => apply({ strokeOpacity: o })}
+          title="Stroke Opacity"
+        />
+      </div>
+
+      {/* Row 2: align (position) + weight */}
+      <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-2">
+        <select
+          value={stroke.indeterminate.align ? '' : stroke.align}
+          onChange={(e) => {
+            if (e.target.value) apply({ strokeAlign: e.target.value });
+          }}
+          className="h-8 bg-sunken rounded-md border border-transparent px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-edge-strong"
+          title="Stroke Position"
+        >
+          {stroke.indeterminate.align && <option value="" disabled>Mixed</option>}
+          <option value="inside">Inside</option>
+          <option value="outside">Outside</option>
+          <option value="center">Center</option>
+        </select>
         <div className="h-8 flex items-center gap-1 bg-sunken rounded-md px-2 focus-within:ring-1 focus-within:ring-edge-strong transition-all">
           <input
             type="text"
@@ -105,22 +122,6 @@ export default function StrokeSection() {
           />
           <span className="text-xs text-secondary font-mono select-none">px</span>
         </div>
-      </div>
-
-      <div className="grid grid-cols-[1fr] gap-2">
-        <select
-          value={stroke.indeterminate.align ? '' : stroke.align}
-          onChange={(e) => {
-            if (e.target.value) apply({ strokeAlign: e.target.value });
-          }}
-          className="h-8 bg-sunken rounded-md border border-transparent px-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-edge-strong"
-          title="Stroke Position"
-        >
-          {stroke.indeterminate.align && <option value="" disabled>Mixed</option>}
-          <option value="inside">Inside</option>
-          <option value="outside">Outside</option>
-          <option value="center">Center</option>
-        </select>
       </div>
     </div>
   );

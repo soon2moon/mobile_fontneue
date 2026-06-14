@@ -5,7 +5,7 @@ function ShapeMenuItem({ type, icon, label, hotkey, current, onClick }) {
       <button
         onClick={() => onClick(type)}
         className={`flex items-center justify-between w-full p-2 text-xs font-medium rounded-lg transition-colors ${
-            active ? 'bg-pressed text-ink' : 'text-secondary hover:bg-sunken hover:text-ink'
+            active ? 'bg-accent text-white' : 'text-secondary hover:bg-sunken hover:text-ink'
         }`}
       >
           <div className="flex items-center gap-2">
