@@ -14,12 +14,14 @@ import { useEditor } from '../../state/EditorContext';
 // right-aligned shortcut hints. Object hits get clipboard actions + an Arrange
 // side-flyout submenu; empty canvas gets Paste here + Show/Hide UI.
 const MENU_SURFACE =
-  'bg-raised border border-edge rounded-[12px] shadow-menu p-1.5 w-52 flex flex-col gap-0.5';
+  'bg-raised border border-edge rounded-[10px] shadow-menu p-1.5 w-52 flex flex-col gap-0.5';
 
+// Inset, rounded "container" hover that matches the selected-layer style
+// (bg-accent-soft) rather than a full-bleed highlight.
 const itemClass = (danger = false) =>
-  `group h-8 px-2 rounded-md flex items-center gap-2.5 text-xs font-medium cursor-default ${
+  `group w-full h-9 px-3 rounded-lg flex items-center gap-2.5 text-xs font-medium cursor-default ${
     danger ? 'text-danger' : 'text-ink'
-  } hover:bg-accent hover:text-white`;
+  } hover:bg-accent-soft hover:text-white`;
 
 function MenuItem({ icon, label, hint, danger = false, onClick, onMouseEnter, hasSubmenu = false }) {
   return (
@@ -27,12 +29,12 @@ function MenuItem({ icon, label, hint, danger = false, onClick, onMouseEnter, ha
       {icon}
       <span className="flex-1 text-left whitespace-nowrap">{label}</span>
       {hint && <span className="text-[11px] font-mono text-muted group-hover:text-white">{hint}</span>}
-      {hasSubmenu && <ChevronRight size={13} className="text-muted group-hover:text-white -mr-1" />}
+      {hasSubmenu && <ChevronRight size={14} className="text-muted group-hover:text-white" />}
     </button>
   );
 }
 
-const Separator = () => <div className="h-px bg-edge my-1 mx-1" />;
+const Separator = () => <div className="h-px bg-edge my-1" />;
 
 export default function CanvasContextMenu() {
   const {

@@ -3,15 +3,9 @@ import {
   Pencil,
   MousePointer2,
   Hand,
-  Eye,
-  EyeOff,
-  Trash2,
-  CircleDot,
-  RefreshCw,
   Layers,
   Image as ImageIcon,
   Grid,
-  Droplet,
   Square,
   Circle,
   Triangle,
@@ -31,24 +25,16 @@ import Tooltip from '../../ui/Tooltip';
 import { useEditor } from '../../state/EditorContext';
 
 // Bottom-centered desktop toolbar: drawing tools + contextual shape menu,
-// manipulation tools, panel toggles, view toggles, global actions.
+// manipulation tools, and panel toggles (quiet grey when open).
 export default function DesktopToolbar() {
   const {
-applyPathStyle,
     changeMode,
-    clearCanvas,
-    correctPathDirections,
     fileInputRef,
-    fillToggleActive,
-    hasSelectedPaths,
     mode,
     openPanels,
-    selectedPoints,
     setShapeType,
-    setShowNodes,
     setShowShapeMenu,
     shapeType,
-    showNodes,
     showShapeMenu,
     togglePanel
   } = useEditor();
@@ -56,7 +42,7 @@ applyPathStyle,
 
   return (
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-raised p-2 rounded-2xl shadow-lg border border-edge">
-        
+
         {/* Drawing Tools Section */}
         <div className="flex gap-1">
           <ToolButton
@@ -82,7 +68,7 @@ applyPathStyle,
                 aria-label="Shape Tool (R/O)"
                 className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center ${
                   mode === 'shape'
-                    ? 'bg-pressed text-ink'
+                    ? 'bg-accent text-white'
                     : 'text-secondary hover:bg-sunken hover:text-ink'
                 }`}
               >
@@ -106,7 +92,7 @@ applyPathStyle,
                 <ChevronUp size={14} />
               </button>
             </Tooltip>
-            
+
             {/* Shape Dropdown Menu */}
             <Popover open={showShapeMenu} onOpenChange={setShowShapeMenu} anchorRef={shapeAnchorRef} placement="top-start" offsetPx={8}>
                <div className="w-36 bg-raised p-1.5 rounded-2xl shadow-xl border border-edge flex flex-col gap-0.5">
@@ -126,7 +112,6 @@ applyPathStyle,
             label="Frame"
             hotkey="F"
           />
-
           <ToolButton
             active={mode === 'text'}
             onClick={() => changeMode('text')}
@@ -160,7 +145,7 @@ applyPathStyle,
         {/* Separator */}
         <div className="w-[1px] h-8 bg-edge mx-1"></div>
 
-        {/* Configuration Panels Section */}
+        {/* Place Image + Panel toggles (quiet grey when open) */}
         <div className="flex gap-1">
           <ToolButton
             active={false}
@@ -170,82 +155,33 @@ applyPathStyle,
             hotkey="U"
           />
           <ToolButton
+            tone="panel"
+            active={openPanels.layers}
+            onClick={() => togglePanel('layers')}
+            icon={<Layers size={20} />}
+            label="Layers"
+          />
+          <ToolButton
+            tone="panel"
+            active={openPanels.inspector}
+            onClick={() => togglePanel('inspector')}
+            icon={<SlidersHorizontal size={20} />}
+            label="Design"
+          />
+          <ToolButton
+            tone="panel"
             active={openPanels.grid}
             onClick={() => togglePanel('grid')}
             icon={<Grid size={20} />}
             label="Canvas Grid"
           />
           <ToolButton
-            active={openPanels.layers}
-            onClick={() => togglePanel('layers')}
-            icon={<Layers size={20} />}
-            label="Layers"
-          />
-          <ToolButton 
-            active={openPanels.export} 
-            onClick={() => togglePanel('export')} 
-            icon={<Download size={20} />} 
+            tone="panel"
+            active={openPanels.export}
+            onClick={() => togglePanel('export')}
+            icon={<Download size={20} />}
             label="Export"
           />
-        </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-8 bg-edge mx-1"></div>
-
-        {/* View Toggles Section */}
-        <div className="flex gap-1">
-          <ToolButton 
-            active={showNodes && mode !== 'pencil'} 
-            onClick={() => { 
-                if (mode === 'pencil') {
-                  changeMode('edit');
-                  setShowNodes(true);
-                } else {
-                  setShowNodes(!showNodes);
-                }
-            }} 
-            icon={<CircleDot size={20} />} 
-            label="Show Nodes" 
-            hotkey="N"
-          />
-          <ToolButton
-            active={fillToggleActive}
-            onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
-            icon={<Droplet size={20} />}
-            label={hasSelectedPaths ? "Toggle Fill (Selection)" : "Toggle Fill (Default)"}
-          />
-          <ToolButton
-            active={openPanels.inspector}
-            onClick={() => togglePanel('inspector')}
-            icon={<SlidersHorizontal size={20} />}
-            label="Design"
-          />
-        </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-8 bg-edge mx-1"></div>
-
-        {/* Global Actions Section */}
-        <div className="flex gap-1">
-          <Tooltip label={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}>
-            <button
-              onClick={correctPathDirections}
-              aria-label={selectedPoints.length > 0 ? "Reverse Path Direction (Manual)" : "Auto-Correct Path Directions"}
-              className="p-3 text-secondary hover:text-ink hover:bg-sunken rounded-xl transition-all"
-            >
-              <RefreshCw size={20} />
-            </button>
-          </Tooltip>
-
-          <Tooltip label="Clear Canvas">
-            <button
-              onClick={clearCanvas}
-              aria-label="Clear Canvas"
-              className="p-3 text-secondary hover:text-danger hover:bg-danger-bg rounded-xl transition-all"
-            >
-              <Trash2 size={20} />
-            </button>
-          </Tooltip>
         </div>
       </div>
   );

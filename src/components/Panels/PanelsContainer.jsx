@@ -83,20 +83,20 @@ export default function PanelsContainer() {
     if (panelId === 'grid') return (
       <div className="p-3.5 flex flex-col gap-3">
         <div className="grid grid-cols-3 gap-2 bg-sunken p-1.5 rounded-lg">
-          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'none' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'none' })}>None</button>
-          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'dots' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'dots' })}>Dots</button>
-          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'lines' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'lines' })}>Grid</button>
-          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circular' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'circular' })}>Circular</button>
-          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circles' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'circles' })}>Circles</button>
+          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'none' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'none' })}>None</button>
+          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'dots' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'dots' })}>Dots</button>
+          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'lines' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'lines' })}>Grid</button>
+          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circular' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'circular' })}>Circular</button>
+          <button className={`py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.type === 'circles' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, type: 'circles' })}>Circles</button>
         </div>
 
         {gridConfig.type === 'lines' && (
           <div className="flex flex-col gap-2 mt-1">
             <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Grid Shape (Edges)</label>
             <div className="flex gap-2 bg-sunken p-1.5 rounded-lg">
-              <button className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 3 ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, edges: 3 })}>3 (Tri)</button>
-              <button className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 4 ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, edges: 4 })}>4 (Sqr)</button>
-              <button className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 6 ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, edges: 6 })}>6 (Hex)</button>
+              <button className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 3 ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, edges: 3 })}>3 (Tri)</button>
+              <button className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 4 ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, edges: 4 })}>4 (Sqr)</button>
+              <button className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${gridConfig.edges === 6 ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`} onClick={() => setGridConfig({ ...gridConfig, edges: 6 })}>6 (Hex)</button>
             </div>
           </div>
         )}
@@ -145,7 +145,7 @@ export default function PanelsContainer() {
 
     if (panelId === 'layers') return (
       <div className={`flex flex-col min-h-0 flex-1 ${isMobile ? 'max-h-[36vh]' : 'max-h-[60vh]'}`}>
-        <div className="panel-scroll flex-1 overflow-y-auto flex flex-col" style={{ touchAction: 'pan-y' }}>
+        <div className="panel-scroll flex-1 overflow-y-auto flex flex-col gap-0.5 px-1.5 py-1" style={{ touchAction: 'pan-y' }}>
           {layers.map(layer => {
             const isSelected = selectedLayerIds.has(layer.id);
             return (
@@ -159,7 +159,7 @@ export default function PanelsContainer() {
                   onDragOver={(e) => handleLayerDragOver(e, layer.id)}
                   onDrop={(e) => handleLayerDrop(e, layer.id)}
                   onDragEnd={handleLayerDragEnd}
-                  className={`flex items-center justify-between px-2.5 py-2 border-b border-edge/60 transition-colors cursor-pointer ${
+                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-accent-soft text-ink'
                       : 'hover:bg-sunken text-secondary'
@@ -235,20 +235,20 @@ export default function PanelsContainer() {
         <div className="grid grid-cols-3 gap-2 bg-sunken p-1.5 rounded-lg">
           <button
             onClick={() => setExportScope('selection')}
-            className={`py-1.5 text-xs font-semibold rounded-md transition-all ${exportScope === 'selection' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
+            className={`py-1.5 text-xs font-semibold rounded-md transition-all ${exportScope === 'selection' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`}
           >
             Selection
           </button>
           <button
             onClick={() => setExportScope('canvas')}
-            className={`py-1.5 text-xs font-semibold rounded-md transition-all ${exportScope === 'canvas' ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
+            className={`py-1.5 text-xs font-semibold rounded-md transition-all ${exportScope === 'canvas' ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`}
           >
             Canvas
           </button>
           <button
             onClick={() => setExportScope('frame')}
             disabled={selectedFrameIds.length !== 1}
-            className={`py-1.5 text-xs font-semibold rounded-md transition-all ${exportScope === 'frame' ? 'bg-chip shadow-sm text-ink' : selectedFrameIds.length !== 1 ? 'text-muted cursor-not-allowed' : 'text-secondary hover:text-ink'}`}
+            className={`py-1.5 text-xs font-semibold rounded-md transition-all ${exportScope === 'frame' ? 'bg-accent shadow-sm text-white' : selectedFrameIds.length !== 1 ? 'text-muted cursor-not-allowed' : 'text-secondary hover:text-ink'}`}
           >
             Frame
           </button>
@@ -259,7 +259,7 @@ export default function PanelsContainer() {
             <button
               key={format}
               onClick={() => setExportFormat(format)}
-              className={`py-1.5 text-xs font-semibold uppercase rounded-md transition-all ${exportFormat === format ? 'bg-chip shadow-sm text-ink' : 'text-secondary hover:text-ink'}`}
+              className={`py-1.5 text-xs font-semibold uppercase rounded-md transition-all ${exportFormat === format ? 'bg-accent shadow-sm text-white' : 'text-secondary hover:text-ink'}`}
             >
               {format}
             </button>
@@ -326,12 +326,12 @@ export default function PanelsContainer() {
           const Icon = panel.icon;
           const isActive = activeId === panel.id;
           return (
-            <div className="flex items-center justify-between gap-2 p-1.5">
+            <div className="flex items-center justify-between gap-1.5 p-1.5">
               <button
                 type="button"
                 onClick={() => setExpandedPanel(isActive ? null : panel.id)}
                 title={panel.title}
-                className="flex items-center gap-2 flex-1 min-w-0 text-left px-2 py-1.5 rounded-xl hover:bg-sunken transition-colors"
+                className="flex items-center gap-2 flex-1 min-w-0 text-left h-11 px-3 rounded-xl hover:bg-sunken transition-colors"
               >
                 <Icon size={16} className="text-secondary shrink-0" />
                 <span className="text-[11px] font-bold uppercase tracking-widest text-secondary truncate">{panel.title}</span>
@@ -340,9 +340,9 @@ export default function PanelsContainer() {
                 type="button"
                 onClick={() => removePanel(panel.id)}
                 title={`Close ${panel.title}`}
-                className="w-5 h-5 mr-0.5 rounded-full bg-pressed border border-edge-strong text-secondary hover:text-ink hover:bg-edge-strong flex items-center justify-center shrink-0 transition-colors"
+                className="w-7 h-7 rounded-full bg-pressed border border-edge-strong text-secondary hover:text-ink hover:bg-edge-strong flex items-center justify-center shrink-0 transition-colors"
               >
-                <X size={11} />
+                <X size={13} />
               </button>
             </div>
           );

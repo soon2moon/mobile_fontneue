@@ -212,15 +212,24 @@ export const findTopPathAtCoords = (testCoords, { paths, isPathVisible, isPathLo
 // Boards select on plain click / label / handles only; their body never
 // joins the generic bg-hit chain so content above stays marquee-able.
 export const findTopFrameAtCoords = (coords, { frames, layers }) => {
-  for (let i = frames.length - 1; i >= 0; i--) {
-    const frame = frames[i];
+  // Return the SMALLEST frame whose bounds contain the point (the most specific
+  // one), so overlapping/nested frames are all reachable — clicking a frame's
+  // own area always selects it, not whichever frame happens to be later in the
+  // array. Matches Figma's innermost-frame selection.
+  let best = null;
+  let bestArea = Infinity;
+  for (const frame of frames) {
     const layer = layers.find(l => l.id === frame.layerId);
     if (!layer || !layer.visible || layer.locked || frame.locked) continue;
     if (Math.abs(coords.x - frame.x) <= frame.width / 2 && Math.abs(coords.y - frame.y) <= frame.height / 2) {
-      return frame;
+      const area = frame.width * frame.height;
+      if (area < bestArea) {
+        bestArea = area;
+        best = frame;
+      }
     }
   }
-  return null;
+  return best;
 };
 
 export const getFrameHandleHit = (coords, frame, scaleHandleHitRadius) => {

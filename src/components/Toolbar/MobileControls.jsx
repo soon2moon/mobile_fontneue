@@ -7,14 +7,12 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  CircleDot,
   RefreshCw,
   Layers,
   Plus,
   Image as ImageIcon,
   X,
   Grid,
-  Droplet,
   Square,
   Circle,
   Triangle,
@@ -34,16 +32,12 @@ import { useEditor } from '../../state/EditorContext';
 // context menu, and the bottom toolbar. Rendered only when isMobile.
 export default function MobileControls() {
   const {
-anyMobileOverlayOpen,
-    applyPathStyle,
+    anyMobileOverlayOpen,
     changeMode,
-    clearCanvas,
     clearTapFocus,
     closeAllPanels,
-    correctPathDirections,
     deleteSelectedItems,
     fileInputRef,
-    fillToggleActive,
     getShapeToolIcon,
     handleRedo,
     handleUndo,
@@ -62,10 +56,8 @@ anyMobileOverlayOpen,
     resetZoomToHundred,
     selectMobileShape,
     setShowBackgroundAids,
-    setShowNodes,
     shapeType,
     showBackgroundAids,
-    showNodes,
     stepZoom,
     toggleMobileShapePanel,
     toggleMobileToolsMenu,
@@ -168,7 +160,6 @@ anyMobileOverlayOpen,
             >
               <div className="bg-raised rounded-[16px] border border-edge p-1.5 max-h-[44vh] overflow-y-auto overflow-x-hidden">
                 <div className="grid grid-cols-4 gap-1">
-                  <MobileToolButton active={showNodes} onClick={() => setShowNodes(prev => !prev)} icon={<CircleDot size={14} />} label="Nodes" />
                   <MobileToolButton
                     active={showBackgroundAids}
                     onClick={() => setShowBackgroundAids(prev => !prev)}
@@ -176,12 +167,7 @@ anyMobileOverlayOpen,
                     label={showBackgroundAids ? "Hide Background Aids" : "Show Background Aids"}
                   />
                   <MobileToolButton
-                    active={fillToggleActive}
-                    onClick={() => applyPathStyle({ fillEnabled: !fillToggleActive })}
-                    icon={<Droplet size={14} />}
-                    label="Fill"
-                  />
-                  <MobileToolButton
+                    tone="panel"
                     active={openPanels.inspector}
                     onClick={() => {
                       openMobilePanel('inspector');
@@ -189,7 +175,6 @@ anyMobileOverlayOpen,
                     icon={<SlidersHorizontal size={14} />}
                     label="Design"
                   />
-                  <MobileToolButton onClick={correctPathDirections} icon={<RefreshCw size={14} />} label="Reverse" />
                   <MobileToolButton
                     onClick={() => {
                       fileInputRef.current?.click();
@@ -208,6 +193,7 @@ anyMobileOverlayOpen,
                     label="Text"
                   />
                   <MobileToolButton
+                    tone="panel"
                     active={openPanels.grid}
                     onClick={() => {
                       openMobilePanel('grid');
@@ -216,6 +202,7 @@ anyMobileOverlayOpen,
                     label="Grid"
                   />
                   <MobileToolButton
+                    tone="panel"
                     active={openPanels.layers}
                     onClick={() => {
                       openMobilePanel('layers');
@@ -224,6 +211,7 @@ anyMobileOverlayOpen,
                     label="Layers"
                   />
                   <MobileToolButton
+                    tone="panel"
                     active={openPanels.export}
                     onClick={() => {
                       openMobilePanel('export');
@@ -231,7 +219,6 @@ anyMobileOverlayOpen,
                     icon={<Download size={14} />}
                     label="Export"
                   />
-                  <MobileToolButton onClick={clearCanvas} icon={<Trash2 size={14} />} label="Clear" />
                   <MobileToolButton onClick={toggleUiHidden} icon={<EyeOff size={14} />} label="Hide UI" />
                 </div>
               </div>

@@ -280,7 +280,7 @@ activeEditGroupId,
     }
 
     let coords = getCanvasCoords(e.clientX, e.clientY);
-    let snappedCoords = applyGridSnap(coords, gridConfig);
+    let snappedCoords = applyGridSnap(coords, gridConfig, findTopFrameAtCoords(coords, { frames, layers }));
 
     const now = Date.now();
     const distToLast = Math.hypot(e.clientX - lastPointerDownRef.current.x, e.clientY - lastPointerDownRef.current.y);
@@ -852,10 +852,16 @@ activeEditGroupId,
         }
       }
       if (!isDirectPathEdit) {
-        const labelFrame = frames.find(f => {
+        // Smallest frame whose name strip is hit (consistent with body-select).
+        let labelFrame = null;
+        let labelFrameArea = Infinity;
+        for (const f of frames) {
           const layer = layers.find(l => l.id === f.layerId);
-          return layer && layer.visible && !layer.locked && !f.locked && getFrameLabelHit(coords, f, zoom);
-        });
+          if (layer && layer.visible && !layer.locked && !f.locked && getFrameLabelHit(coords, f, zoom)) {
+            const area = f.width * f.height;
+            if (area < labelFrameArea) { labelFrameArea = area; labelFrame = f; }
+          }
+        }
         if (labelFrame) {
           // Double-click the title strip → inline rename; a single click
           // selects the frame and primes a move (same as the frame body).
@@ -1477,7 +1483,7 @@ activeEditGroupId,
     }
 
     let coords = getCanvasCoords(e.clientX, e.clientY);
-    let snappedCoords = applyGridSnap(coords, gridConfig);
+    let snappedCoords = applyGridSnap(coords, gridConfig, findTopFrameAtCoords(coords, { frames, layers }));
 
     if (mode === 'shape' && drawingShape) {
       if (!dragThresholdPassed) return;
@@ -2041,7 +2047,7 @@ activeEditGroupId,
                 x: refPoint.x + dragDx,
                 y: refPoint.y + dragDy
             };
-            const snappedRefPoint = applyGridSnap(currentRefPoint, gridConfig);
+            const snappedRefPoint = applyGridSnap(currentRefPoint, gridConfig, findTopFrameAtCoords(currentRefPoint, { frames, layers }));
             const dx = snappedRefPoint.x - refPoint.x;
             const dy = snappedRefPoint.y - refPoint.y;
 

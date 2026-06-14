@@ -108,19 +108,6 @@ activeEditGroupId,
         onContextMenu={handleCanvasContextMenu}
       >
         <defs>
-          {showBackgroundGridPattern && (
-            <pattern 
-              id="bg-grid" 
-              width={patternW * zoom} 
-              height={patternH * zoom} 
-              patternUnits="userSpaceOnUse" 
-              patternTransform={`translate(${pan.x}, ${pan.y})`}
-            >
-              <g transform={`scale(${zoom})`}>
-                {patternContent}
-              </g>
-            </pattern>
-          )}
           {showPixelGridOverlay && (
             <pattern
               id="pixel-grid"
@@ -142,44 +129,75 @@ activeEditGroupId,
           )}
         </defs>
 
-        {/* Background Grid */}
-        {showBackgroundGridPattern && <rect width="100%" height="100%" fill="url(#bg-grid)" />}
-
         {/* Transform Group for Pan & Zoom */}
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-          
-          {/* Circular Grid (Drawn inside world coordinates) */}
-          {showCircularGrid && (
-            <g className="opacity-60 pointer-events-none">
-              {Array.from({length: 100}).map((_, i) => (
-                <circle key={`circ-${i}`} cx={0} cy={0} r={(i + 1) * s} stroke={THEME.gridline} strokeWidth={1/zoom} fill="none" />
-              ))}
-              {Array.from({length: circularRayCount}).map((_, i) => {
-                 const angle = (i * effectiveCircularStep * Math.PI) / 180;
-                 return <line key={`rad-${i}`} x1={-5000 * Math.cos(angle)} y1={-5000 * Math.sin(angle)} x2={5000 * Math.cos(angle)} y2={5000 * Math.sin(angle)} stroke={THEME.gridline} strokeWidth={1/zoom} />
-              })}
-            </g>
-          )}
 
-          {/* Frames (artboards) paint below ALL content; names stay screen-sized */}
+          {/* Frames (artboards) paint below ALL content; the design grid is
+              contained inside each frame (Figma-style); names stay screen-sized */}
           {layers.slice().reverse().map(layer => {
             if (!layer.visible) return null;
             return (
               <g key={`frame-layer-${layer.id}`}>
                 {frames.map(frame => {
                   if (frame.layerId !== layer.id) return null;
+                  const fl = frame.x - frame.width / 2;
+                  const ft = frame.y - frame.height / 2;
+                  const frameSvgId = toSafeSvgId(frame.id);
+                  const frameDiag = Math.hypot(frame.width, frame.height);
                   return (
                     <g key={`frame-${frame.id}`} pointerEvents="none">
-                      <rect
-                        x={frame.x - frame.width / 2}
-                        y={frame.y - frame.height / 2}
-                        width={frame.width}
-                        height={frame.height}
-                        fill={frame.fill}
-                      />
+                      <rect x={fl} y={ft} width={frame.width} height={frame.height} fill={frame.fill} />
+
+                      {/* Design grid: tiled from the frame's top-left, clipped to the frame rect */}
+                      {showBackgroundGridPattern && (
+                        <>
+                          <defs>
+                            <pattern
+                              id={`fg-${frameSvgId}`}
+                              x={fl}
+                              y={ft}
+                              width={patternW}
+                              height={patternH}
+                              patternUnits="userSpaceOnUse"
+                            >
+                              {patternContent}
+                            </pattern>
+                          </defs>
+                          <rect x={fl} y={ft} width={frame.width} height={frame.height} fill={`url(#fg-${frameSvgId})`} />
+                        </>
+                      )}
+                      {showCircularGrid && (
+                        <g className="opacity-60">
+                          <defs>
+                            <clipPath id={`fgc-${frameSvgId}`}>
+                              <rect x={fl} y={ft} width={frame.width} height={frame.height} />
+                            </clipPath>
+                          </defs>
+                          <g clipPath={`url(#fgc-${frameSvgId})`}>
+                            {Array.from({ length: Math.ceil(frameDiag / (2 * s)) + 1 }).map((_, i) => (
+                              <circle key={`fgc-c-${i}`} cx={frame.x} cy={frame.y} r={(i + 1) * s} stroke={THEME.gridline} strokeWidth={1 / zoom} fill="none" />
+                            ))}
+                            {Array.from({ length: circularRayCount }).map((_, i) => {
+                              const angle = (i * effectiveCircularStep * Math.PI) / 180;
+                              return (
+                                <line
+                                  key={`fgc-r-${i}`}
+                                  x1={frame.x - frameDiag * Math.cos(angle)}
+                                  y1={frame.y - frameDiag * Math.sin(angle)}
+                                  x2={frame.x + frameDiag * Math.cos(angle)}
+                                  y2={frame.y + frameDiag * Math.sin(angle)}
+                                  stroke={THEME.gridline}
+                                  strokeWidth={1 / zoom}
+                                />
+                              );
+                            })}
+                          </g>
+                        </g>
+                      )}
+
                       <text
-                        x={frame.x - frame.width / 2}
-                        y={frame.y - frame.height / 2 - 6 / zoom}
+                        x={fl}
+                        y={ft - 6 / zoom}
                         fontSize={11 / zoom}
                         fill={THEME.handle}
                         style={{ userSelect: 'none' }}

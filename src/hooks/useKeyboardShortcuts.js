@@ -131,15 +131,6 @@ export function useKeyboardShortcuts({
         }
         return;
       }
-      if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
-        if (mode === 'pencil') {
-          changeMode('edit');
-          setShowNodes(true);
-        } else {
-          setShowNodes(prev => !prev);
-        }
-        return;
-      }
       if (e.key.toLowerCase() === 'l' && !e.ctrlKey && !e.metaKey) {
         changeMode('shape');
         setShapeType('line');

@@ -12,7 +12,6 @@ import {
   normalizeStrokeAlign
 } from '../lib/stroke';
 import { createLayer } from '../lib/layers';
-import { correctPathDirectionsTransform } from '../lib/pathDirection';
 
 // Document-level object actions: delete the current selection (auto-pruning
 // emptied layers), clear the canvas, fix winding direction, and commit the
@@ -255,39 +254,8 @@ export function useObjectActions({
     clearPendingTouchDrawAction();
   };
 
-  const clearCanvas = () => {
-    commitHistory({ paths, currentPath, images, layers, texts, frames });
-    setPaths([]);
-    setCurrentPath([]);
-    setImages([]);
-    setTexts([]);
-    setFrames([]);
-    setLayers([]);
-    setGhostPoint(null);
-    setActivePathEditId(null);
-    setSelectedPoints([]);
-    setActiveHandle(null);
-    setIsDrawingCurve(false);
-    setDrawHover(null);
-    setHoveredHandle(null);
-    setPointAction(null);
-    setDrawingShape(null);
-    setCurrentPathInfo(null);
-    setSelectedImageIds([]);
-    setSelectedTextIds([]);
-    setSelectedFrameIds([]);
-    clearPendingTouchDrawAction();
-  };
-
-  const correctPathDirections = () => {
-    commitHistory({ paths, currentPath, images, layers, texts, frames });
-    setPaths(prev => correctPathDirectionsTransform(prev, selectedPoints, isPathVisible, isPathLocked));
-  };
-
   return {
     deleteSelectedItems,
-    finishPath,
-    clearCanvas,
-    correctPathDirections
+    finishPath
   };
 }
